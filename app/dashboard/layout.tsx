@@ -8,7 +8,7 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="flex h-screen bg-background">
-      <AppSidebar />
+      <AppSidebar className="hidden md:flex" />
       <div className="flex-1 flex flex-col overflow-hidden">
         <TopNav />
         <main className="flex-1 overflow-auto">
