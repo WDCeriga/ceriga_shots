@@ -105,8 +105,14 @@ function mergeGeneration(
     preset: incoming.preset ?? current.preset,
   }
 
-  // If we've already completed, don't let late "generating" patches restart it.
-  if (current.status === 'complete' && incoming.status !== 'complete') {
+  const totalIncreased =
+    typeof current.total === 'number' &&
+    typeof incoming.total === 'number' &&
+    incoming.total > current.total
+
+  // If we've already completed and the client isn't asking for more, don't let late
+  // "generating" patches restart it.
+  if (current.status === 'complete' && incoming.status !== 'complete' && !totalIncreased) {
     merged.status = 'complete'
     merged.nextType = undefined
     merged.errorMessage = undefined
