@@ -696,7 +696,7 @@ export async function POST(req: Request) {
           `[mockups:${requestId}] attempt ${attempt} response in ${Date.now() - attemptStartedAt}ms`
         )
 
-        const outputImage = interaction.outputs?.find((o) => o.type === 'image')
+        const outputImage = interaction.outputs?.find((o: any) => o.type === 'image')
         const base64 = outputImage?.data
         const mime = outputImage?.mime_type || 'image/png'
 
@@ -707,6 +707,7 @@ export async function POST(req: Request) {
 
           let finalUrl = `data:${mime};base64,${base64}`
           if (isR2Configured()) {
+            console.info?.(`[mockups:${requestId}] uploading output image to R2`)
             const bytes = Buffer.from(base64, 'base64')
             const ext =
               mime === 'image/png'
@@ -723,6 +724,9 @@ export async function POST(req: Request) {
               `${shotType}/${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Date.now()}.${ext}`
             const uploaded = await putObjectToR2({ key, body: bytes, contentType: mime })
             finalUrl = uploaded.url
+            console.info?.(`[mockups:${requestId}] uploaded R2 url=${uploaded.url}`)
+          } else {
+            console.info?.(`[mockups:${requestId}] R2 not configured; storing as data URL`)
           }
 
           return NextResponse.json({
