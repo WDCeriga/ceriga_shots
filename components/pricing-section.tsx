@@ -20,7 +20,7 @@ const plans = [
   },
   {
     name: "Starter",
-    price: "$19",
+    price: "€19",
     period: "/mo",
     credits: "50 credits / mo",
     description: "For indie brands getting started.",
@@ -36,7 +36,7 @@ const plans = [
   },
   {
     name: "Studio",
-    price: "$49",
+    price: "€49",
     period: "/mo",
     credits: "200 credits / mo",
     description: "Full creative power for growing brands.",
@@ -52,7 +52,7 @@ const plans = [
   },
   {
     name: "Label",
-    price: "$99",
+    price: "€99",
     period: "/mo",
     credits: "500 credits / mo",
     description: "For labels with high-volume needs.",
