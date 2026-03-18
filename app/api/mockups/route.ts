@@ -113,7 +113,16 @@ function categoryForShotType(shotType: ShotType): ShotCategory {
 
 const BASE_FIDELITY = [
   'You are generating a professional product photograph.',
-  'The provided image is the EXACT physical garment — do not redesign, reinterpret, or alter it in any way.',
+  'The provided image contains the EXACT physical garment — do not redesign, reinterpret, or alter it in any way.',
+  '',
+  'INPUT IMAGE HANDLING (critical — read first):',
+  '- The reference image may NOT be a clean product photo. It may be a phone screenshot, a photo of a screen, a social media save, or a cluttered photo.',
+  '- ISOLATE THE GARMENT ONLY. Extract the clothing item and ignore absolutely everything else in the input image.',
+  '- Discard all of the following if present in the input: phone UI (status bar, battery, signal, dynamic island, home indicator, navigation bar), browser chrome (URL bar, tabs, bookmarks bar), app interfaces (Instagram overlays, e-commerce buttons, price tags, chat bubbles), window frames, taskbars, watermarks, stock photo marks, "SAMPLE" text, device bezels, mock device frames.',
+  '- Discard any solid-colour bars, borders, letterboxing, or padding around the garment.',
+  '- Discard any background clutter: messy surfaces, other objects, accessories, hands, mannequins, retail tags, hangers (unless the shot type requires one).',
+  '- If the garment occupies only a portion of the input image, mentally crop to just the garment before generating.',
+  '- The output must contain ONLY the garment on the specified surface/background — zero trace of the input image context.',
   '',
   'PRODUCT FIDELITY (non-negotiable):',
   '- Preserve exact print placement, graphics, logo position, and colorway',
@@ -121,7 +130,7 @@ const BASE_FIDELITY = [
   '- Preserve realistic fabric weight and natural fold behaviour',
   '- Do NOT reshape, smooth, or make the garment look digitally rendered',
   '- Do NOT add, remove, or modify any design element',
-  '- Do NOT introduce logos, watermarks, or text not present in the original',
+  '- Do NOT introduce logos, watermarks, or text not present on the garment itself',
   '',
   'PERMITTED REFINEMENTS ONLY:',
   '- Remove dust, lint, and sensor noise',
@@ -151,6 +160,10 @@ const NEGATIVE_GLOBAL = [
   '- Do NOT add hangers/hands/mannequins/people unless the shot type explicitly requires it.',
   '- Do NOT output CGI/illustration/painterly styles, plastic sheen, or “AI texture”. Photoreal only.',
   '- Do NOT add text, watermarks, brand marks, UI overlays, or borders.',
+  '- Do NOT reproduce ANY input image context: phone/tablet/desktop UI, status bars, battery icons, signal indicators, dynamic island, home indicator, navigation bars, browser chrome, URL bars, tabs, app interfaces, social media overlays, e-commerce UI, price tags, chat bubbles, device bezels, mock device frames, window title bars, taskbars, or screen recording artifacts.',
+  '- Do NOT reproduce watermarks, stock photo marks, "SAMPLE" overlays, supplier stamps, or any text overlay from the input image.',
+  '- Do NOT reproduce solid-colour bars, letterboxing, borders, or padding from the input image.',
+  '- Do NOT reproduce background clutter, other objects, accessories, or retail context from the input image.',
 ].join('\n')
 
 const NEGATIVE_BY_CATEGORY: Record<ShotCategory, string> = {
