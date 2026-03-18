@@ -67,16 +67,16 @@ export function HeroSection() {
         <div className="animate-fade-up animation-delay-400 mt-24 grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
           {/* Original */}
           <div className="relative group">
-            <div className="absolute top-4 left-4 z-10 bg-background/80 backdrop-blur-sm border border-border px-3 py-1.5 text-xs text-muted-foreground tracking-widest uppercase">
+            <div className="absolute top-4 left-4 z-10 bg-background/80 backdrop-blur-sm border border-border px-3 py-1.5 text-xs text-white tracking-widest uppercase">
               Original
             </div>
-            <div className="overflow-hidden aspect-[4/3]">
+            <div className="overflow-hidden">
               <Image
                 src="/images/hoodie-original.jpg"
                 alt="Original hoodie product photo"
                 width={800}
                 height={600}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                className="w-full h-auto group-hover:scale-105 transition-transform duration-700"
                 priority
               />
             </div>
@@ -87,7 +87,7 @@ export function HeroSection() {
             <div className="absolute top-4 left-4 z-10 bg-accent/90 backdrop-blur-sm px-3 py-1.5 text-xs text-foreground tracking-widest uppercase font-semibold">
               AI Generated
             </div>
-            <div className="grid grid-cols-2 gap-1 aspect-[4/3]">
+            <div className="grid grid-cols-2 gap-1">
               {generatedShots.map((shot, i) => (
                 <div key={shot.label} className="relative overflow-hidden group/card">
                   <Image
@@ -95,7 +95,7 @@ export function HeroSection() {
                     alt={`Generated ${shot.label} shot`}
                     width={400}
                     height={300}
-                    className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-700"
+                    className="w-full h-auto group-hover/card:scale-110 transition-transform duration-700"
                   />
                   <div className="absolute inset-0 bg-background/0 group-hover/card:bg-background/30 transition-colors duration-300" />
                   <span className="absolute bottom-2 left-2 text-[10px] tracking-widest uppercase text-foreground/70 bg-background/60 backdrop-blur-sm px-2 py-0.5">

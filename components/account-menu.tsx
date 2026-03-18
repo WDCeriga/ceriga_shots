@@ -54,7 +54,7 @@ export function AccountMenu() {
   return (
     <Link
       href="/dashboard/settings"
-      className="flex items-center gap-3 rounded-md px-2 py-1 -mx-2 -my-1 hover:bg-muted/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="flex items-center gap-3 rounded-md px-2 pr-10 py-1 -mx-2 -my-1 hover:bg-muted/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       aria-label="Open settings"
     >
       <div className="flex items-center gap-2 min-w-0">
@@ -62,11 +62,6 @@ export function AccountMenu() {
           <span className="text-sm font-medium truncate max-w-[160px]">
             {title}
           </span>
-          {session.user.email && (
-            <span className="text-xs text-muted-foreground truncate max-w-[160px]">
-              {session.user.email}
-            </span>
-          )}
         </div>
       </div>
     </Link>

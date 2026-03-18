@@ -4,8 +4,20 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { useProjects } from '@/hooks/use-projects'
 
+function ProjectCardSkeleton() {
+  return (
+    <div className="border border-border rounded-lg overflow-hidden animate-pulse">
+      <div className="aspect-square bg-secondary" />
+      <div className="p-4 space-y-2">
+        <div className="h-4 bg-secondary rounded w-3/4" />
+        <div className="h-3 bg-secondary rounded w-1/3" />
+      </div>
+    </div>
+  )
+}
+
 export default function DashboardHome() {
-  const { projects } = useProjects()
+  const { projects, isLoading } = useProjects()
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
@@ -25,7 +37,11 @@ export default function DashboardHome() {
           </Link>
 
           <div className="border border-border rounded-lg p-6 flex flex-col items-center justify-center gap-2 text-center">
-            <div className="text-2xl font-bold">{projects.length}</div>
+            {isLoading ? (
+              <div className="h-8 w-10 bg-secondary rounded animate-pulse" />
+            ) : (
+              <div className="text-2xl font-bold">{projects.length}</div>
+            )}
             <div className="text-sm text-muted-foreground">Projects Created</div>
           </div>
 
@@ -41,7 +57,16 @@ export default function DashboardHome() {
         </div>
       </div>
 
-      {projects.length > 0 && (
+      {isLoading ? (
+        <div>
+          <h2 className="text-2xl font-bold mb-6">Recent Projects</h2>
+          <div className="grid grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <ProjectCardSkeleton key={i} />
+            ))}
+          </div>
+        </div>
+      ) : projects.length > 0 ? (
         <div>
           <h2 className="text-2xl font-bold mb-6">Recent Projects</h2>
           <div className="grid grid-cols-4 gap-4">
@@ -66,7 +91,7 @@ export default function DashboardHome() {
             ))}
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
