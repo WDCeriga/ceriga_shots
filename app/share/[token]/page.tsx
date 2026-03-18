@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { isDatabaseConfigured } from '@/lib/db'
 import { getProjectForShareToken } from '@/lib/shares'
+import { LightboxAsset, LightboxImage } from '@/components/lightbox-image'
 
 export const dynamic = 'force-dynamic'
 
@@ -9,6 +10,38 @@ export default async function SharePage({
 }: {
   params: Promise<{ token: string }>
 }) {
+  const formatViewTitle = (t: string) => {
+    switch (t) {
+      case 'flat-lay':
+      case 'flatlay_topdown':
+        return 'Top-down flat lay'
+      case 'flatlay_45deg':
+        return '45° angled flat lay'
+      case 'flatlay_sleeves':
+        return 'Sleeve spread'
+      case 'flatlay_relaxed':
+        return 'Relaxed flat lay'
+      case 'flatlay_folded':
+        return 'Folded logo'
+      case 'product-shot':
+      case 'surface_hanging':
+        return 'Hanging shot'
+      case 'surface_draped':
+        return 'Draped over surface'
+      case 'detail':
+      case 'detail_print':
+        return 'Print close-up'
+      case 'detail_fabric':
+        return 'Fabric macro'
+      case 'lifestyle':
+        return 'Lifestyle'
+      case 'detail_collar':
+        return 'Collar detail'
+      default:
+        return t
+    }
+  }
+
   const { token } = await params
   if (!isDatabaseConfigured()) {
     return (
@@ -91,20 +124,22 @@ export default async function SharePage({
                 className="rounded-xl overflow-hidden border border-border bg-card hover:border-accent transition-colors"
               >
                 {img.url ? (
-                  <img
+                  <LightboxImage
                     src={img.url}
                     alt={img.type}
-                    className="w-full aspect-square object-cover"
-                    loading="lazy"
+                    title={formatViewTitle(img.type)}
+                    imgClassName="w-full aspect-square object-cover"
                   />
                 ) : (
-                  <div className="w-full aspect-square flex items-center justify-center bg-secondary/50">
-                    <p className="text-sm font-medium text-muted-foreground">{img.type}</p>
-                  </div>
+                  <LightboxAsset title={formatViewTitle(img.type)} prompt={img.prompt}>
+                    <div className="w-full aspect-square flex items-center justify-center bg-secondary/50">
+                      <p className="text-sm font-medium text-muted-foreground">{formatViewTitle(img.type)}</p>
+                    </div>
+                  </LightboxAsset>
                 )}
                 <div className="px-3 py-2 border-t border-border">
-                  <p className="text-xs text-muted-foreground text-center capitalize">
-                    {img.type.replace('-', ' ')}
+                  <p className="text-xs text-muted-foreground text-center">
+                    {formatViewTitle(img.type)}
                   </p>
                 </div>
               </div>

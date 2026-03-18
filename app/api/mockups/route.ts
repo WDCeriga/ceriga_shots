@@ -3,7 +3,19 @@ import { GoogleGenAI } from '@google/genai'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 
-type MockupType = 'flat-lay' | 'product-shot' | 'lifestyle' | 'detail'
+type ShotType =
+  | 'flatlay_topdown'
+  | 'flatlay_45deg'
+  | 'flatlay_sleeves'
+  | 'flatlay_relaxed'
+  | 'flatlay_folded'
+  | 'surface_draped'
+  | 'surface_hanging'
+  | 'detail_print'
+  | 'detail_fabric'
+  | 'detail_collar'
+
+type Preset = 'raw' | 'editorial' | 'luxury' | 'natural' | 'surprise'
 type InteractionsImageMime =
   | 'image/png'
   | 'image/jpeg'
@@ -11,7 +23,7 @@ type InteractionsImageMime =
   | 'image/heic'
   | 'image/heif'
 
-type VariationLevel = 0 | 1 | 2 | 3
+type ShotCategory = 'flatlay' | 'surface' | 'detail'
 
 function getApiKey(): string | undefined {
   return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY
@@ -42,6 +54,16 @@ function clampInt(n: unknown, min: number, max: number, fallback: number) {
   return Math.min(max, Math.max(min, Math.trunc(parsed)))
 }
 
+function hashStringToInt(input: string) {
+  // Fast deterministic 32-bit hash (FNV-1a style).
+  let h = 2166136261
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
+
 function mulberry32(seed: number) {
   let t = seed >>> 0
   return () => {
@@ -56,100 +78,342 @@ function pickOne<T>(rand: () => number, items: readonly T[]): T {
   return items[Math.floor(rand() * items.length)]!
 }
 
-function buildVariationDirective(type: MockupType, variationSeed: number, level: VariationLevel) {
-  if (level === 0) return ''
+function categoryForShotType(shotType: ShotType): ShotCategory {
+  switch (shotType) {
+    case 'flatlay_topdown':
+    case 'flatlay_45deg':
+    case 'flatlay_sleeves':
+    case 'flatlay_relaxed':
+    case 'flatlay_folded':
+      return 'flatlay'
+    case 'surface_draped':
+    case 'surface_hanging':
+      return 'surface'
+    case 'detail_print':
+    case 'detail_fabric':
+    case 'detail_collar':
+      return 'detail'
+  }
+}
 
+const BASE_FIDELITY = [
+  'You are generating a professional product photograph.',
+  'The provided image is the EXACT physical garment — do not redesign, reinterpret, or alter it in any way.',
+  '',
+  'PRODUCT FIDELITY (non-negotiable):',
+  '- Preserve exact print placement, graphics, logo position, and colorway',
+  '- Preserve true garment silhouette and structure',
+  '- Preserve realistic fabric weight and natural fold behaviour',
+  '- Do NOT reshape, smooth, or make the garment look digitally rendered',
+  '- Do NOT add, remove, or modify any design element',
+  '- Do NOT introduce logos, watermarks, or text not present in the original',
+  '',
+  'PERMITTED REFINEMENTS ONLY:',
+  '- Remove dust, lint, and sensor noise',
+  '- Improve fabric clarity and thread definition',
+  '- Correct uneven or poor lighting from the reference image',
+  '- Make the garment look professionally pressed and shoot-ready',
+  '',
+  'OUTPUT:',
+  '- Aspect ratio: 1:1 square',
+  '- Must read as a real studio photograph, not a render or illustration',
+  '- Zero AI artifacts, surreal elements, or uncanny fabric distortion',
+  '- No added text, overlays, or watermarks',
+].join('\n')
+
+const BASE_DETAIL_CARVEOUT = [
+  'DETAIL-SHOT CARVE-OUT (important):',
+  '- Do NOT “press away” micro texture; preserve knit/weave texture, stitch relief, ribbing, and print ink edges.',
+  '- Clarity/sharpness improvements are allowed, but do NOT invent texture or make fabric look plastic or painted.',
+  '- Maintain realistic thread detail, grain, and natural micro-wrinkles.',
+].join('\n')
+
+const NEGATIVE_GLOBAL = [
+  'NEGATIVE (do NOT do any of the following):',
+  '- Do NOT add extra garments, duplicate sleeves, duplicate collars, or mirrored/duplicated prints.',
+  '- Do NOT alter typography, warp logos, or “correct” artwork; keep graphics identical.',
+  '- Do NOT invent new seams, pockets, zippers, tags, drawstrings, buttons, or fabric panels.',
+  '- Do NOT add hangers/hands/mannequins/people unless the shot type explicitly requires it.',
+  '- Do NOT output CGI/illustration/painterly styles, plastic sheen, or “AI texture”. Photoreal only.',
+  '- Do NOT add text, watermarks, brand marks, UI overlays, or borders.',
+].join('\n')
+
+const NEGATIVE_BY_CATEGORY: Record<ShotCategory, string> = {
+  flatlay: [
+    'NEGATIVE (flat lay specific):',
+    '- No hangers, hooks, people, hands, mannequins, or props touching the garment.',
+    '- No perspective tilt for strict top-down shots; no wide-angle distortion.',
+  ].join('\n'),
+  surface: [
+    'NEGATIVE (surface shots specific):',
+    '- No warped hangers, no thick plastic hangers with logos, no retail tags unless present in original.',
+    '- No busy backgrounds; keep background premium and unobtrusive.',
+  ].join('\n'),
+  detail: [
+    'NEGATIVE (detail shots specific):',
+    '- Do NOT turn texture into noise or watercolor; avoid over-smoothing.',
+    '- Avoid blown highlights on fabric; preserve weave detail and realistic shading.',
+  ].join('\n'),
+}
+
+const SHOT_PROMPTS: Record<ShotType, string> = {
+  flatlay_topdown: [
+    'SHOT TYPE: Top-down flat lay',
+    '- Camera perfectly overhead at 90°, no perspective distortion',
+    '- Garment centred and symmetrically composed',
+    '- Full garment visible with clean breathing room on all edges',
+    '- Perfectly still — no motion blur',
+    '- Sleeves naturally relaxed at sides',
+    '- The garment should fill ~70–80% of the frame with even margin on all sides',
+    '- Keep edges straight; avoid any “melted” or warped fabric',
+  ].join('\n'),
+  flatlay_45deg: [
+    'SHOT TYPE: 45° angled flat lay',
+    '- Camera positioned at approximately 45° angle to the surface',
+    '- Garment laid flat but shot from a diagonal viewpoint',
+    '- Creates depth and dimension while maintaining flat lay feel',
+    '- Slight dynamic tension in the composition',
+    '- Full garment visible',
+    '- Use a natural perspective (avoid wide-angle); keep logo/print proportions identical',
+  ].join('\n'),
+  flatlay_sleeves: [
+    'SHOT TYPE: Symmetrical sleeve spread',
+    '- Camera perfectly overhead at 90°',
+    '- Both sleeves extended fully outward in a symmetrical wing shape',
+    '- Body of garment centred, sleeves spread left and right',
+    '- Architectural, structured composition',
+    '- Maximum breathing room around all edges',
+    '- Ensure sleeve ends are fully visible and not cropped',
+  ].join('\n'),
+  flatlay_relaxed: [
+    'SHOT TYPE: Relaxed / crumpled flat lay',
+    '- Camera overhead, slight off-centre angle acceptable',
+    '- Garment casually placed — intentional relaxed energy',
+    '- Natural folds and creases visible and celebrated',
+    '- Not messy, but deliberately unstudied',
+    '- Feels candid, not staged',
+    '- Keep folds realistic with correct fabric weight (not rubbery, not paper-like)',
+  ].join('\n'),
+  flatlay_folded: [
+    'SHOT TYPE: Folded logo shot',
+    '- Garment neatly folded so the primary print or logo is centred and fully visible',
+    '- Fold lines clean and intentional',
+    '- Camera overhead at 90°',
+    '- Compact, square composition',
+    '- Fold should feel retail-ready, like a display table',
+    '- Ensure the logo/graphic is not distorted by folds; keep proportions correct',
+  ].join('\n'),
+  surface_draped: [
+    'SHOT TYPE: Draped over surface',
+    '- Garment loosely draped over the edge of a surface or object',
+    '- Half-hanging, half-resting — natural gravity in the fabric',
+    '- Not a flat lay — the garment has dimension and movement',
+    '- Front face visible and dominant',
+    '- Lifestyle feel, less clinical than a flat lay',
+    '- Drape should look physically plausible; fabric should not fuse into the surface',
+    '- Keep background minimal and premium (no clutter)',
+  ].join('\n'),
+  surface_hanging: [
+    'SHOT TYPE: Hanging shot',
+    '- Garment on a minimal hook or hanger',
+    '- Wall or surface behind it as background',
+    '- Full garment visible, hanging naturally',
+    '- Slight natural drape from gravity',
+    '- Camera straight-on, not angled',
+    '- Keep hanger/hook minimal and unbranded',
+    '- Avoid warped shoulders; keep silhouette true to the garment',
+  ].join('\n'),
+  detail_print: [
+    'SHOT TYPE: Print close-up',
+    '- Extreme tight crop on the primary graphic or print',
+    '- Fill the entire frame with the design',
+    '- Razor sharp focus on the artwork',
+    '- Fabric texture subtly visible beneath the print',
+    '- No garment edges visible — pure design focus',
+    '- Preserve exact letterforms/linework; no hallucinated strokes or “helpful” sharpening artifacts',
+  ].join('\n'),
+  detail_fabric: [
+    'SHOT TYPE: Fabric texture macro',
+    '- Extreme close-up on the material weave and texture',
+    '- No print or graphic needed — pure material study',
+    '- Communicates fabric quality and weight',
+    '- Slightly off-centre crop for editorial feel',
+    '- Depth of field can be shallow — edges can softly fall off',
+    '- Do NOT invent a different weave; keep texture consistent with the original garment material',
+  ].join('\n'),
+  detail_collar: [
+    'SHOT TYPE: Collar / neckline detail',
+    '- Tight crop focused on the neckline, collar rib, or hood opening',
+    '- Garment folded or positioned so neckline is the clear subject',
+    '- Stitching and finish quality visible',
+    '- Builds product trust and premium signal',
+    '- Camera slightly angled for dimension',
+    '- Keep stitches clean and realistic; do not invent extra seam lines',
+  ].join('\n'),
+}
+
+const PRESET_BASE: Record<Preset, string> = {
+  raw: [
+    'VISUAL DIRECTION: Raw',
+    '- Surface: rough poured concrete, visible aggregate texture, cold grey',
+    '- Lighting: hard directional studio light, strong contrast, defined shadows',
+    '- Mood: unpolished, confrontational, streetwear energy',
+    '- Colour temperature: cool to neutral — no warmth',
+    "- Feel: a brand that doesn't ask for permission",
+  ].join('\n'),
+  editorial: [
+    'VISUAL DIRECTION: Editorial',
+    '- Surface: smooth slate or honed stone, near-black, very subtle texture',
+    '- Lighting: soft diffused overhead, even exposure, shadows are gentle and grounded',
+    '- Mood: cold, precise, intentional — fashion week not hype drop',
+    '- Colour temperature: cool, slightly desaturated',
+    '- Feel: a luxury magazine product page',
+  ].join('\n'),
+  luxury: [
+    'VISUAL DIRECTION: Luxury',
+    '- Surface: dark veined marble, deep grey-black, polished but not reflective',
+    '- Lighting: soft overhead with gentle wrap, minimal shadow drama',
+    '- Mood: refined, still, unhurried — the garment speaks alone',
+    '- Colour temperature: neutral to slightly warm, never clinical',
+    '- Feel: a high-end flagship store display',
+  ].join('\n'),
+  natural: [
+    'VISUAL DIRECTION: Natural',
+    '- Surface: raw aged wood, dark walnut or weathered oak grain visible',
+    '- Lighting: soft natural window light from one side, gentle falloff',
+    '- Mood: organic, considered, warm without being casual',
+    '- Colour temperature: slightly warm, earthy',
+    '- Feel: a considered independent label with craft values',
+  ].join('\n'),
+  surprise: [
+    'VISUAL DIRECTION: Surprise',
+    '- Surface: [RANDOMISED — see variation seed]',
+    '- Lighting: [RANDOMISED — see variation seed]',
+    '- Mood: unexpected combination — lean into the contrast',
+    '- Colour temperature: follow the surface and lighting choice',
+    "- Feel: something the brand hasn't tried before",
+  ].join('\n'),
+}
+
+const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
+  raw: {
+    flatlay:
+      'CONTEXT (flat lay): shadows must be controlled and not obscure the primary graphic; keep edges crisp and proportions true.',
+    surface:
+      'CONTEXT (surface): maintain realistic gravity folds and clean separation from background; keep background premium and not cluttered.',
+    detail:
+      'CONTEXT (detail): avoid crushed blacks or blown highlights; preserve micro texture and true print edges.',
+  },
+  editorial: {
+    flatlay:
+      'CONTEXT (flat lay): keep styling minimal and precise; even exposure; avoid harsh shadow cut-offs.',
+    surface:
+      'CONTEXT (surface): keep environment understated; the garment is hero; no busy scene elements.',
+    detail:
+      'CONTEXT (detail): crisp but natural; no “overprocessed” sharpening; preserve ink/fiber boundaries.',
+  },
+  luxury: {
+    flatlay:
+      'CONTEXT (flat lay): premium softness; no gritty noise; keep highlights gentle and controlled.',
+    surface:
+      'CONTEXT (surface): quiet luxury; minimal scene; ensure hanger/hook is subtle and unbranded.',
+    detail:
+      'CONTEXT (detail): micro-contrast is subtle; avoid specular clipping; texture reads premium, not gritty.',
+  },
+  natural: {
+    flatlay:
+      'CONTEXT (flat lay): light feels natural; shadows soft; no dramatic studio hard edges.',
+    surface:
+      'CONTEXT (surface): believable window-light falloff; keep background calm and coherent.',
+    detail:
+      'CONTEXT (detail): warm but accurate color; texture should remain realistic, not “softened away.”',
+  },
+  surprise: {
+    flatlay:
+      'CONTEXT (flat lay): keep it surprising via surface/lighting while remaining clean, symmetric when required.',
+    surface:
+      'CONTEXT (surface): surprise comes from surface/lighting choices, not clutter or extra props.',
+    detail:
+      'CONTEXT (detail): surprise via lighting/surface feel only; do not change texture/weave or invent detail.',
+  },
+}
+
+function buildVariationSeed(
+  preset: Preset,
+  shotType: ShotType,
+  generationIndex: number,
+  variationSeed: number
+) {
   const rand = mulberry32(variationSeed)
 
-  const cameraAngles = [
-    'front-facing',
-    'three-quarter angle',
-    'slight top-down angle',
-    'low angle looking slightly up',
-    'side angle with gentle perspective',
+  const compositions = [
+    'centred with generous breathing room',
+    'slightly off-centre to the left',
+    'slightly off-centre to the right',
+    'centred tight — garment fills 80% of frame',
+    'centred with asymmetric negative space',
   ] as const
-  const lenses = ['35mm', '50mm', '85mm'] as const
-  const depthOfField = [
-    'deep depth of field (most of the product sharp)',
-    'moderate depth of field (product sharp, background softly blurred)',
-    'shallow depth of field (hero area sharp, background bokeh)',
-  ] as const
-  const lighting = [
-    'soft window light from camera-left',
-    'soft window light from camera-right',
-    'overhead diffused softbox lighting',
-    'dramatic side light with controlled shadow',
-    'bright high-key studio light with gentle shadow',
-  ] as const
-  const backgrounds = {
-    'flat-lay': [
-      'warm neutral paper backdrop',
-      'cool light-gray studio surface',
-      'subtle concrete texture surface',
-      'linen fabric backdrop with very subtle texture',
-      'matte white tabletop with gentle falloff',
-    ],
-    'product-shot': [
-      'seamless light-gray background',
-      'seamless off-white background',
-      'gradient studio backdrop (subtle, not colorful)',
-      'premium dark charcoal studio background',
-    ],
-    detail: [
-      'clean neutral background (out of focus)',
-      'soft gradient background (very subtle)',
-      'dark neutral background (out of focus)',
-    ],
-    lifestyle: [
-      'modern indoor apartment setting',
-      'urban street setting',
-      'minimal café setting',
-      'studio corner with natural light',
-    ],
-  } as const
 
-  const stylingPropsByLevel =
-    level >= 3
-      ? ([
-          'add one subtle, realistic accessory nearby (e.g., sunglasses, watch, simple tote), but keep focus on the product',
-          'include a light shadow pattern (e.g., window blinds) on the scene, not on the design itself',
-          'use a slightly more editorial composition (asymmetric framing) while staying photorealistic',
-        ] as const)
-      : level >= 2
-        ? ([
-            'vary composition (centered vs rule-of-thirds) and crop (full vs slightly tighter)',
-            'vary the direction of light and shadow softness',
-            'vary background material while keeping it neutral and premium',
-          ] as const)
-        : ([
-            'vary composition slightly (do not repeat the same framing)',
-            'vary lighting direction subtly',
-          ] as const)
+  const surfaces = [
+    'raw concrete',
+    'slate',
+    'dark marble',
+    'aged wood',
+    'matte black powder coat',
+    'washed stone',
+    'dark linen',
+    'brushed steel',
+    'black sand',
+    'volcanic rock',
+  ] as const
 
-  const common = [
-    'Variation directive (important): create a clearly distinct photo from other outputs.',
-    `Camera angle: ${pickOne(rand, cameraAngles)}.`,
-    `Lens: ${pickOne(rand, lenses)}.`,
-    `Depth of field: ${pickOne(rand, depthOfField)}.`,
-    `Lighting: ${pickOne(rand, lighting)}.`,
-    `Background/setting: ${pickOne(rand, backgrounds[type])}.`,
-    `Styling/composition: ${pickOne(rand, stylingPropsByLevel)}.`,
-    'Do NOT alter the product design, graphics, colors, or fit; only vary the photography choices above.',
+  const lightings = [
+    'hard directional studio',
+    'soft diffused overhead',
+    'natural window light',
+    'dual softbox even',
+    'single side key light',
+    'overhead ring diffused',
+  ] as const
+
+  const lenses = ['50mm equivalent', '85mm equivalent'] as const
+  const dof = [
+    'deep depth of field (most of the garment sharp)',
+    'moderate depth of field (subject sharp, background softly blurred)',
+  ] as const
+
+  const lines = [
+    'VARIATION INSTRUCTIONS:',
+    `- Composition: ${pickOne(rand, compositions)}`,
+    `- This is generation #${generationIndex} of this shot type for this project — ensure it looks noticeably different from previous generations`,
+    '- Do not repeat the exact same composition or lighting setup as any prior generation',
   ]
 
-  if (type === 'lifestyle') {
-    common.push(
-      'For lifestyle: vary the pose (standing/walking/sitting) and framing (waist-up/full-body) while keeping the garment design identical.'
-    )
+  if (preset === 'surprise') {
+    lines.push(`- Surface: ${pickOne(rand, surfaces)}`)
+    lines.push(`- Lighting: ${pickOne(rand, lightings)}`)
+    lines.push(`- Lens: ${pickOne(rand, lenses)}`)
+    lines.push(`- Depth of field: ${pickOne(rand, dof)}`)
   }
 
-  if (type === 'detail') {
-    common.push(
-      'For detail: choose a different focal area (stitching, fabric texture, print edge, collar/hem) than a typical macro.'
-    )
-  }
+  return lines.join('\n')
+}
 
-  return common.join(' ')
+function buildPrompt(args: {
+  shotType: ShotType
+  preset: Preset
+  generationIndex: number
+  variationSeed: number
+}) {
+  const category = categoryForShotType(args.shotType)
+  const base = category === 'detail' ? `${BASE_FIDELITY}\n\n${BASE_DETAIL_CARVEOUT}` : BASE_FIDELITY
+
+  const negative = [NEGATIVE_GLOBAL, NEGATIVE_BY_CATEGORY[category]].join('\n')
+  const preset = [PRESET_BASE[args.preset], PRESET_BY_CATEGORY[args.preset][category]].join('\n')
+
+  return [base, negative, SHOT_PROMPTS[args.shotType], preset, buildVariationSeed(args.preset, args.shotType, args.generationIndex, args.variationSeed)].join(
+    '\n---\n'
+  )
 }
 
 function asErrorMessage(e: unknown) {
@@ -164,77 +428,6 @@ function asErrorMessage(e: unknown) {
 
 async function sleep(ms: number) {
   await new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-function promptFor(type: MockupType) {
-  const baseRules = [
-    'Use the provided image as the exact product reference.',
-    'This is the SAME product, not a new design.',
-    'The generated image must be visually identical in design, as if it is the same physical item photographed in a different scene.',
-  
-    'Do NOT change the design, graphics, or layout in any way.',
-    'Do NOT redesign, reimagine, or reinterpret the clothing.',
-    'Preserve exact print placement, scale, and proportions.',
-    'Preserve fabric type, garment structure, and fit.',
-  
-    'Only change camera angle, lighting, environment, and composition.',
-    'Do NOT invent new elements or modify the product.',
-  
-    'The output must look like real product photography, not AI-generated artwork.',
-    'Photorealistic, natural lighting, realistic textures.',
-
-    "Improve image quality compared to the input photo: correct white balance, increase clarity, improve sharpness, reduce noise, and enhance contrast and color vibrance while keeping the product's true colors accurate.",
-    'Avoid washed-out colors or muddy tones; produce a crisp, well-lit, high-end ecommerce photo look.',
-  
-    'No added logos, no text, no watermarks.',
-  ].join(' ')
-
-  switch (type) {
-    case 'flat-lay':
-      return {
-        baseRules,
-        shotPrompt: [
-          'Create a clean flat lay product shot.',
-          'Top-down view of the exact product placed naturally on a neutral studio surface.',
-          'Soft diffused lighting, realistic shadows, premium fashion brand aesthetic.',
-          'Keep fabric texture and folds natural and realistic.',
-        ].join(' '),
-      }
-
-    case 'product-shot':
-      return {
-        baseRules,
-        shotPrompt: [
-          'Create a premium studio product shot.',
-          'Three-quarter angle or front-facing shot of the product.',
-          'Placed on a seamless background with high-end lighting.',
-          'Shallow depth of field, sharp focus, luxury ecommerce style.',
-        ].join(' '),
-      }
-
-    case 'detail':
-      return {
-        baseRules,
-        shotPrompt: [
-          'Create a macro close-up shot.',
-          'Zoom into the actual garment showing fabric texture, stitching, and print details.',
-          'Ultra realistic lighting, shallow depth of field.',
-          'Focus on material quality and print finish.',
-        ].join(' '),
-      }
-
-    case 'lifestyle':
-      return {
-        baseRules,
-        shotPrompt: [
-          'Create a realistic lifestyle photo.',
-          'A person naturally wearing the exact product.',
-          'Urban streetwear or modern indoor setting.',
-          'Natural lighting, candid composition, fashion editorial look.',
-          'Ensure the design remains accurate and unchanged.',
-        ].join(' '),
-      }
-  }
 }
 
 function retryNote(lastErrorMessage: string) {
@@ -268,33 +461,75 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 })
     }
 
-    const requestedType = (body as { type?: unknown }).type
-    const type: MockupType | undefined =
-      requestedType === 'flat-lay' ||
-      requestedType === 'product-shot' ||
-      requestedType === 'detail' ||
-      requestedType === 'lifestyle'
-        ? requestedType
-        : undefined
+    const requestedShotType = (body as { shotType?: unknown; type?: unknown }).shotType
+    const legacyType = (body as { type?: unknown }).type
+    const shotType: ShotType | undefined =
+      requestedShotType === 'flatlay_topdown' ||
+      requestedShotType === 'flatlay_45deg' ||
+      requestedShotType === 'flatlay_sleeves' ||
+      requestedShotType === 'flatlay_relaxed' ||
+      requestedShotType === 'flatlay_folded' ||
+      requestedShotType === 'surface_draped' ||
+      requestedShotType === 'surface_hanging' ||
+      requestedShotType === 'detail_print' ||
+      requestedShotType === 'detail_fabric' ||
+      requestedShotType === 'detail_collar'
+        ? requestedShotType
+        : legacyType === 'flat-lay'
+          ? 'flatlay_topdown'
+          : legacyType === 'product-shot'
+            ? 'surface_hanging'
+            : legacyType === 'detail'
+              ? 'detail_print'
+              : legacyType === 'lifestyle'
+                ? 'surface_draped'
+                : undefined
 
-    if (!type) {
+    const requestedPreset = (body as { preset?: unknown }).preset
+    const preset: Preset =
+      requestedPreset === 'raw' ||
+      requestedPreset === 'editorial' ||
+      requestedPreset === 'luxury' ||
+      requestedPreset === 'natural' ||
+      requestedPreset === 'surprise'
+        ? requestedPreset
+        : 'raw'
+
+    const generationIndexRaw = (body as { generationIndex?: unknown }).generationIndex
+    const generationIndex = clampInt(generationIndexRaw, 1, 10_000, 1)
+    const providedVariationSeed = (body as { variationSeed?: unknown }).variationSeed
+    const variationSeed = clampInt(
+      providedVariationSeed,
+      1,
+      2_147_483_647,
+      hashStringToInt(`${shotType ?? 'unknown'}|${preset}|${generationIndex}`)
+    )
+
+    if (!shotType) {
       return NextResponse.json(
-        { error: 'type is required and must be one of: flat-lay, product-shot, detail, lifestyle.' },
+        {
+          error:
+            'shotType is required and must be one of: flatlay_topdown, flatlay_45deg, flatlay_sleeves, flatlay_relaxed, flatlay_folded, surface_draped, surface_hanging, detail_print, detail_fabric, detail_collar.',
+        },
         { status: 400 }
       )
     }
 
-    console.warn(`[mockups:${requestId}] Missing API key; returning placeholder for type=${type}`)
+    const prompt = buildPrompt({ shotType, preset, generationIndex, variationSeed })
+
+    console.warn(`[mockups:${requestId}] Missing API key; returning placeholder for shotType=${shotType}`)
     return NextResponse.json({
       generatedImage: {
         id:
           typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`,
-        type,
+        type: shotType,
         url: '',
         timestamp: Date.now(),
+        prompt,
       },
       placeholder: true,
       warning: 'Missing API key. Set GOOGLE_API_KEY (preferred) or GEMINI_API_KEY to enable image generation.',
+      promptPreview: prompt.slice(0, 5000),
     })
   }
 
@@ -319,36 +554,66 @@ export async function POST(req: Request) {
   }
   const inputMime = normalizeInteractionsImageMime(parsed.mimeType)
 
-  const requestedType = (body as { type?: unknown }).type
-  const type: MockupType | undefined =
-    requestedType === 'flat-lay' ||
-    requestedType === 'product-shot' ||
-    requestedType === 'detail' ||
-    requestedType === 'lifestyle'
-      ? requestedType
-      : undefined
+  const requestedShotType = (body as { shotType?: unknown; type?: unknown }).shotType
+  const legacyType = (body as { type?: unknown }).type
+  const shotType: ShotType | undefined =
+    requestedShotType === 'flatlay_topdown' ||
+    requestedShotType === 'flatlay_45deg' ||
+    requestedShotType === 'flatlay_sleeves' ||
+    requestedShotType === 'flatlay_relaxed' ||
+    requestedShotType === 'flatlay_folded' ||
+    requestedShotType === 'surface_draped' ||
+    requestedShotType === 'surface_hanging' ||
+    requestedShotType === 'detail_print' ||
+    requestedShotType === 'detail_fabric' ||
+    requestedShotType === 'detail_collar'
+      ? requestedShotType
+      : legacyType === 'flat-lay'
+        ? 'flatlay_topdown'
+        : legacyType === 'product-shot'
+          ? 'surface_hanging'
+          : legacyType === 'detail'
+            ? 'detail_print'
+            : legacyType === 'lifestyle'
+              ? 'surface_draped'
+              : undefined
 
-  if (!type) {
+  if (!shotType) {
     console.warn(`[mockups:${requestId}] Missing/invalid type`)
     return NextResponse.json(
-      { error: 'type is required and must be one of: flat-lay, product-shot, detail, lifestyle.' },
+      {
+        error:
+          'shotType is required and must be one of: flatlay_topdown, flatlay_45deg, flatlay_sleeves, flatlay_relaxed, flatlay_folded, surface_draped, surface_hanging, detail_print, detail_fabric, detail_collar.',
+      },
       { status: 400 }
     )
   }
 
-  const variationLevel = clampInt((body as { variationLevel?: unknown }).variationLevel, 0, 3, 1) as VariationLevel
-  const variationSeed = clampInt((body as { variationSeed?: unknown }).variationSeed, 1, 2_147_483_647, Date.now())
+  const requestedPreset = (body as { preset?: unknown }).preset
+  const preset: Preset =
+    requestedPreset === 'raw' ||
+    requestedPreset === 'editorial' ||
+    requestedPreset === 'luxury' ||
+    requestedPreset === 'natural' ||
+    requestedPreset === 'surprise'
+      ? requestedPreset
+      : 'raw'
+
+  const generationIndexRaw = (body as { generationIndex?: unknown }).generationIndex
+  const generationIndex = clampInt(generationIndexRaw, 1, 10_000, 1)
+  const providedVariationSeed = (body as { variationSeed?: unknown }).variationSeed
+  const derivedSeed = hashStringToInt(`${shotType}|${preset}|${generationIndex}|${imageDataUrl.slice(0, 64)}`)
+  const variationSeed = clampInt(providedVariationSeed, 1, 2_147_483_647, derivedSeed || Date.now())
 
   const ai = new GoogleGenAI({ apiKey })
 
   try {
     const maxAttempts = clampInt((body as { attempts?: unknown }).attempts, 1, 3, 2)
-    const { baseRules, shotPrompt } = promptFor(type)
-    const variationDirective = buildVariationDirective(type, variationSeed, variationLevel)
+    const prompt = buildPrompt({ shotType, preset, generationIndex, variationSeed })
 
     let lastErrorMessage = ''
     console.debug?.(
-      `[mockups:${requestId}] start type=${type} attempts=${maxAttempts} inputMime=${inputMime} variationLevel=${variationLevel}`
+      `[mockups:${requestId}] start shotType=${shotType} preset=${preset} attempts=${maxAttempts} inputMime=${inputMime} generationIndex=${generationIndex}`
     )
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -360,10 +625,7 @@ export async function POST(req: Request) {
             {
               role: 'user',
               content: [
-                // Keep base rules separate so they're always prominent.
-                { type: 'text', text: baseRules },
-                { type: 'text', text: shotPrompt },
-                ...(variationDirective ? [{ type: 'text' as const, text: variationDirective }] : []),
+                { type: 'text', text: prompt },
                 ...(attempt === 1 || !lastErrorMessage
                   ? []
                   : [{ type: 'text' as const, text: retryNote(lastErrorMessage) }]),
@@ -383,7 +645,7 @@ export async function POST(req: Request) {
 
         if (base64) {
           console.info?.(
-            `[mockups:${requestId}] success type=${type} mime=${mime} totalMs=${Date.now() - startedAt}`
+            `[mockups:${requestId}] success shotType=${shotType} preset=${preset} mime=${mime} totalMs=${Date.now() - startedAt}`
           )
           return NextResponse.json({
             generatedImage: {
@@ -391,9 +653,10 @@ export async function POST(req: Request) {
                 typeof crypto !== 'undefined' && 'randomUUID' in crypto
                   ? crypto.randomUUID()
                   : `${Date.now()}`,
-              type,
+              type: shotType,
               url: `data:${mime};base64,${base64}`,
               timestamp: Date.now(),
+              prompt,
             },
           })
         }

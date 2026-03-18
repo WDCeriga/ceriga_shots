@@ -10,9 +10,25 @@ import { z } from 'zod'
 const GeneratedImageSchema = z
   .object({
     id: z.string().min(1),
-    type: z.enum(['flat-lay', 'product-shot', 'lifestyle', 'detail']),
-    url: z.string().min(1),
+    type: z.enum([
+      'flat-lay',
+      'product-shot',
+      'lifestyle',
+      'detail',
+      'flatlay_topdown',
+      'flatlay_45deg',
+      'flatlay_sleeves',
+      'flatlay_relaxed',
+      'flatlay_folded',
+      'surface_draped',
+      'surface_hanging',
+      'detail_print',
+      'detail_fabric',
+      'detail_collar',
+    ]),
+    url: z.string(),
     timestamp: z.number(),
+    prompt: z.string().optional(),
   })
   .strict()
 
@@ -21,7 +37,45 @@ const GenerationStateSchema = z
     status: z.enum(['idle', 'generating', 'complete', 'error']),
     total: z.number(),
     completed: z.number(),
-    nextType: z.enum(['flat-lay', 'product-shot', 'lifestyle', 'detail']).optional(),
+    nextType: z
+      .enum([
+        'flat-lay',
+        'product-shot',
+        'lifestyle',
+        'detail',
+        'flatlay_topdown',
+        'flatlay_45deg',
+        'flatlay_sleeves',
+        'flatlay_relaxed',
+        'flatlay_folded',
+        'surface_draped',
+        'surface_hanging',
+        'detail_print',
+        'detail_fabric',
+        'detail_collar',
+      ])
+      .optional(),
+    shotTypes: z
+      .array(
+        z.enum([
+          'flat-lay',
+          'product-shot',
+          'lifestyle',
+          'detail',
+          'flatlay_topdown',
+          'flatlay_45deg',
+          'flatlay_sleeves',
+          'flatlay_relaxed',
+          'flatlay_folded',
+          'surface_draped',
+          'surface_hanging',
+          'detail_print',
+          'detail_fabric',
+          'detail_collar',
+        ])
+      )
+      .optional(),
+    preset: z.enum(['raw', 'editorial', 'luxury', 'natural', 'surprise']).optional(),
     errorMessage: z.string().optional(),
   })
   .strict()

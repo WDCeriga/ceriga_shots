@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useProjects } from '@/hooks/use-projects'
+import type { GeneratedImage } from '@/hooks/use-projects'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Check, Pencil, X } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import { LightboxAsset, LightboxImage } from '@/components/lightbox-image'
 import {
   Select,
   SelectContent,
@@ -24,27 +26,81 @@ export default function ResultsPage() {
   const isRunningRef = useRef(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
-  const [moreCount, setMoreCount] = useState<number>(4)
+  const [moreType, setMoreType] = useState<
+    | 'flatlay_topdown'
+    | 'flatlay_45deg'
+    | 'flatlay_sleeves'
+    | 'flatlay_relaxed'
+    | 'flatlay_folded'
+    | 'surface_draped'
+    | 'surface_hanging'
+    | 'detail_print'
+    | 'detail_fabric'
+    | 'detail_collar'
+  >('flatlay_topdown')
   const [isHydrating, setIsHydrating] = useState(false)
   const [hydrateFailed, setHydrateFailed] = useState<string | null>(null)
   const [isRenaming, setIsRenaming] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
 
-  const types = useMemo<Array<'flat-lay' | 'product-shot' | 'detail' | 'lifestyle'>>(
-    () => ['flat-lay', 'product-shot', 'detail', 'lifestyle'],
+  const types = useMemo<
+    Array<
+      | 'flatlay_topdown'
+      | 'flatlay_45deg'
+      | 'flatlay_sleeves'
+      | 'flatlay_relaxed'
+      | 'flatlay_folded'
+      | 'surface_draped'
+      | 'surface_hanging'
+      | 'detail_print'
+      | 'detail_fabric'
+      | 'detail_collar'
+    >
+  >(
+    () => [
+      'flatlay_topdown',
+      'flatlay_45deg',
+      'flatlay_sleeves',
+      'flatlay_relaxed',
+      'flatlay_folded',
+      'surface_draped',
+      'surface_hanging',
+      'detail_print',
+      'detail_fabric',
+      'detail_collar',
+    ],
     []
   )
 
-  const formatViewTitle = (t: 'flat-lay' | 'product-shot' | 'detail' | 'lifestyle') => {
+  const formatViewTitle = (t: string) => {
     switch (t) {
       case 'flat-lay':
-        return 'Flat Lay'
+      case 'flatlay_topdown':
+        return 'Top-down flat lay'
+      case 'flatlay_45deg':
+        return '45° angled flat lay'
+      case 'flatlay_sleeves':
+        return 'Sleeve spread'
+      case 'flatlay_relaxed':
+        return 'Relaxed flat lay'
+      case 'flatlay_folded':
+        return 'Folded logo'
       case 'product-shot':
-        return 'Product Shot'
+      case 'surface_hanging':
+        return 'Hanging shot'
+      case 'surface_draped':
+        return 'Draped over surface'
       case 'detail':
-        return 'Detail'
+      case 'detail_print':
+        return 'Print close-up'
+      case 'detail_fabric':
+        return 'Fabric macro'
       case 'lifestyle':
         return 'Lifestyle'
+      case 'detail_collar':
+        return 'Collar detail'
+      default:
+        return t
     }
   }
 
@@ -87,11 +143,21 @@ export default function ResultsPage() {
       const total = project.generation?.total ?? 0
       let completed = project.generation?.completed ?? project.generatedImages.length
       const images = [...project.generatedImages]
+      let overrideNextType = project.generation?.nextType
 
       console.info('[results] generation start', { projectId, total, completed })
 
       while (completed < total) {
-        const nextType = types[completed % types.length]
+        const configured = project.generation?.shotTypes
+        const nextType =
+          overrideNextType ??
+          (configured && configured[completed] ? configured[completed] : types[completed % types.length])
+        overrideNextType = undefined
+
+        const existingOfType = images.filter((img) => img.type === nextType).length
+        const generationIndex = existingOfType + 1
+        const preset = project.generation?.preset ?? 'raw'
+
         updateProject(projectId, {
           generation: {
             status: 'generating',
@@ -110,27 +176,18 @@ export default function ResultsPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               imageDataUrl: project.originalImage,
-              type: nextType,
+              shotType: nextType,
+              preset,
+              generationIndex,
               attempts: 2,
-              // Generate-more should diversify scenes more aggressively than the initial set.
-              variationLevel: 3,
               variationSeed: Date.now() + completed * 9973,
             }),
           })
 
-          const data = (await res.json()) as
-            | {
-                generatedImage: {
-                  id: string
-                  type: 'flat-lay' | 'product-shot' | 'lifestyle' | 'detail'
-                  url: string
-                  timestamp: number
-                }
-              }
-            | { error: string }
+          const data = (await res.json()) as { generatedImage?: GeneratedImage; error?: string }
 
-          if (!res.ok || 'error' in data) {
-            const message = 'error' in data ? data.error : 'Please try again.'
+          if (!res.ok || data.error || !data.generatedImage) {
+            const message = data.error || 'Please try again.'
             console.error('[results] generation failed', {
               status: res.status,
               message,
@@ -399,14 +456,38 @@ export default function ResultsPage() {
             </div>
             <div className="p-4 flex flex-col gap-3">
               <div className="flex items-center gap-3">
-                <Select value={String(moreCount)} onValueChange={(v) => setMoreCount(Number(v))}>
+                <Select
+                  value={moreType}
+                  onValueChange={(v) =>
+                    setMoreType(
+                      v as
+                        | 'flatlay_topdown'
+                        | 'flatlay_45deg'
+                        | 'flatlay_sleeves'
+                        | 'flatlay_relaxed'
+                        | 'flatlay_folded'
+                        | 'surface_draped'
+                        | 'surface_hanging'
+                        | 'detail_print'
+                        | 'detail_fabric'
+                        | 'detail_collar'
+                    )
+                  }
+                >
                   <SelectTrigger className="w-40">
                     <SelectValue placeholder="Select" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">+1 image</SelectItem>
-                    <SelectItem value="4">+4 images</SelectItem>
-                    <SelectItem value="8">+8 images</SelectItem>
+                    <SelectItem value="flatlay_topdown">Top-down flat lay</SelectItem>
+                    <SelectItem value="flatlay_45deg">45° angled flat lay</SelectItem>
+                    <SelectItem value="flatlay_sleeves">Sleeve spread</SelectItem>
+                    <SelectItem value="flatlay_relaxed">Relaxed flat lay</SelectItem>
+                    <SelectItem value="flatlay_folded">Folded logo</SelectItem>
+                    <SelectItem value="surface_draped">Draped over surface</SelectItem>
+                    <SelectItem value="surface_hanging">Hanging shot</SelectItem>
+                    <SelectItem value="detail_print">Print close-up</SelectItem>
+                    <SelectItem value="detail_fabric">Fabric macro</SelectItem>
+                    <SelectItem value="detail_collar">Collar detail</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -418,9 +499,10 @@ export default function ResultsPage() {
                       typeof project.generation?.total === 'number'
                         ? project.generation.total
                         : project.generatedImages.length
-                    const newTotal = totalNow + moreCount
+                    const newTotal = totalNow + 1
                     const completed = project.generatedImages.length
-                    const nextType = types[completed % types.length]
+                    const nextType = moreType
+                    const preset = project.generation?.preset ?? 'raw'
 
                     updateProject(projectId, {
                       generation: {
@@ -428,6 +510,7 @@ export default function ResultsPage() {
                         total: newTotal,
                         completed,
                         nextType,
+                        preset,
                       },
                     })
                   }}
@@ -463,22 +546,24 @@ export default function ResultsPage() {
                 className="rounded-xl overflow-hidden border border-border bg-card hover:border-accent transition-colors"
               >
                 {img.url ? (
-                  <img
+                  <LightboxImage
                     src={img.url}
                     alt={img.type}
-                    className="w-full aspect-square object-cover"
-                    loading="lazy"
+                    title={formatViewTitle(img.type)}
+                    imgClassName="w-full aspect-square object-cover"
                   />
                 ) : (
-                  <div className="w-full aspect-square flex items-center justify-center bg-secondary/50">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      {formatViewTitle(img.type)}
-                    </p>
-                  </div>
+                  <LightboxAsset title={formatViewTitle(img.type)} prompt={img.prompt}>
+                    <div className="w-full aspect-square flex items-center justify-center bg-secondary/50">
+                      <p className="text-sm font-medium text-muted-foreground">
+                        {formatViewTitle(img.type)}
+                      </p>
+                    </div>
+                  </LightboxAsset>
                 )}
                 <div className="px-3 py-2 border-t border-border">
-                  <p className="text-xs text-muted-foreground text-center capitalize">
-                    {img.type.replace('-', ' ')}
+                  <p className="text-xs text-muted-foreground text-center">
+                    {formatViewTitle(img.type)}
                   </p>
                 </div>
               </div>
