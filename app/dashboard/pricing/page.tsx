@@ -1,3 +1,4 @@
+import { Fragment } from "react"
 import Link from "next/link"
 import { Check, X } from "lucide-react"
 import type { Metadata } from "next"
@@ -64,7 +65,6 @@ const featureGroups: FeatureGroup[] = [
     rows: [
       { name: "Credits per month", values: ["5", "50", "200", "500"] },
       { name: "Credit expiry", values: ["14 days", "Never", "Never", "Never"] },
-      { name: "Top-up packs", values: [false, true, true, true] },
       { name: "Cost per credit", values: ["—", "€0.38", "€0.25", "€0.20"] },
     ],
   },
@@ -84,8 +84,8 @@ const featureGroups: FeatureGroup[] = [
       {
         name: "Detail shots",
         sub: "Print close-up, fabric macro, collar",
-        values: ["Print only", false, "All 3", "All 3"],
-      },
+        values: [false, false, "All 3", "All 3"],
+      }, 
     ],
   },
   {
@@ -107,6 +107,11 @@ const featureGroups: FeatureGroup[] = [
         values: [false, false, true, true],
       },
       {
+        name: "Studio preset",
+        sub: "White backdrop, studio lighting",
+        values: [false, false, true, true],
+      },
+      {
         name: "Surprise preset",
         sub: "Random, never the same twice",
         values: [false, false, true, true],
@@ -117,10 +122,9 @@ const featureGroups: FeatureGroup[] = [
     label: "Output & Downloads",
     rows: [
       { name: "Download images", values: ["Watermarked", true, true, true] },
-      { name: "ZIP batch download", values: [false, true, true, true] },
-      { name: "Share links", values: [false, true, true, true] },
+      { name: "ZIP batch download", values: [true, true, true, true] },
+      { name: "Share links", values: [true, true, true, true] },
       { name: "Output resolution", values: ["Standard", "HD", "4K", "4K"] },
-      { name: "Watermark", values: [true, false, false, false] },
     ],
   },
   {
@@ -224,8 +228,8 @@ export default function PricingPage() {
 
           <tbody>
             {featureGroups.map((group) => (
-              <>
-                <tr key={group.label}>
+              <Fragment key={group.label}>
+                <tr>
                   <td
                     colSpan={5}
                     className="pt-8 pb-3 text-[10px] tracking-[0.25em] uppercase font-bold text-muted-foreground"
@@ -262,7 +266,7 @@ export default function PricingPage() {
                     ))}
                   </tr>
                 ))}
-              </>
+              </Fragment>
             ))}
 
             {/* Bottom CTA row */}

@@ -75,7 +75,7 @@ const GenerationStateSchema = z
         ])
       )
       .optional(),
-    preset: z.enum(['raw', 'editorial', 'luxury', 'natural', 'surprise']).optional(),
+    preset: z.enum(['raw', 'editorial', 'luxury', 'natural', 'studio', 'surprise']).optional(),
     errorMessage: z.string().optional(),
   })
   .strict()

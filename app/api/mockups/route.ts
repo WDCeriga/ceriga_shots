@@ -16,7 +16,7 @@ type ShotType =
   | 'detail_fabric'
   | 'detail_collar'
 
-type Preset = 'raw' | 'editorial' | 'luxury' | 'natural' | 'surprise'
+type Preset = 'raw' | 'editorial' | 'luxury' | 'natural' | 'studio' | 'surprise'
 type InteractionsImageMime =
   | 'image/png'
   | 'image/jpeg'
@@ -306,6 +306,15 @@ const PRESET_BASE: Record<Preset, string> = {
     '- Colour temperature: slightly warm, earthy',
     '- Feel: a considered independent label with craft values',
   ].join('\n'),
+  studio: [
+    'VISUAL DIRECTION: Studio',
+    '- Surface: clean white seamless backdrop — pure white cyclorama or white acrylic surface; zero texture, zero grain',
+    '- Lighting: professional multi-light studio setup — large soft key light from above-front, fill from opposite side to reduce shadows, subtle rim/edge light for separation',
+    '- Mood: clean, commercial, brand-ready — the standard for e-commerce and lookbooks',
+    '- Colour temperature: neutral white, perfectly balanced — no warmth or coolness',
+    '- Shadows: soft, minimal, grounded — just enough to anchor the garment without drama',
+    '- Feel: a premium e-commerce product page or brand wholesale catalogue',
+  ].join('\n'),
   surprise: [
     'VISUAL DIRECTION: Surprise',
     '- Surface: [RANDOMISED — see variation seed]',
@@ -365,6 +374,19 @@ const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
       'CONTEXT (surface): believable window-light falloff; keep background calm and coherent.',
     detail:
       'CONTEXT (detail): warm but accurate color; texture should remain realistic, not “softened away.”',
+  },
+  studio: {
+    flatlay: [
+      'CONTEXT (flat lay):',
+      '- White surface is a SINGLE flat plane filling the entire frame — no corners, no horizon line, no curvature.',
+      '- Background must be pure, even white — no grey gradients, no banding, no visible seams or creases.',
+      '- Lighting is even and wrap-around; shadows are minimal and soft — just enough to ground the garment.',
+      '- The garment should "pop" against the white with clean edges and natural color reproduction.',
+    ].join('\\n'),
+    surface:
+      'CONTEXT (surface): white background extends cleanly behind the garment; soft edge lighting for separation; no grey zones or uneven falloff.',
+    detail:
+      'CONTEXT (detail): neutral white surround; even illumination reveals true fabric color and texture without color cast; keep highlights controlled to avoid blown-out fabric edges.',
   },
   surprise: {
     flatlay: [
@@ -532,6 +554,7 @@ export async function POST(req: Request) {
       requestedPreset === 'editorial' ||
       requestedPreset === 'luxury' ||
       requestedPreset === 'natural' ||
+      requestedPreset === 'studio' ||
       requestedPreset === 'surprise'
         ? requestedPreset
         : 'raw'
@@ -646,6 +669,7 @@ export async function POST(req: Request) {
     requestedPreset === 'editorial' ||
     requestedPreset === 'luxury' ||
     requestedPreset === 'natural' ||
+    requestedPreset === 'studio' ||
     requestedPreset === 'surprise'
       ? requestedPreset
       : 'raw'

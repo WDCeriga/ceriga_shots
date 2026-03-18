@@ -4,14 +4,14 @@ import { Check } from "lucide-react"
 const plans = [
   {
     name: "Free",
-    price: "Free",
+    price: "€0",
     period: "",
     credits: "5 credits / mo",
     description: "Try it out — no card required.",
     features: [
-      "All 5 flat lay types",
+      "2 flat lay types",
       "1 detail shot (print only)",
-      "Raw preset only",
+      "ZIP downloads & share links",
       "1 project (deleted after 7d)",
     ],
     cta: "Sign Up Free",
@@ -21,7 +21,7 @@ const plans = [
   {
     name: "Starter",
     price: "€19",
-    period: "/mo",
+    period: " / mo",
     credits: "50 credits / mo",
     description: "For indie brands getting started.",
     features: [
@@ -37,13 +37,13 @@ const plans = [
   {
     name: "Studio",
     price: "€49",
-    period: "/mo",
+    period: " / mo",
     credits: "200 credits / mo",
     description: "Full creative power for growing brands.",
     features: [
-      "Surface shots (draped, hanging)",
-      "All 3 detail shots",
+      "Surface shots & all 3 detail shots",
       "All 5 visual presets",
+      "4K resolution, no watermark",
       "Up to 100 projects stored",
     ],
     cta: "Try Studio Free",
@@ -53,14 +53,14 @@ const plans = [
   {
     name: "Label",
     price: "€99",
-    period: "/mo",
+    period: " / mo",
     credits: "500 credits / mo",
     description: "For labels with high-volume needs.",
     features: [
       "Everything in Studio",
-      "All 5 visual presets",
       "Unlimited projects stored",
-      "Generate more on demand",
+      "Priority generation & API access",
+      "Dedicated support",
     ],
     cta: "Go Label",
     href: "/signup",

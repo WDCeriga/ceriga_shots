@@ -10,7 +10,7 @@ import { toast } from '@/hooks/use-toast'
 import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
 
-type VisualDirectionKey = 'raw' | 'editorial' | 'luxury' | 'natural' | 'surprise'
+type VisualDirectionKey = 'raw' | 'editorial' | 'luxury' | 'natural' | 'studio' | 'surprise'
 
 const VISUAL_DIRECTIONS: Array<{
   key: VisualDirectionKey
@@ -24,6 +24,13 @@ const VISUAL_DIRECTIONS: Array<{
     subtitle: 'Dark concrete, hard light',
     swatchClassName:
       'bg-[linear-gradient(135deg,rgba(9,9,11,0.92),rgba(39,39,42,0.65),rgba(244,244,245,0.08))]',
+  },
+  {
+    key: 'studio',
+    title: 'Studio',
+    subtitle: 'White backdrop, studio lighting',
+    swatchClassName:
+      'bg-[linear-gradient(135deg,rgba(255,255,255,0.95),rgba(229,231,235,0.60),rgba(209,213,219,0.30))]',
   },
   {
     key: 'editorial',
