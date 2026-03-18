@@ -696,9 +696,11 @@ export async function POST(req: Request) {
           `[mockups:${requestId}] attempt ${attempt} response in ${Date.now() - attemptStartedAt}ms`
         )
 
-        const outputImage = interaction.outputs?.find((o: any) => o.type === 'image')
-        const base64 = outputImage?.data
-        const mime = outputImage?.mime_type || 'image/png'
+        // Gemini SDK output typing is a union; cast to `any` since we only need the
+        // `image` output's `{ data, mime_type }` fields at runtime.
+        const outputImage = (interaction.outputs as any)?.find((o: any) => o.type === 'image')
+        const base64: string | undefined = outputImage?.data
+        const mime: string = outputImage?.mime_type || 'image/png'
 
         if (base64) {
           console.info?.(
