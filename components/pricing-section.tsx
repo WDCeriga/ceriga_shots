@@ -88,7 +88,7 @@ export function PricingSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto mb-10">
           {plans.map((plan) => (
             <div
               key={plan.name}
@@ -145,6 +145,15 @@ export function PricingSection() {
               </Link>
             </div>
           ))}
+        </div>
+
+        <div className="text-center">
+          <Link
+            href="/dashboard/pricing"
+            className="text-xs text-muted-foreground hover:text-foreground tracking-widest uppercase transition-colors duration-300 border-b border-border hover:border-foreground pb-1"
+          >
+            Compare all features →
+          </Link>
         </div>
       </div>
     </section>

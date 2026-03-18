@@ -18,6 +18,7 @@ export function AppSidebar({
     { href: '/dashboard', label: 'Dashboard', icon: 'D' },
     { href: '/dashboard/generate', label: 'Generate', icon: 'G' },
     { href: '/dashboard/library', label: 'Library', icon: 'L' },
+    { href: '/dashboard/pricing', label: 'Pricing', icon: 'P' },
     { href: '/dashboard/settings', label: 'Settings', icon: 'S' },
   ]
 
