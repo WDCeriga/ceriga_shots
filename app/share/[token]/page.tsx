@@ -84,7 +84,7 @@ export default async function SharePage({
             Download All
           </a>
           <Link
-            href="/login"
+            href="/dashboard"
             className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors h-10 px-4 py-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground"
           >
             Open Ceriga Shots
