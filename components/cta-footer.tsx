@@ -46,13 +46,18 @@ export function Footer() {
         </Link>
 
         <nav className="flex items-center gap-8">
-          {["About", "Contact", "Privacy"].map((link) => (
+          {[
+            { label: "Pricing", href: "#pricing" },
+            { label: "About", href: "#" },
+            { label: "Contact", href: "#" },
+            { label: "Privacy", href: "#" },
+          ].map((link) => (
             <Link
-              key={link}
-              href="#"
+              key={link.label}
+              href={link.href}
               className="text-xs text-muted-foreground hover:text-foreground tracking-widest uppercase transition-colors"
             >
-              {link}
+              {link.label}
             </Link>
           ))}
         </nav>

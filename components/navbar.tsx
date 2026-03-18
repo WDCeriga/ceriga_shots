@@ -23,12 +23,20 @@ export function Navbar() {
           Ceriga<span className="text-accent">.</span>
         </Link>
 
-        <Link
-          href="/dashboard/generate"
-          className="text-xs tracking-widest uppercase bg-foreground text-background px-5 py-2.5 hover:bg-accent hover:text-foreground transition-colors duration-300"
-        >
-          Launch Studio
-        </Link>
+        <div className="flex items-center gap-6">
+          <Link
+            href="#pricing"
+            className="text-xs tracking-widest uppercase text-muted-foreground hover:text-foreground transition-colors duration-300"
+          >
+            Pricing
+          </Link>
+          <Link
+            href="/dashboard/generate"
+            className="text-xs tracking-widest uppercase bg-foreground text-background px-5 py-2.5 hover:bg-accent hover:text-foreground transition-colors duration-300"
+          >
+            Launch Studio
+          </Link>
+        </div>
       </nav>
     </header>
   )
