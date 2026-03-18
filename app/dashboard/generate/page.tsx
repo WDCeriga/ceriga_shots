@@ -28,7 +28,7 @@ const VISUAL_DIRECTIONS: Array<{
   {
     key: 'editorial',
     title: 'Editorial',
-    subtitle: 'Slate, diffused, cold',
+    subtitle: 'Seamless charcoal, diffused, cold',
     swatchClassName:
       'bg-[linear-gradient(135deg,rgba(15,23,42,0.90),rgba(51,65,85,0.55),rgba(226,232,240,0.06))]',
   },

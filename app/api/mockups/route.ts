@@ -284,7 +284,7 @@ const PRESET_BASE: Record<Preset, string> = {
   ].join('\n'),
   editorial: [
     'VISUAL DIRECTION: Editorial',
-    '- Surface: smooth slate / honed stone, near-black, subtle tight grain (no visible pattern warping)',
+    '- Surface: matte charcoal seamless paper, perfectly uniform dark grey; zero visible texture, grain, or pattern — a clean studio infinity surface',
     '- Lighting: soft diffused overhead, even exposure, shadows are gentle and grounded',
     '- Mood: cold, precise, intentional — fashion week not hype drop',
     '- Colour temperature: cool, slightly desaturated',
@@ -333,9 +333,9 @@ const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
   editorial: {
     flatlay: [
       'CONTEXT (flat lay):',
-      '- Slate/stone reads as a flat studio surface (single plane), no visible corner or horizon.',
+      '- Seamless paper reads as a perfectly flat, textureless studio surface (single plane), no visible corner or horizon.',
       '- Keep styling minimal and precise; even exposure; avoid harsh shadow cut-offs.',
-      '- Texture grain is tight and subtle; do not introduce streaks, banding, or warped patterns.',
+      '- Surface must be completely uniform — no grain, streaks, banding, mottling, or warped patterns.',
     ].join('\\n'),
     surface:
       'CONTEXT (surface): keep environment understated; the garment is hero; no busy scene elements.',
@@ -397,7 +397,7 @@ function buildVariationSeed(
 
   const surfaces = [
     'raw concrete',
-    'slate',
+    'matte charcoal seamless paper',
     'dark marble',
     'aged wood',
     'matte black powder coat',
