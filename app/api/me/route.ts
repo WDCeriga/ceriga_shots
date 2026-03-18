@@ -18,6 +18,7 @@ export async function GET() {
       id: user.id,
       email: user.email,
       brandName: user.brand_name,
+      role: user.role,
     },
   })
 }
@@ -48,6 +49,7 @@ export async function PATCH(req: Request) {
       id: updated.id,
       email: updated.email,
       brandName: updated.brand_name,
+      role: updated.role,
     },
   })
 }

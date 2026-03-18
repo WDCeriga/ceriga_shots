@@ -29,6 +29,7 @@ export async function ensureSchema() {
 
   // Backfill/migrate older schemas.
   await db`alter table users add column if not exists brand_name text`
+  await db`alter table users add column if not exists role text not null default 'free'`
 
   await db`
     create table if not exists projects (

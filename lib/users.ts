@@ -1,11 +1,13 @@
 import bcrypt from 'bcryptjs'
 import { db, ensureSchema } from '@/lib/db'
+import type { UserRole } from '@/lib/roles'
 
-type DbUserRow = {
+export type DbUserRow = {
   id: string
   email: string
   brand_name: string | null
   password_hash: string
+  role: UserRole
   created_at: string
 }
 
@@ -72,5 +74,19 @@ export async function verifyUser(email: string, password: string): Promise<DbUse
   if (!user) return null
   const ok = await bcrypt.compare(password, user.password_hash)
   return ok ? user : null
+}
+
+const VALID_ROLES: UserRole[] = ['free', 'starter', 'studio', 'label', 'admin']
+
+export async function updateUserRole(id: string, role: UserRole): Promise<DbUserRow | null> {
+  if (!VALID_ROLES.includes(role)) throw new Error(`Invalid role: ${role}`)
+  await ensureSchema()
+  const rows = (await db`
+    update users
+    set role = ${role}
+    where id = ${id}
+    returning *
+  `) as DbUserRow[]
+  return rows[0] ?? null
 }
 
