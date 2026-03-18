@@ -16,7 +16,7 @@ type ProjectsContextValue = {
   projects: Project[]
   isLoading: boolean
   addProject: (project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Project>
-  updateProject: (id: string, updates: Partial<Project>) => void
+  updateProject: (id: string, updates: Partial<Project>) => Promise<Project>
   deleteProject: (id: string) => void
   getProject: (id: string) => Project | undefined
   fetchProject: (id: string) => Promise<Project | null>
@@ -93,23 +93,34 @@ export function ProjectsProvider({ children }: { children: React.ReactNode }) {
     []
   )
 
-  const updateProject = useCallback((id: string, updates: Partial<Project>) => {
-    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates, updatedAt: Date.now() } : p)))
+  const updateProject = useCallback(async (id: string, updates: Partial<Project>): Promise<Project> => {
+    let before: Project | undefined
+    const now = Date.now()
 
-    ;(async () => {
-      try {
-        const res = await fetch(`/api/projects/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(updates),
-        })
-        if (!res.ok) throw new Error(`Failed to update project: ${res.status}`)
-        const data = (await res.json()) as { project: Project }
-        setProjects((prev) => prev.map((p) => (p.id === id ? data.project : p)))
-      } catch (error) {
-        console.error('Failed to update project:', error)
+    setProjects((prev) => {
+      before = prev.find((p) => p.id === id)
+      return prev.map((p) => (p.id === id ? { ...p, ...updates, updatedAt: now } : p))
+    })
+
+    try {
+      const res = await fetch(`/api/projects/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates),
+      })
+      if (!res.ok) {
+        const message = await res.text().catch(() => '')
+        throw new HttpError(res.status, message || `Failed to update project: ${res.status}`)
       }
-    })()
+      const data = (await res.json()) as { project: Project }
+      if (!data.project) throw new Error('Invalid response from server')
+      setProjects((prev) => prev.map((p) => (p.id === id ? data.project : p)))
+      return data.project
+    } catch (error) {
+      console.error('Failed to update project:', error)
+      if (before) setProjects((prev) => prev.map((p) => (p.id === id ? before : p)))
+      throw error
+    }
   }, [])
 
   const deleteProject = useCallback((id: string) => {

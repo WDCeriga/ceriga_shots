@@ -131,9 +131,22 @@ export default function ResultsPage() {
 
   useEffect(() => {
     if (!project) return
+    const total = project.generation?.total ?? 0
+    const savedCount = project.generatedImages.length
+
+    // If we already have enough saved images, ensure the project is marked complete
+    // and do NOT re-run generation on load.
+    if (project.generation?.status === 'generating' && total > 0 && savedCount >= total) {
+      void updateProject(projectId, {
+        generation: { status: 'complete', total, completed: total },
+      }).catch(() => {})
+      return
+    }
+
     const shouldGenerate =
       project.generation?.status === 'generating' &&
-      project.generation.completed < project.generation.total
+      total > 0 &&
+      savedCount < total
 
     if (!shouldGenerate || isRunningRef.current) return
 
@@ -141,7 +154,7 @@ export default function ResultsPage() {
 
     const run = async () => {
       const total = project.generation?.total ?? 0
-      let completed = project.generation?.completed ?? project.generatedImages.length
+      let completed = Math.max(project.generation?.completed ?? 0, project.generatedImages.length)
       const images = [...project.generatedImages]
       let overrideNextType = project.generation?.nextType
 
@@ -158,14 +171,14 @@ export default function ResultsPage() {
         const generationIndex = existingOfType + 1
         const preset = project.generation?.preset ?? 'raw'
 
-        updateProject(projectId, {
+        void updateProject(projectId, {
           generation: {
             status: 'generating',
             total,
             completed,
             nextType,
           },
-        })
+        }).catch(() => {})
 
         const startedAt = performance.now()
         console.info(`[results] generating ${completed + 1}/${total}`, { nextType })
@@ -175,7 +188,10 @@ export default function ResultsPage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              imageDataUrl: project.originalImage,
+              ...(project.originalImage.startsWith('data:')
+                ? { imageDataUrl: project.originalImage }
+                : { imageUrl: project.originalImage }),
+              projectId,
               shotType: nextType,
               preset,
               generationIndex,
@@ -193,7 +209,7 @@ export default function ResultsPage() {
               message,
               ms: Math.round(performance.now() - startedAt),
             })
-            updateProject(projectId, {
+            void updateProject(projectId, {
               generation: {
                 status: 'error',
                 total,
@@ -201,19 +217,19 @@ export default function ResultsPage() {
                 nextType,
                 errorMessage: message,
               },
-            })
+            }).catch(() => {})
             return
           }
 
           images.push(data.generatedImage)
-          updateProject(projectId, {
+          void updateProject(projectId, {
             generatedImages: images,
             generation: {
               status: 'generating',
               total,
-              completed: completed + 1,
+              completed: Math.max(completed + 1, images.length),
             },
-          })
+          }).catch(() => {})
           completed += 1
           console.info(`[results] done ${completed}/${total}`, {
             ms: Math.round(performance.now() - startedAt),
@@ -221,7 +237,7 @@ export default function ResultsPage() {
         } catch (e) {
           const message = e instanceof Error ? e.message : 'Unknown error'
           console.error('[results] generation error', { message })
-          updateProject(projectId, {
+          void updateProject(projectId, {
             generation: {
               status: 'error',
               total,
@@ -229,18 +245,18 @@ export default function ResultsPage() {
               nextType,
               errorMessage: message,
             },
-          })
+          }).catch(() => {})
           return
         }
       }
 
-      updateProject(projectId, {
+      void updateProject(projectId, {
         generation: {
           status: 'complete',
           total,
           completed: total,
         },
-      })
+      }).catch(() => {})
       console.info('[results] generation complete', { projectId, total })
     }
 
@@ -271,6 +287,12 @@ export default function ResultsPage() {
     )
   }
 
+  const isActivelyGenerating =
+    project.generation?.status === 'generating' &&
+    typeof project.generation.total === 'number' &&
+    typeof project.generation.completed === 'number' &&
+    project.generation.completed < project.generation.total
+
   const startRename = () => {
     setNameDraft(project.name)
     setIsRenaming(true)
@@ -281,11 +303,21 @@ export default function ResultsPage() {
     setNameDraft('')
   }
 
-  const saveRename = () => {
+  const saveRename = async () => {
     const next = nameDraft.trim()
     if (!next) return
     if (next !== project.name) {
-      updateProject(projectId, { name: next })
+      try {
+        await updateProject(projectId, { name: next })
+        setIsRenaming(false)
+      } catch (e) {
+        toast({
+          title: 'Rename failed',
+          description: e instanceof Error ? e.message : 'Please try again.',
+          variant: 'destructive',
+        })
+      }
+      return
     }
     setIsRenaming(false)
   }
@@ -364,12 +396,17 @@ export default function ResultsPage() {
                     className="h-10 text-base sm:text-lg font-semibold"
                     autoFocus
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveRename()
+                      if (e.key === 'Enter') void saveRename()
                       if (e.key === 'Escape') cancelRename()
                     }}
                     aria-label="Project name"
                   />
-                  <Button size="icon" className="shrink-0" onClick={saveRename} aria-label="Save name">
+                  <Button
+                    size="icon"
+                    className="shrink-0"
+                    onClick={() => void saveRename()}
+                    aria-label="Save name"
+                  >
                     <Check className="w-4 h-4" />
                   </Button>
                   <Button
@@ -493,7 +530,7 @@ export default function ResultsPage() {
 
                 <Button
                   className="flex-1"
-                  disabled={project.generation?.status === 'generating'}
+                  disabled={isActivelyGenerating}
                   onClick={() => {
                     const totalNow =
                       typeof project.generation?.total === 'number'
@@ -515,7 +552,7 @@ export default function ResultsPage() {
                     })
                   }}
                 >
-                  {project.generation?.status === 'generating' ? 'Generating…' : 'Generate more'}
+                  {isActivelyGenerating ? 'Generating…' : 'Generate more'}
                 </Button>
               </div>
 

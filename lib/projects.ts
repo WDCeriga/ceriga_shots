@@ -87,43 +87,49 @@ export async function updateProjectForUser(
 ): Promise<Project | null> {
   await ensureSchema()
 
-  const fields: string[] = []
-  const values: any[] = []
+  const setClauses: string[] = []
+  const params: any[] = []
 
   if (updates.name !== undefined) {
-    fields.push('name')
-    values.push(updates.name)
+    params.push(updates.name)
+    setClauses.push(`name = $${params.length}`)
   }
   if (updates.originalImage !== undefined) {
-    fields.push('original_image')
-    values.push(updates.originalImage)
+    params.push(updates.originalImage)
+    setClauses.push(`original_image = $${params.length}`)
   }
   if (updates.originalImageName !== undefined) {
-    fields.push('original_image_name')
-    values.push(updates.originalImageName)
+    params.push(updates.originalImageName)
+    setClauses.push(`original_image_name = $${params.length}`)
   }
   if (updates.generatedImages !== undefined) {
-    fields.push('generated_images')
-    values.push(JSON.stringify(updates.generatedImages))
+    params.push(JSON.stringify(updates.generatedImages))
+    setClauses.push(`generated_images = $${params.length}::jsonb`)
   }
   if (updates.generation !== undefined) {
-    fields.push('generation')
-    values.push(updates.generation ? JSON.stringify(updates.generation) : null)
+    params.push(updates.generation ? JSON.stringify(updates.generation) : null)
+    setClauses.push(`generation = $${params.length}::jsonb`)
   }
 
-  if (!fields.length) {
+  if (!setClauses.length) {
     return getProjectForUser(ownerId, id)
   }
 
   const nowIso = new Date().toISOString()
-  const rows = (await db`
+  params.push(nowIso, ownerId, id)
+  const updatedAtParam = `$${params.length - 2}`
+  const ownerParam = `$${params.length - 1}`
+  const idParam = `$${params.length}`
+
+  const sql = `
     update projects
-    set
-      ${db(fields.reduce((acc, field, index) => ({ ...acc, [field]: values[index] }), {} as any))},
-      updated_at = ${nowIso}
-    where owner_id = ${ownerId} and id = ${id}
+    set ${setClauses.join(', ')},
+        updated_at = ${updatedAtParam}
+    where owner_id = ${ownerParam} and id = ${idParam}
     returning *
-  `) as DbProjectRow[]
+  `
+
+  const rows = (await (db as any).query(sql, params)) as DbProjectRow[]
   return rows[0] ? mapRow(rows[0]) : null
 }
 

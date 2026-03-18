@@ -271,9 +271,18 @@ export default function LibraryPage() {
                   const next = renameDraft.trim()
                   if (!next || !projectToRename) return
                   updateProject(projectToRename.id, { name: next })
-                  toast({ title: 'Project renamed' })
-                  setRenameId(null)
-                  setRenameDraft('')
+                    .then(() => {
+                      toast({ title: 'Project renamed' })
+                      setRenameId(null)
+                      setRenameDraft('')
+                    })
+                    .catch((err) => {
+                      toast({
+                        title: 'Rename failed',
+                        description: err instanceof Error ? err.message : 'Please try again.',
+                        variant: 'destructive',
+                      })
+                    })
                 }
               }}
               placeholder="e.g. Spring drop — hoodie"
@@ -294,9 +303,18 @@ export default function LibraryPage() {
                 const next = renameDraft.trim()
                 if (!next || !projectToRename) return
                 updateProject(projectToRename.id, { name: next })
-                toast({ title: 'Project renamed' })
-                setRenameId(null)
-                setRenameDraft('')
+                  .then(() => {
+                    toast({ title: 'Project renamed' })
+                    setRenameId(null)
+                    setRenameDraft('')
+                  })
+                  .catch((err) => {
+                    toast({
+                      title: 'Rename failed',
+                      description: err instanceof Error ? err.message : 'Please try again.',
+                      variant: 'destructive',
+                    })
+                  })
               }}
             >
               Save

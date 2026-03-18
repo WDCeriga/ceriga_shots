@@ -13,7 +13,7 @@ export default function DashboardLayout({
         <AppSidebar className="hidden md:flex" />
         <div className="flex-1 flex flex-col overflow-hidden">
           <TopNav />
-          <main className="flex-1 overflow-auto">{children}</main>
+          <main className="flex-1 overflow-auto pt-16 md:pt-0">{children}</main>
         </div>
       </div>
     </ProjectsProvider>

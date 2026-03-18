@@ -88,6 +88,48 @@ const ProjectPatchSchema = z
   })
   .strict()
 
+function mergeGeneration(
+  current: Project['generation'] | undefined,
+  incoming: Project['generation'] | undefined
+): Project['generation'] | undefined {
+  if (!incoming) return current
+  if (!current) return incoming
+
+  // Never allow out-of-order updates to "downgrade" state/progress.
+  const merged: NonNullable<Project['generation']> = {
+    ...current,
+    ...incoming,
+    total: Math.max(current.total ?? 0, incoming.total ?? 0),
+    completed: Math.max(current.completed ?? 0, incoming.completed ?? 0),
+    shotTypes: incoming.shotTypes ?? current.shotTypes,
+    preset: incoming.preset ?? current.preset,
+  }
+
+  // If we've already completed, don't let late "generating" patches restart it.
+  if (current.status === 'complete' && incoming.status !== 'complete') {
+    merged.status = 'complete'
+    merged.nextType = undefined
+    merged.errorMessage = undefined
+    merged.completed = Math.max(merged.completed, merged.total)
+  }
+
+  // If total is reached, force completion.
+  if (merged.completed >= merged.total && merged.total > 0) {
+    merged.status = 'complete'
+    merged.completed = merged.total
+    merged.nextType = undefined
+    merged.errorMessage = undefined
+  }
+
+  // If transitioning to error, keep errorMessage but preserve progress/metadata.
+  if (incoming.status === 'error') {
+    merged.status = 'error'
+    merged.errorMessage = incoming.errorMessage ?? current.errorMessage
+  }
+
+  return merged
+}
+
 export async function GET(_req: NextRequest): Promise<NextResponse> {
   const url = new URL(_req.url)
   const id = url.pathname.split('/').pop() as string
@@ -147,7 +189,17 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
   const updates: Partial<Project> = parsed.data
 
   try {
-    const project = await updateProjectForUser(session.user.id, id, updates)
+    const existing = await getProjectForUser(session.user.id, id)
+    if (!existing) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    const safeUpdates: Partial<Project> = {
+      ...updates,
+      generation: mergeGeneration(existing.generation, updates.generation),
+    }
+
+    const project = await updateProjectForUser(session.user.id, id, safeUpdates)
     if (!project) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }

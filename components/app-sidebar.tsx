@@ -15,10 +15,13 @@ export function AppSidebar({
   const pathname = usePathname()
 
   const links = [
+    { href: '/dashboard', label: 'Dashboard', icon: 'D' },
     { href: '/dashboard/generate', label: 'Generate', icon: 'G' },
     { href: '/dashboard/library', label: 'Library', icon: 'L' },
     { href: '/dashboard/settings', label: 'Settings', icon: 'S' },
   ]
+
+  const isActive = (href: string) => (href === '/dashboard' ? pathname === href : pathname.startsWith(href))
 
   function MaybeSheetClose({ children }: { children: React.ReactNode }) {
     if (variant !== 'mobile') return children
@@ -43,7 +46,7 @@ export function AppSidebar({
               href={link.href}
               className={cn(
                 'flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-sm font-medium',
-                pathname.startsWith(link.href)
+                isActive(link.href)
                   ? 'bg-accent text-accent-foreground'
                   : 'text-foreground hover:bg-secondary'
               )}

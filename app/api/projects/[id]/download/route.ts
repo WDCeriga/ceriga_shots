@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { isDatabaseConfigured } from '@/lib/db'
 import { getProjectForUser } from '@/lib/projects'
-import { bufferFromDataUrl, safeFilename } from '@/lib/zip'
+import { bufferFromImageRef, safeFilename } from '@/lib/zip'
 
 export const runtime = 'nodejs'
 
@@ -31,14 +31,14 @@ export async function GET(req: Request) {
 
   const zip = new JSZip()
 
-  const original = bufferFromDataUrl(project.originalImage)
+  const original = await bufferFromImageRef(project.originalImage)
   if (original) {
     const base = safeFilename(project.originalImageName || 'original')
     zip.file(`original/${base}.${original.ext}`, original.buffer, { binary: true })
   }
 
   for (const img of project.generatedImages) {
-    const data = bufferFromDataUrl(img.url)
+    const data = await bufferFromImageRef(img.url)
     if (!data) continue
     const ts = typeof img.timestamp === 'number' ? img.timestamp : Date.now()
     const label = safeFilename(`${img.type}-${img.id}-${ts}`)

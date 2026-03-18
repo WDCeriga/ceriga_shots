@@ -18,11 +18,35 @@ const VISUAL_DIRECTIONS: Array<{
   subtitle: string
   swatchClassName: string
 }> = [
-  { key: 'raw', title: 'Raw', subtitle: 'Dark concrete, hard light', swatchClassName: 'bg-zinc-800' },
-  { key: 'editorial', title: 'Editorial', subtitle: 'Slate, diffused, cold', swatchClassName: 'bg-zinc-700/60' },
-  { key: 'luxury', title: 'Luxury', subtitle: 'Dark marble, soft overhead', swatchClassName: 'bg-zinc-800/70' },
-  { key: 'natural', title: 'Natural', subtitle: 'Aged wood, window light', swatchClassName: 'bg-[linear-gradient(135deg,rgba(161,98,7,0.45),rgba(24,24,27,0.25))]' },
-  { key: 'surprise', title: 'Surprise me', subtitle: 'Random, never the same', swatchClassName: 'bg-[linear-gradient(135deg,rgba(255,255,255,0.10),rgba(255,255,255,0.02))]' },
+  {
+    key: 'raw',
+    title: 'Raw',
+    subtitle: 'Dark concrete, hard light',
+    swatchClassName:
+      'bg-[linear-gradient(135deg,rgba(9,9,11,0.92),rgba(39,39,42,0.65),rgba(244,244,245,0.08))]',
+  },
+  {
+    key: 'editorial',
+    title: 'Editorial',
+    subtitle: 'Slate, diffused, cold',
+    swatchClassName:
+      'bg-[linear-gradient(135deg,rgba(15,23,42,0.90),rgba(51,65,85,0.55),rgba(226,232,240,0.06))]',
+  },
+  {
+    key: 'luxury',
+    title: 'Luxury',
+    subtitle: 'Dark marble, soft overhead',
+    swatchClassName:
+      'bg-[linear-gradient(135deg,rgba(3,7,18,0.92),rgba(24,24,27,0.70),rgba(212,212,216,0.06))]',
+  },
+  {
+    key: 'natural',
+    title: 'Natural',
+    subtitle: 'Aged wood, window light',
+    swatchClassName:
+      'bg-[linear-gradient(135deg,rgba(120,53,15,0.60),rgba(180,83,9,0.35),rgba(254,243,199,0.10))]',
+  },
+  { key: 'surprise', title: 'Surprise me', subtitle: 'Random, never the same', swatchClassName: '' },
 ]
 
 type ShotTypeKey =
@@ -56,6 +80,17 @@ export default function GeneratePage() {
   const [isDragging, setIsDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [visualDirection, setVisualDirection] = useState<VisualDirectionKey>('raw')
+  const [surpriseSwatchClassName] = useState(() => {
+    const options = [
+      'bg-[linear-gradient(135deg,rgba(14,116,144,0.55),rgba(30,58,138,0.45),rgba(244,244,245,0.06))]',
+      'bg-[linear-gradient(135deg,rgba(190,18,60,0.45),rgba(88,28,135,0.45),rgba(244,244,245,0.06))]',
+      'bg-[linear-gradient(135deg,rgba(22,101,52,0.50),rgba(5,46,22,0.45),rgba(244,244,245,0.06))]',
+      'bg-[linear-gradient(135deg,rgba(180,83,9,0.55),rgba(124,45,18,0.40),rgba(254,243,199,0.08))]',
+      'bg-[linear-gradient(135deg,rgba(30,41,59,0.70),rgba(2,6,23,0.65),rgba(226,232,240,0.06))]',
+      'bg-[linear-gradient(135deg,rgba(7,89,133,0.50),rgba(17,24,39,0.55),rgba(255,255,255,0.05))]',
+    ]
+    return options[Math.floor(Math.random() * options.length)]
+  })
   const [shotTypes, setShotTypes] = useState<Set<ShotTypeKey>>(
     () => new Set(['flatlay_topdown', 'flatlay_45deg', 'detail_print', 'flatlay_relaxed'])
   )
@@ -303,6 +338,7 @@ export default function GeneratePage() {
               <div className="mt-4 grid grid-cols-2 gap-4">
                 {VISUAL_DIRECTIONS.map((d) => {
                   const selected = visualDirection === d.key
+                  const swatchClassName = d.key === 'surprise' ? surpriseSwatchClassName : d.swatchClassName
                   return (
                     <button
                       key={d.key}
@@ -315,7 +351,7 @@ export default function GeneratePage() {
                           : 'border-white/10 hover:border-white/20'
                       )}
                     >
-                      <div className={cn('h-8 w-full rounded-sm', d.swatchClassName)} />
+                      <div className={cn('h-8 w-full rounded-sm', swatchClassName)} />
                       <div className="mt-4 text-sm font-medium text-foreground">{d.title}</div>
                       <div className="mt-1 text-xs text-muted-foreground leading-snug">
                         {d.subtitle}

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { isR2Configured, putObjectToR2 } from '@/lib/r2'
 
 type ShotType =
   | 'flatlay_topdown'
@@ -33,6 +34,20 @@ function parseDataUrl(dataUrl: string): { mimeType: string; base64: string } | n
   const match = /^data:([^;]+);base64,(.+)$/.exec(dataUrl)
   if (!match) return null
   return { mimeType: match[1], base64: match[2] }
+}
+
+async function fetchImageUrlAsBase64(imageUrl: string): Promise<{ mimeType: string; base64: string } | null> {
+  let res: Response
+  try {
+    res = await fetch(imageUrl)
+  } catch {
+    return null
+  }
+  if (!res.ok) return null
+  const contentType = res.headers.get('content-type') || 'application/octet-stream'
+  const ab = await res.arrayBuffer()
+  const base64 = Buffer.from(ab).toString('base64')
+  return { mimeType: contentType, base64 }
 }
 
 function normalizeInteractionsImageMime(mimeType: string): InteractionsImageMime {
@@ -143,16 +158,22 @@ const NEGATIVE_BY_CATEGORY: Record<ShotCategory, string> = {
     'NEGATIVE (flat lay specific):',
     '- No hangers, hooks, people, hands, mannequins, or props touching the garment.',
     '- No perspective tilt for strict top-down shots; no wide-angle distortion.',
+    '- No horizon line, no corners/room edges, no “infinite cyclorama curve”; the surface is a single flat plane.',
+    '- No warped/bent background plane; no wavy geometry; no texture stretch/smear; avoid repeating patterns.',
+    '- Avoid gritty HDR, over-sharpened “AI noise,” or watercolor-like texture on the surface.',
   ].join('\n'),
   surface: [
     'NEGATIVE (surface shots specific):',
     '- No warped hangers, no thick plastic hangers with logos, no retail tags unless present in original.',
     '- No busy backgrounds; keep background premium and unobtrusive.',
+    '- No bent walls or warped planes; avoid stretched textures and unnatural perspective.',
+    '- Avoid heavy vignettes/gradients that imply curved geometry unless explicitly requested.',
   ].join('\n'),
   detail: [
     'NEGATIVE (detail shots specific):',
     '- Do NOT turn texture into noise or watercolor; avoid over-smoothing.',
     '- Avoid blown highlights on fabric; preserve weave detail and realistic shading.',
+    '- Background must be minimal and non-distracting; no warped patterns behind the subject.',
   ].join('\n'),
 }
 
@@ -255,7 +276,7 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
 const PRESET_BASE: Record<Preset, string> = {
   raw: [
     'VISUAL DIRECTION: Raw',
-    '- Surface: rough poured concrete, visible aggregate texture, cold grey',
+    '- Surface: poured concrete slab, cold grey; fine micro-texture only (subtle aggregate), uniform scale (no chunky pits)',
     '- Lighting: hard directional studio light, strong contrast, defined shadows',
     '- Mood: unpolished, confrontational, streetwear energy',
     '- Colour temperature: cool to neutral — no warmth',
@@ -263,7 +284,7 @@ const PRESET_BASE: Record<Preset, string> = {
   ].join('\n'),
   editorial: [
     'VISUAL DIRECTION: Editorial',
-    '- Surface: smooth slate or honed stone, near-black, very subtle texture',
+    '- Surface: smooth slate / honed stone, near-black, subtle tight grain (no visible pattern warping)',
     '- Lighting: soft diffused overhead, even exposure, shadows are gentle and grounded',
     '- Mood: cold, precise, intentional — fashion week not hype drop',
     '- Colour temperature: cool, slightly desaturated',
@@ -271,7 +292,7 @@ const PRESET_BASE: Record<Preset, string> = {
   ].join('\n'),
   luxury: [
     'VISUAL DIRECTION: Luxury',
-    '- Surface: dark veined marble, deep grey-black, polished but not reflective',
+    '- Surface: dark veined marble, deep grey-black; low-sheen (not mirror), veins subtle and realistic (not repeated)',
     '- Lighting: soft overhead with gentle wrap, minimal shadow drama',
     '- Mood: refined, still, unhurried — the garment speaks alone',
     '- Colour temperature: neutral to slightly warm, never clinical',
@@ -279,7 +300,7 @@ const PRESET_BASE: Record<Preset, string> = {
   ].join('\n'),
   natural: [
     'VISUAL DIRECTION: Natural',
-    '- Surface: raw aged wood, dark walnut or weathered oak grain visible',
+    '- Surface: aged wood, dark walnut / weathered oak; grain visible but not exaggerated; no repeating plank seams',
     '- Lighting: soft natural window light from one side, gentle falloff',
     '- Mood: organic, considered, warm without being casual',
     '- Colour temperature: slightly warm, earthy',
@@ -297,40 +318,60 @@ const PRESET_BASE: Record<Preset, string> = {
 
 const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
   raw: {
-    flatlay:
-      'CONTEXT (flat lay): shadows must be controlled and not obscure the primary graphic; keep edges crisp and proportions true.',
+    flatlay: [
+      'CONTEXT (flat lay):',
+      '- The concrete is a SINGLE flat planar surface filling the entire frame (no corners, no horizon, no curvature).',
+      '- Concrete texture is subtle and uniform-scale; do not stretch/smear/repeat texture.',
+      '- Shadows are crisp but controlled; do not create big gradients that imply a curved surface.',
+      '- Keep edges crisp and proportions true; do not obscure the primary graphic with shadow.',
+    ].join('\\n'),
     surface:
       'CONTEXT (surface): maintain realistic gravity folds and clean separation from background; keep background premium and not cluttered.',
     detail:
       'CONTEXT (detail): avoid crushed blacks or blown highlights; preserve micro texture and true print edges.',
   },
   editorial: {
-    flatlay:
-      'CONTEXT (flat lay): keep styling minimal and precise; even exposure; avoid harsh shadow cut-offs.',
+    flatlay: [
+      'CONTEXT (flat lay):',
+      '- Slate/stone reads as a flat studio surface (single plane), no visible corner or horizon.',
+      '- Keep styling minimal and precise; even exposure; avoid harsh shadow cut-offs.',
+      '- Texture grain is tight and subtle; do not introduce streaks, banding, or warped patterns.',
+    ].join('\\n'),
     surface:
       'CONTEXT (surface): keep environment understated; the garment is hero; no busy scene elements.',
     detail:
       'CONTEXT (detail): crisp but natural; no “overprocessed” sharpening; preserve ink/fiber boundaries.',
   },
   luxury: {
-    flatlay:
-      'CONTEXT (flat lay): premium softness; no gritty noise; keep highlights gentle and controlled.',
+    flatlay: [
+      'CONTEXT (flat lay):',
+      '- Marble reads as a flat tabletop surface; veins must be subtle, non-repeating, and not warped.',
+      '- Premium softness; no gritty noise; keep highlights gentle and controlled.',
+      '- Avoid strong reflections or mirrored sheen; keep a low-sheen, upscale finish.',
+    ].join('\\n'),
     surface:
       'CONTEXT (surface): quiet luxury; minimal scene; ensure hanger/hook is subtle and unbranded.',
     detail:
       'CONTEXT (detail): micro-contrast is subtle; avoid specular clipping; texture reads premium, not gritty.',
   },
   natural: {
-    flatlay:
-      'CONTEXT (flat lay): light feels natural; shadows soft; no dramatic studio hard edges.',
+    flatlay: [
+      'CONTEXT (flat lay):',
+      '- Wood reads as a flat tabletop surface; grain direction consistent; no warped or repeating plank patterns.',
+      '- Light feels natural; shadows soft; no dramatic studio hard edges.',
+      '- Avoid heavy vignettes or “curved table” gradients.',
+    ].join('\\n'),
     surface:
       'CONTEXT (surface): believable window-light falloff; keep background calm and coherent.',
     detail:
       'CONTEXT (detail): warm but accurate color; texture should remain realistic, not “softened away.”',
   },
   surprise: {
-    flatlay:
-      'CONTEXT (flat lay): keep it surprising via surface/lighting while remaining clean, symmetric when required.',
+    flatlay: [
+      'CONTEXT (flat lay):',
+      '- Surprise comes from surface + lighting choices, but the surface must still be a single flat plane (no corners/horizon).',
+      '- Keep it clean and symmetric when required; do not introduce warped patterns or curved geometry.',
+    ].join('\\n'),
     surface:
       'CONTEXT (surface): surprise comes from surface/lighting choices, not clutter or extra props.',
     detail:
@@ -542,16 +583,26 @@ export async function POST(req: Request) {
   }
 
   const imageDataUrl = (body as { imageDataUrl?: unknown }).imageDataUrl
-  if (typeof imageDataUrl !== 'string' || imageDataUrl.length < 32) {
-    console.warn(`[mockups:${requestId}] Missing/invalid imageDataUrl`)
-    return NextResponse.json({ error: 'imageDataUrl is required.' }, { status: 400 })
+  const imageUrl = (body as { imageUrl?: unknown }).imageUrl
+
+  let parsed: { mimeType: string; base64: string } | null = null
+  if (typeof imageDataUrl === 'string' && imageDataUrl.length >= 32) {
+    parsed = parseDataUrl(imageDataUrl)
+    if (!parsed) {
+      console.warn(`[mockups:${requestId}] imageDataUrl not a base64 data URL`)
+      return NextResponse.json({ error: 'imageDataUrl must be a base64 data URL.' }, { status: 400 })
+    }
+  } else if (typeof imageUrl === 'string' && imageUrl.length >= 8) {
+    parsed = await fetchImageUrlAsBase64(imageUrl)
+    if (!parsed) {
+      console.warn(`[mockups:${requestId}] Failed to fetch imageUrl`)
+      return NextResponse.json({ error: 'imageUrl could not be fetched.' }, { status: 400 })
+    }
+  } else {
+    console.warn(`[mockups:${requestId}] Missing/invalid imageDataUrl/imageUrl`)
+    return NextResponse.json({ error: 'imageDataUrl (base64 data URL) or imageUrl is required.' }, { status: 400 })
   }
 
-  const parsed = parseDataUrl(imageDataUrl)
-  if (!parsed) {
-    console.warn(`[mockups:${requestId}] imageDataUrl not a base64 data URL`)
-    return NextResponse.json({ error: 'imageDataUrl must be a base64 data URL.' }, { status: 400 })
-  }
   const inputMime = normalizeInteractionsImageMime(parsed.mimeType)
 
   const requestedShotType = (body as { shotType?: unknown; type?: unknown }).shotType
@@ -602,7 +653,13 @@ export async function POST(req: Request) {
   const generationIndexRaw = (body as { generationIndex?: unknown }).generationIndex
   const generationIndex = clampInt(generationIndexRaw, 1, 10_000, 1)
   const providedVariationSeed = (body as { variationSeed?: unknown }).variationSeed
-  const derivedSeed = hashStringToInt(`${shotType}|${preset}|${generationIndex}|${imageDataUrl.slice(0, 64)}`)
+  const seedBasis =
+    typeof imageDataUrl === 'string' && imageDataUrl.length
+      ? imageDataUrl.slice(0, 64)
+      : typeof imageUrl === 'string'
+        ? imageUrl.slice(0, 128)
+        : 'unknown'
+  const derivedSeed = hashStringToInt(`${shotType}|${preset}|${generationIndex}|${seedBasis}`)
   const variationSeed = clampInt(providedVariationSeed, 1, 2_147_483_647, derivedSeed || Date.now())
 
   const ai = new GoogleGenAI({ apiKey })
@@ -647,6 +704,27 @@ export async function POST(req: Request) {
           console.info?.(
             `[mockups:${requestId}] success shotType=${shotType} preset=${preset} mime=${mime} totalMs=${Date.now() - startedAt}`
           )
+
+          let finalUrl = `data:${mime};base64,${base64}`
+          if (isR2Configured()) {
+            const bytes = Buffer.from(base64, 'base64')
+            const ext =
+              mime === 'image/png'
+                ? 'png'
+                : mime === 'image/jpeg'
+                  ? 'jpg'
+                  : mime === 'image/webp'
+                    ? 'webp'
+                    : 'bin'
+            const projectId = (body as { projectId?: unknown }).projectId
+            const projectPart = typeof projectId === 'string' && projectId.trim() ? projectId.trim() : 'unknown'
+            const key =
+              `users/${session.user.id}/projects/${projectPart}/generated/` +
+              `${shotType}/${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Date.now()}.${ext}`
+            const uploaded = await putObjectToR2({ key, body: bytes, contentType: mime })
+            finalUrl = uploaded.url
+          }
+
           return NextResponse.json({
             generatedImage: {
               id:
@@ -654,7 +732,7 @@ export async function POST(req: Request) {
                   ? crypto.randomUUID()
                   : `${Date.now()}`,
               type: shotType,
-              url: `data:${mime};base64,${base64}`,
+              url: finalUrl,
               timestamp: Date.now(),
               prompt,
             },

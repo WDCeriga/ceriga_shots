@@ -27,6 +27,47 @@ export function bufferFromDataUrl(dataUrl: string): { buffer: Buffer; ext: strin
   return { buffer: Buffer.from(parsed.base64, 'base64'), ext: extFromMime(parsed.mime), mime: parsed.mime }
 }
 
+export async function bufferFromImageRef(
+  ref: string
+): Promise<{ buffer: Buffer; ext: string; mime: string } | null> {
+  if (!ref) return null
+
+  const asData = bufferFromDataUrl(ref)
+  if (asData) return asData
+
+  if (!/^https?:\/\//i.test(ref)) return null
+
+  let res: Response
+  try {
+    res = await fetch(ref)
+  } catch {
+    res = null as any
+  }
+  if (res && res.ok) {
+    const mime = res.headers.get('content-type') || 'application/octet-stream'
+    const ab = await res.arrayBuffer()
+    return { buffer: Buffer.from(ab), ext: extFromMime(mime), mime }
+  }
+
+  // Fallback: if this is an R2 public URL (or custom public base),
+  // allow fetching the object via credentials (works for private buckets).
+  try {
+    const { getObjectFromR2, isR2Configured, r2KeyFromPublicUrl } = await import('@/lib/r2')
+    if (isR2Configured()) {
+      const key = r2KeyFromPublicUrl(ref)
+      if (key) {
+        const obj = await getObjectFromR2(key)
+        const mime = obj.contentType || 'application/octet-stream'
+        return { buffer: obj.body, ext: extFromMime(mime), mime }
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  return null
+}
+
 export function safeFilename(name: string): string {
   const trimmed = name.trim() || 'file'
   return trimmed
