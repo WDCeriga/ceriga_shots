@@ -26,72 +26,22 @@ export interface Project {
   updatedAt: number
 }
 
-const LEGACY_STORAGE_KEY = 'ceriga_projects'
-
-// IndexedDB storage (to avoid localStorage quota limits for base64 image data).
-const DB_NAME = 'ceriga_shots'
-const DB_VERSION = 1
-const STORE_NAME = 'kv'
-const PROJECTS_KEY = 'projects'
-
-function openDb(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION)
-    req.onupgradeneeded = () => {
-      const db = req.result
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME)
-      }
-    }
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error ?? new Error('Failed to open IndexedDB'))
-  })
-}
-
-async function idbGet<T>(key: string): Promise<T | undefined> {
-  const db = await openDb()
-  return await new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readonly')
-    const store = tx.objectStore(STORE_NAME)
-    const req = store.get(key)
-    req.onsuccess = () => resolve(req.result as T | undefined)
-    req.onerror = () => reject(req.error ?? new Error('IndexedDB get failed'))
-  })
-}
-
-async function idbSet<T>(key: string, value: T): Promise<void> {
-  const db = await openDb()
-  await new Promise<void>((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, 'readwrite')
-    const store = tx.objectStore(STORE_NAME)
-    const req = store.put(value as unknown, key)
-    req.onsuccess = () => resolve()
-    req.onerror = () => reject(req.error ?? new Error('IndexedDB set failed'))
-  })
-}
-
 export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  // Load projects from IndexedDB on mount (migrating from localStorage if needed)
+  // Load projects for the current user from the API on mount
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
-        const stored = await idbGet<Project[]>(PROJECTS_KEY)
-        if (!cancelled && stored) {
-          setProjects(stored)
-          return
+        const res = await fetch('/api/projects', { method: 'GET' })
+        if (!res.ok) {
+          throw new Error(`Failed to load projects: ${res.status}`)
         }
-
-        // One-time legacy migration (best effort).
-        const legacy = localStorage.getItem(LEGACY_STORAGE_KEY)
-        if (legacy) {
-          const parsed = JSON.parse(legacy) as Project[]
-          await idbSet(PROJECTS_KEY, parsed)
-          localStorage.removeItem(LEGACY_STORAGE_KEY)
-          if (!cancelled) setProjects(parsed)
+        const data = (await res.json()) as { projects: Project[] }
+        if (!cancelled) {
+          setProjects(data.projects ?? [])
         }
       } catch (error) {
         console.error('Failed to load projects:', error)
@@ -105,28 +55,38 @@ export function useProjects() {
     }
   }, [])
 
-  // Save projects to IndexedDB whenever they change
-  useEffect(() => {
-    if (!isLoading) {
-      ;(async () => {
-        try {
-          await idbSet(PROJECTS_KEY, projects)
-        } catch (error) {
-          console.error('Failed to save projects:', error)
-        }
-      })()
-    }
-  }, [projects, isLoading])
-
   const addProject = useCallback((project: Omit<Project, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newProject: Project = {
+    const now = Date.now()
+    const optimistic: Project = {
       ...project,
-      id: `project-${Date.now()}`,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      id: `temp-${now}`,
+      createdAt: now,
+      updatedAt: now,
     }
-    setProjects(prev => [newProject, ...prev])
-    return newProject
+    setProjects(prev => [optimistic, ...prev])
+
+    ;(async () => {
+      try {
+        const res = await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(project),
+        })
+
+        if (!res.ok) {
+          throw new Error(`Failed to create project: ${res.status}`)
+        }
+        const data = (await res.json()) as { project: Project }
+        setProjects(prev =>
+          prev.map(p => (p.id === optimistic.id ? data.project : p))
+        )
+      } catch (error) {
+        console.error('Failed to create project:', error)
+        setProjects(prev => prev.filter(p => p.id !== optimistic.id))
+      }
+    })()
+
+    return optimistic
   }, [])
 
   const updateProject = useCallback((id: string, updates: Partial<Project>) => {
@@ -135,10 +95,42 @@ export function useProjects() {
         p.id === id ? { ...p, ...updates, updatedAt: Date.now() } : p
       )
     )
+
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/projects/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updates),
+        })
+        if (!res.ok) {
+          throw new Error(`Failed to update project: ${res.status}`)
+        }
+        const data = (await res.json()) as { project: Project }
+        setProjects(prev =>
+          prev.map(p => (p.id === id ? data.project : p))
+        )
+      } catch (error) {
+        console.error('Failed to update project:', error)
+      }
+    })()
   }, [])
 
   const deleteProject = useCallback((id: string) => {
     setProjects(prev => prev.filter(p => p.id !== id))
+
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/projects/${id}`, {
+          method: 'DELETE',
+        })
+        if (!res.ok) {
+          throw new Error(`Failed to delete project: ${res.status}`)
+        }
+      } catch (error) {
+        console.error('Failed to delete project:', error)
+      }
+    })()
   }, [])
 
   const getProject = useCallback((id: string) => {

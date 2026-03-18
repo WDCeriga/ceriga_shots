@@ -4,6 +4,7 @@ import { MenuIcon } from 'lucide-react'
 import { AppSidebar } from '@/components/app-sidebar'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { AccountMenu } from '@/components/account-menu'
 
 export function TopNav() {
   return (
@@ -28,8 +29,11 @@ export function TopNav() {
           </SheetContent>
         </Sheet>
       </div>
-      <div className="text-sm text-muted-foreground">
-        Welcome to Ceriga Shots
+      <div className="flex items-center gap-3">
+        <div className="hidden sm:block text-sm text-muted-foreground">
+          Welcome to Ceriga Shots
+        </div>
+        <AccountMenu />
       </div>
     </header>
   )
