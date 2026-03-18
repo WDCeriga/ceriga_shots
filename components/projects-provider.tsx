@@ -118,7 +118,8 @@ export function ProjectsProvider({ children }: { children: React.ReactNode }) {
       return data.project
     } catch (error) {
       console.error('Failed to update project:', error)
-      if (before) setProjects((prev) => prev.map((p) => (p.id === id ? before : p)))
+      const restore = before
+      if (restore) setProjects((prev) => prev.map((p) => (p.id === id ? restore : p)))
       throw error
     }
   }, [])
