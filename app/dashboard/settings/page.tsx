@@ -33,6 +33,12 @@ export default function SettingsPage() {
   const [sysStatus, setSysStatus] = useState<StatusResponse | null>(null)
   const [statusLoading, setStatusLoading] = useState(true)
   const [accountPlan, setAccountPlan] = useState<string>('free')
+  const [billing, setBilling] = useState<{
+    customerId: string | null
+    subscriptionId: string | null
+    subscriptionStatus: string | null
+  } | null>(null)
+  const [billingOpening, setBillingOpening] = useState(false)
   const [credits, setCredits] = useState<{
     used: number
     limit: number
@@ -64,6 +70,12 @@ export default function SettingsPage() {
           user: {
             brandName: string | null
             role?: string
+            billing?: {
+              customerId: string | null
+              subscriptionId: string | null
+              subscriptionStatus: string | null
+              periodEndsAt: string | null
+            } | null
             credits?: {
               used: number
               limit: number
@@ -79,6 +91,7 @@ export default function SettingsPage() {
         setBrandName(next)
         setInitialBrandName(next)
         setAccountPlan(data.user.role ?? 'free')
+        setBilling(data.user.billing ?? null)
         setCredits(data.user.credits ?? null)
       })
       .catch(() => {
@@ -184,6 +197,26 @@ export default function SettingsPage() {
     </Badge>
   )
 
+  const handleManageBilling = async () => {
+    setBillingOpening(true)
+    try {
+      const res = await fetch('/api/billing/portal', { method: 'POST' })
+      const data = (await res.json()) as { url?: string; error?: string }
+      if (!res.ok || !data.url) {
+        throw new Error(data.error ?? `Failed to open billing portal (${res.status})`)
+      }
+      window.location.href = data.url
+    } catch (error) {
+      toast({
+        title: 'Unable to open billing portal',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setBillingOpening(false)
+    }
+  }
+
   return (
     <div className="p-6 lg:p-8 max-w-4xl">
       <div className="mb-8 flex items-start justify-between gap-4">
@@ -265,6 +298,12 @@ export default function SettingsPage() {
             <div className="text-xs text-muted-foreground">
               Reset: {credits?.resetAt ? new Date(credits.resetAt).toLocaleString() : 'Pending'}
             </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Subscription</span>
+              <span className="text-sm font-medium capitalize">
+                {billing?.subscriptionStatus ?? 'Not active'}
+              </span>
+            </div>
             {retentionDays >= 0 ? (
               <div className="text-xs text-muted-foreground">
                 Generated assets older than {retentionDays} days are automatically removed.
@@ -274,6 +313,23 @@ export default function SettingsPage() {
                 Your generated asset history is retained without a time limit.
               </div>
             )}
+            <div className="pt-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleManageBilling}
+                disabled={!billing?.customerId || billingOpening}
+              >
+                {billingOpening ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Opening billing…
+                  </>
+                ) : (
+                  'Manage billing'
+                )}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

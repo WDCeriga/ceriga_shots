@@ -8,6 +8,11 @@ export type DbUserRow = {
   brand_name: string | null
   password_hash: string
   role: UserRole
+  stripe_customer_id: string | null
+  stripe_subscription_id: string | null
+  stripe_price_id: string | null
+  stripe_subscription_status: string | null
+  billing_period_ends_at: string | null
   created_at: string
 }
 
@@ -84,6 +89,17 @@ export async function updateUserRole(id: string, role: UserRole): Promise<DbUser
   const rows = (await db`
     update users
     set role = ${role}
+    where id = ${id}
+    returning *
+  `) as DbUserRow[]
+  return rows[0] ?? null
+}
+
+export async function setUserStripeCustomerId(id: string, customerId: string): Promise<DbUserRow | null> {
+  await ensureSchema()
+  const rows = (await db`
+    update users
+    set stripe_customer_id = ${customerId}
     where id = ${id}
     returning *
   `) as DbUserRow[]

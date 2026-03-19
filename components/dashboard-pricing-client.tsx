@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { pricingPlans } from '@/lib/pricing'
+import { useSession } from 'next-auth/react'
+import { toast } from '@/hooks/use-toast'
 
 type BillingCycle = 'monthly' | 'yearly'
 
@@ -17,6 +19,14 @@ interface FeatureRow {
 interface FeatureGroup {
   label: 'Generation' | 'Export' | 'Storage' | 'Support'
   rows: FeatureRow[]
+}
+
+type StripePricingResponse = {
+  prices?: {
+    starter?: { monthly?: number | null; yearly?: number | null }
+    studio?: { monthly?: number | null; yearly?: number | null }
+    label?: { monthly?: number | null; yearly?: number | null }
+  }
 }
 
 const featureGroups: FeatureGroup[] = [
@@ -66,7 +76,96 @@ function getDisplayPrice(monthlyPrice: number, billing: BillingCycle) {
 }
 
 export function DashboardPricingClient() {
+  const { status: authStatus } = useSession()
   const [billing, setBilling] = useState<BillingCycle>('monthly')
+  const [currentRole, setCurrentRole] = useState<string>('free')
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
+  const [stripePrices, setStripePrices] = useState<StripePricingResponse['prices'] | null>(null)
+
+  useEffect(() => {
+    if (authStatus !== 'authenticated') return
+    let cancelled = false
+    fetch('/api/me', { method: 'GET' })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`me ${res.status}`)
+        return (await res.json()) as {
+          user?: {
+            role?: string
+            billing?: { subscriptionStatus?: string | null } | null
+          }
+        }
+      })
+      .then((data) => {
+        if (cancelled) return
+        setCurrentRole(data.user?.role ?? 'free')
+        setSubscriptionStatus(data.user?.billing?.subscriptionStatus ?? null)
+      })
+      .catch(() => {
+        if (cancelled) return
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [authStatus])
+
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/billing/pricing', { method: 'GET' })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`pricing ${res.status}`)
+        return (await res.json()) as StripePricingResponse
+      })
+      .then((data) => {
+        if (cancelled) return
+        setStripePrices(data.prices ?? null)
+      })
+      .catch(() => {
+        if (cancelled) return
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const openCustomerPortal = async () => {
+    setLoadingPlan('manage')
+    try {
+      const res = await fetch('/api/billing/portal', { method: 'POST' })
+      const data = (await res.json()) as { url?: string; error?: string }
+      if (!res.ok || !data.url) throw new Error(data.error ?? `Portal failed (${res.status})`)
+      window.location.href = data.url
+    } catch (error) {
+      toast({
+        title: 'Unable to open billing portal',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoadingPlan(null)
+    }
+  }
+
+  const startCheckout = async (role: 'starter' | 'studio' | 'label') => {
+    setLoadingPlan(role)
+    try {
+      const res = await fetch('/api/billing/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan: role, billingCycle: billing }),
+      })
+      const data = (await res.json()) as { url?: string; error?: string }
+      if (!res.ok || !data.url) throw new Error(data.error ?? `Checkout failed (${res.status})`)
+      window.location.href = data.url
+    } catch (error) {
+      toast({
+        title: 'Unable to start checkout',
+        description: error instanceof Error ? error.message : 'Please try again.',
+        variant: 'destructive',
+      })
+      setLoadingPlan(null)
+    }
+  }
 
   return (
     <div className="relative p-6 sm:p-10 pb-28 max-w-7xl mx-auto">
@@ -105,7 +204,18 @@ export function DashboardPricingClient() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-14">
         {pricingPlans.map((plan) => {
-          const displayPrice = getDisplayPrice(plan.monthlyPrice, billing)
+          const roleName = plan.name.toLowerCase()
+          const stripeMonthly =
+            roleName === 'starter' || roleName === 'studio' || roleName === 'label'
+              ? stripePrices?.[roleName]?.monthly
+              : null
+          const stripeYearly =
+            roleName === 'starter' || roleName === 'studio' || roleName === 'label'
+              ? stripePrices?.[roleName]?.yearly
+              : null
+          const monthlyPrice = stripeMonthly ?? plan.monthlyPrice
+          const displayPrice =
+            billing === 'yearly' ? stripeYearly ?? getDisplayPrice(monthlyPrice, 'yearly') : monthlyPrice
           const yearlySuffix = billing === 'yearly' ? '/mo (billed yearly)' : '/mo'
 
           return (
@@ -144,16 +254,49 @@ export function DashboardPricingClient() {
                 ))}
               </ul>
 
-              <Link
-                href="/dashboard/generate"
-                className={`mt-auto inline-flex items-center justify-center rounded-md px-4 py-3 text-xs font-semibold tracking-wider uppercase transition-colors ${
-                  plan.highlighted
-                    ? 'bg-foreground text-background hover:bg-accent hover:text-foreground'
-                    : 'border border-border text-foreground hover:border-foreground'
-                }`}
-              >
-                {plan.dashboardCta}
-              </Link>
+              {plan.name === 'Free' ? (
+                <Link
+                  href="/dashboard/generate"
+                  className={`mt-auto inline-flex items-center justify-center rounded-md px-4 py-3 text-xs font-semibold tracking-wider uppercase transition-colors ${
+                    plan.highlighted
+                      ? 'bg-foreground text-background hover:bg-accent hover:text-foreground'
+                      : 'border border-border text-foreground hover:border-foreground'
+                  }`}
+                >
+                  {currentRole === 'free' ? 'Current plan' : plan.dashboardCta}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  disabled={authStatus !== 'authenticated' || loadingPlan !== null}
+                  onClick={() => {
+                    if (
+                      roleName === currentRole &&
+                      subscriptionStatus &&
+                      ['active', 'trialing', 'past_due'].includes(subscriptionStatus)
+                    ) {
+                      void openCustomerPortal()
+                      return
+                    }
+                    if (roleName === 'starter' || roleName === 'studio' || roleName === 'label') {
+                      void startCheckout(roleName)
+                    }
+                  }}
+                  className={`mt-auto inline-flex items-center justify-center rounded-md px-4 py-3 text-xs font-semibold tracking-wider uppercase transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
+                    plan.highlighted
+                      ? 'bg-foreground text-background hover:bg-accent hover:text-foreground'
+                      : 'border border-border text-foreground hover:border-foreground'
+                  }`}
+                >
+                  {loadingPlan === plan.name.toLowerCase()
+                    ? 'Redirecting...'
+                    : plan.name.toLowerCase() === currentRole &&
+                        subscriptionStatus &&
+                        ['active', 'trialing', 'past_due'].includes(subscriptionStatus)
+                      ? 'Manage subscription'
+                      : plan.dashboardCta}
+                </button>
+              )}
             </div>
           )
         })}

@@ -74,6 +74,25 @@ function toJobs(rows: GenerationJobRow[]): GenerationJob[] {
   }))
 }
 
+const STALE_PROCESSING_MINUTES = 5
+
+async function requeueStaleProcessingJobs() {
+  await db`
+    update generation_jobs
+    set
+      status = 'queued',
+      locked_at = null,
+      locked_by = null,
+      run_after = now(),
+      updated_at = now(),
+      error_message = coalesce(error_message, 'Recovered stale processing job')
+    where
+      status = 'processing'
+      and locked_at is not null
+      and locked_at < now() - make_interval(mins => ${STALE_PROCESSING_MINUTES})
+  `
+}
+
 export async function enqueueGenerationJobs(args: {
   ownerId: string
   projectId: string
@@ -177,6 +196,7 @@ export async function enqueueGenerationJobs(args: {
 
 export async function claimNextGenerationJob(workerId: string): Promise<GenerationJob | null> {
   await ensureSchema()
+  await requeueStaleProcessingJobs()
   const rows = (await db`
     with next_job as (
       select id

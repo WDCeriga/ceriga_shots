@@ -1,13 +1,42 @@
  "use client"
 
 import Link from "next/link"
+import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { Check } from "lucide-react"
 import { pricingPlans } from "@/lib/pricing"
 
+type StripePricingResponse = {
+  prices?: {
+    starter?: { monthly?: number | null }
+    studio?: { monthly?: number | null }
+    label?: { monthly?: number | null }
+  }
+}
+
 export function PricingSection() {
   const { status } = useSession()
   const pricingCtaHref = status === "authenticated" ? "/dashboard/pricing" : "/signup"
+  const [stripePrices, setStripePrices] = useState<StripePricingResponse["prices"] | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/billing/pricing", { method: "GET" })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`pricing ${res.status}`)
+        return (await res.json()) as StripePricingResponse
+      })
+      .then((data) => {
+        if (cancelled) return
+        setStripePrices(data.prices ?? null)
+      })
+      .catch(() => {
+        if (cancelled) return
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   return (
     <section id="pricing" className="py-32 border-t border-border">
@@ -29,15 +58,23 @@ export function PricingSection() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto mb-10">
-          {pricingPlans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`relative flex flex-col border p-7 transition-colors duration-300 ${
-                plan.highlighted
-                  ? "border-accent bg-accent/[0.03]"
-                  : "border-border hover:border-foreground/20"
-              }`}
-            >
+          {pricingPlans.map((plan) => {
+            const roleName = plan.name.toLowerCase()
+            const stripeMonthly =
+              roleName === "starter" || roleName === "studio" || roleName === "label"
+                ? stripePrices?.[roleName]?.monthly
+                : null
+            const displayMonthly = stripeMonthly ?? plan.monthlyPrice
+
+            return (
+              <div
+                key={plan.name}
+                className={`relative flex flex-col border p-7 transition-colors duration-300 ${
+                  plan.highlighted
+                    ? "border-accent bg-accent/[0.03]"
+                    : "border-border hover:border-foreground/20"
+                }`}
+              >
               {plan.highlighted && (
                 <span className="absolute -top-3 left-7 bg-accent text-foreground text-[10px] tracking-[0.2em] uppercase font-bold px-3 py-1">
                   Most Popular
@@ -50,7 +87,7 @@ export function PricingSection() {
                 </h3>
                 <div className="flex items-baseline gap-1 mb-1">
                   <span className="text-4xl font-black text-foreground tracking-tight">
-                    €{plan.monthlyPrice}
+                    €{displayMonthly}
                   </span>
                   <span className="text-muted-foreground text-sm">/ mo</span>
                 </div>
@@ -81,8 +118,9 @@ export function PricingSection() {
               >
                 {plan.landingCta}
               </Link>
-            </div>
-          ))}
+              </div>
+            )
+          })}
         </div>
 
         <div className="text-center">

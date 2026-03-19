@@ -41,6 +41,7 @@ export default function ResultsPage() {
   >('flatlay_topdown')
   const [isHydrating, setIsHydrating] = useState(false)
   const [hydrateFailed, setHydrateFailed] = useState<string | null>(null)
+  const [queueNudgeStatus, setQueueNudgeStatus] = useState<'idle' | 'ok' | 'retrying'>('idle')
   const [isRenaming, setIsRenaming] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
@@ -120,6 +121,13 @@ export default function ResultsPage() {
 
     const tick = async () => {
       try {
+        // Nudge the queue on each poll so long-running generations resume after navigation.
+        try {
+          const dispatchRes = await fetch('/api/jobs/dispatch', { method: 'POST' })
+          setQueueNudgeStatus(dispatchRes.ok ? 'ok' : 'retrying')
+        } catch {
+          setQueueNudgeStatus('retrying')
+        }
         await fetchProject(projectId)
       } catch {
         // Polling errors are non-fatal; the next tick retries.
@@ -135,6 +143,7 @@ export default function ResultsPage() {
     return () => {
       stopped = true
       window.clearInterval(interval)
+      setQueueNudgeStatus('idle')
     }
   }, [fetchProject, generationStatus, projectId])
 
@@ -427,13 +436,22 @@ export default function ResultsPage() {
         <section className="min-w-0">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Generated Content</h2>
-            <p className="text-xs text-muted-foreground">
-              {project.generation?.status === 'generating'
-                ? 'Updating live…'
-                : project.generatedImages.length
-                  ? 'Ready'
-                  : 'No outputs yet'}
-            </p>
+            <div className="text-right">
+              <p className="text-xs text-muted-foreground">
+                {project.generation?.status === 'generating'
+                  ? 'Updating live…'
+                  : project.generatedImages.length
+                    ? 'Ready'
+                    : 'No outputs yet'}
+              </p>
+              {project.generation?.status === 'generating' ? (
+                <p className="text-[11px] text-muted-foreground/80 mt-1">
+                  {queueNudgeStatus === 'retrying'
+                    ? 'Reconnecting generation queue...'
+                    : 'Generation queue connected'}
+                </p>
+              ) : null}
+            </div>
           </div>
 
           <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">

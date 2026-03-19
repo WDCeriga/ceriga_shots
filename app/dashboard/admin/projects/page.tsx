@@ -11,6 +11,7 @@ type AdminProject = {
   ownerEmail: string
   name: string
   generatedCount: number
+  visualDirection: string
   createdAt: string
   updatedAt: string
 }
@@ -84,6 +85,7 @@ export default function AdminProjectsPage() {
           <TableRow>
             <TableHead>Owner Email</TableHead>
             <TableHead className="w-[260px]">Name</TableHead>
+            <TableHead>Visual Direction</TableHead>
             <TableHead>
               <button
                 type="button"
@@ -120,6 +122,11 @@ export default function AdminProjectsPage() {
                   {p.name}
                 </Link>
               </TableCell>
+              <TableCell className="capitalize">
+                <Link href={`/dashboard/admin/projects/${p.id}`} className="hover:underline">
+                  {p.visualDirection}
+                </Link>
+              </TableCell>
               <TableCell>
                 <Link href={`/dashboard/admin/projects/${p.id}`} className="hover:underline">
                   {p.generatedCount}
@@ -139,7 +146,7 @@ export default function AdminProjectsPage() {
           ))}
           {pagedProjects.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={5} className="text-center text-muted-foreground">No projects found.</TableCell>
+              <TableCell colSpan={6} className="text-center text-muted-foreground">No projects found.</TableCell>
             </TableRow>
           ) : null}
         </TableBody>

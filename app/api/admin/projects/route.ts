@@ -11,6 +11,7 @@ type Row = {
   owner_email: string | null
   name: string
   generated_images: unknown
+  generation: unknown
   created_at: string
   updated_at: string
 }
@@ -34,6 +35,7 @@ export async function GET() {
       u.email as owner_email,
       p.name,
       p.generated_images,
+      p.generation,
       p.created_at,
       p.updated_at
     from projects p
@@ -45,11 +47,13 @@ export async function GET() {
   return NextResponse.json({
     projects: rows.map((r) => {
       const images = Array.isArray(r.generated_images) ? r.generated_images : []
+      const generation = (r.generation ?? null) as { preset?: string } | null
       return {
         id: r.id,
         ownerEmail: r.owner_email ?? 'Unknown',
         name: r.name,
         generatedCount: images.length,
+        visualDirection: generation?.preset ?? '—',
         createdAt: r.created_at,
         updatedAt: r.updated_at,
       }

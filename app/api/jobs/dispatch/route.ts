@@ -129,7 +129,7 @@ export async function POST(req: Request) {
       ? crypto.randomUUID()
       : `${Date.now()}`
 
-  const maxJobs = 6
+  const maxJobs = 2
   let processed = 0
   for (let i = 0; i < maxJobs; i++) {
     const result = await processSingle(baseUrl, workerId)

@@ -22,6 +22,13 @@ export async function GET() {
       email: user.email,
       brandName: user.brand_name,
       role: user.role,
+      billing: {
+        customerId: user.stripe_customer_id,
+        subscriptionId: user.stripe_subscription_id,
+        priceId: user.stripe_price_id,
+        subscriptionStatus: user.stripe_subscription_status,
+        periodEndsAt: user.billing_period_ends_at,
+      },
       credits: credits
         ? {
             used: credits.used,

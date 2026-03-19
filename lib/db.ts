@@ -42,6 +42,11 @@ export async function ensureSchema() {
     await db`alter table users add column if not exists role text not null default 'free'`
     await db`alter table users add column if not exists credits_used integer not null default 0`
     await db`alter table users add column if not exists credits_reset_at timestamptz`
+    await db`alter table users add column if not exists stripe_customer_id text unique`
+    await db`alter table users add column if not exists stripe_subscription_id text unique`
+    await db`alter table users add column if not exists stripe_price_id text`
+    await db`alter table users add column if not exists stripe_subscription_status text`
+    await db`alter table users add column if not exists billing_period_ends_at timestamptz`
 
     await db`
     create table if not exists projects (
