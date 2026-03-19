@@ -103,7 +103,7 @@ export default function GeneratePage() {
     () => new Set(['flatlay_topdown', 'flatlay_45deg', 'detail_print', 'flatlay_relaxed'])
   )
   const assetCount = shotTypes.size
-  const { addProject, deleteProject } = useProjects()
+  const { addProject, deleteProject, updateProject } = useProjects()
   const router = useRouter()
   const { status } = useSession()
   const { role, limits } = useRole()
@@ -321,6 +321,17 @@ export default function GeneratePage() {
         const data = (await enqueueRes.json().catch(() => ({}))) as { error?: string }
         throw new Error(data.error || 'Failed to enqueue generation')
       }
+
+      await updateProject(project.id, {
+        generation: {
+          status: 'generating',
+          total: allowedShotTypes.length,
+          completed: 0,
+          nextType: allowedShotTypes[0],
+          shotTypes: allowedShotTypes,
+          preset: visualDirection,
+        },
+      }).catch(() => {})
 
       router.push(`/dashboard/results/${project.id}`)
     } catch (e) {

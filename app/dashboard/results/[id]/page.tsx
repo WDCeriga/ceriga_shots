@@ -89,7 +89,6 @@ export default function ResultsPage() {
   }
 
   useEffect(() => {
-    if (project) return
     let cancelled = false
     setIsHydrating(true)
     setHydrateFailed(null)
@@ -111,7 +110,7 @@ export default function ResultsPage() {
     return () => {
       cancelled = true
     }
-  }, [fetchProject, project, projectId])
+  }, [fetchProject, projectId])
 
   useEffect(() => {
     if (!project || project.generation?.status !== 'generating') return
