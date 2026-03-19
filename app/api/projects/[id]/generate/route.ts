@@ -166,11 +166,21 @@ export async function POST(req: NextRequest) {
       dispatchHeaders['x-queue-secret'] = process.env.QUEUE_DISPATCH_SECRET
     } else if (process.env.CRON_SECRET) {
       dispatchHeaders['authorization'] = `Bearer ${process.env.CRON_SECRET}`
+    } else {
+      // Forward session cookie so /api/jobs/dispatch can authorize via getServerSession.
+      const cookie = req.headers.get('cookie')
+      if (cookie) dispatchHeaders.cookie = cookie
     }
     void fetch(`${baseUrl}/api/jobs/dispatch`, {
       method: 'POST',
       headers: dispatchHeaders,
-    }).catch(() => {})
+    })
+      .then((res) => {
+        if (!res.ok) {
+          console.warn(`Dispatch request returned ${res.status}`)
+        }
+      })
+      .catch(() => {})
 
     return NextResponse.json({ ok: true })
   } catch (error) {

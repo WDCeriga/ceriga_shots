@@ -112,8 +112,10 @@ export default function ResultsPage() {
     }
   }, [fetchProject, projectId])
 
+  const generationStatus = project?.generation?.status
+
   useEffect(() => {
-    if (!project || project.generation?.status !== 'generating') return
+    if (generationStatus !== 'generating') return
     let stopped = false
 
     const tick = async () => {
@@ -134,7 +136,7 @@ export default function ResultsPage() {
       stopped = true
       window.clearInterval(interval)
     }
-  }, [fetchProject, project, projectId])
+  }, [fetchProject, generationStatus, projectId])
 
   if (!project) {
     return (
