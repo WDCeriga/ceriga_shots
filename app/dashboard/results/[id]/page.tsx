@@ -6,7 +6,7 @@ import { useProjects } from '@/hooks/use-projects'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
-import { Check, ChevronLeft, ChevronRight, Pencil, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Pencil, Trash2, X } from 'lucide-react'
 import { ShareDialog } from '@/components/share-dialog'
 import { toast } from '@/hooks/use-toast'
 import { LightboxAsset } from '@/components/lightbox-image'
@@ -46,6 +46,7 @@ export default function ResultsPage() {
   const [nameDraft, setNameDraft] = useState('')
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null)
   const retentionDays = limits.assetHistoryRetentionDays
 
   const getExpiryLabel = (timestamp: number) => {
@@ -114,6 +115,8 @@ export default function ResultsPage() {
   }, [fetchProject, projectId])
 
   const generationStatus = project?.generation?.status
+  const navigableImages = (project?.generatedImages ?? []).filter((img) => !!img.url)
+  const activeLightboxImage = lightboxIndex == null ? null : navigableImages[lightboxIndex] ?? null
 
   useEffect(() => {
     if (generationStatus !== 'generating') return
@@ -147,6 +150,22 @@ export default function ResultsPage() {
     }
   }, [fetchProject, generationStatus, projectId])
 
+  useEffect(() => {
+    if (lightboxIndex == null) return
+    const onKey = (e: KeyboardEvent) => {
+      if (!navigableImages.length) return
+      if (e.key === 'ArrowRight') {
+        setLightboxIndex((prev) => (prev == null ? 0 : (prev + 1) % navigableImages.length))
+      } else if (e.key === 'ArrowLeft') {
+        setLightboxIndex((prev) =>
+          prev == null ? 0 : (prev - 1 + navigableImages.length) % navigableImages.length
+        )
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightboxIndex, navigableImages.length])
+
   if (!project) {
     return (
       <div className="p-8 text-center">
@@ -167,8 +186,6 @@ export default function ResultsPage() {
     project.generation.completed < project.generation.total
   const canGenerateMoreFeature = limits.generateMore
   const canGenerateMore = !isActivelyGenerating && canGenerateMoreFeature
-  const navigableImages = project.generatedImages.filter((img) => !!img.url)
-  const activeLightboxImage = lightboxIndex == null ? null : navigableImages[lightboxIndex] ?? null
 
   const startRename = () => {
     setNameDraft(project.name)
@@ -199,6 +216,48 @@ export default function ResultsPage() {
     setIsRenaming(false)
   }
 
+  const deleteAsset = async (assetId: string) => {
+    if (deletingAssetId) return
+    const target = project.generatedImages.find((img) => img.id === assetId)
+    if (!target) return
+
+    const confirmed = window.confirm(
+      `Delete "${formatViewTitle(target.type)}" from this project? This cannot be undone.`
+    )
+    if (!confirmed) return
+
+    setDeletingAssetId(assetId)
+    try {
+      const nextImages = project.generatedImages.filter((img) => img.id !== assetId)
+      await updateProject(projectId, { generatedImages: nextImages })
+
+      if (lightboxIndex != null) {
+        const nextNavigable = nextImages.filter((img) => !!img.url)
+        if (nextNavigable.length === 0) {
+          setLightboxIndex(null)
+        } else {
+          setLightboxIndex((prev) => {
+            if (prev == null) return null
+            return Math.min(prev, nextNavigable.length - 1)
+          })
+        }
+      }
+
+      toast({
+        title: 'Asset deleted',
+        description: 'The asset has been removed from this project.',
+      })
+    } catch (e) {
+      toast({
+        title: 'Delete failed',
+        description: e instanceof Error ? e.message : 'Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setDeletingAssetId(null)
+    }
+  }
+
   const generationLabel = project.generation
     ? project.generation.status === 'generating'
       ? `Generating ${project.generation.completed}/${project.generation.total}${
@@ -222,22 +281,6 @@ export default function ResultsPage() {
       window.setTimeout(() => setIsDownloading(false), 1200)
     }
   }
-
-  useEffect(() => {
-    if (lightboxIndex == null) return
-    const onKey = (e: KeyboardEvent) => {
-      if (!navigableImages.length) return
-      if (e.key === 'ArrowRight') {
-        setLightboxIndex((prev) => (prev == null ? 0 : (prev + 1) % navigableImages.length))
-      } else if (e.key === 'ArrowLeft') {
-        setLightboxIndex((prev) =>
-          prev == null ? 0 : (prev - 1 + navigableImages.length) % navigableImages.length
-        )
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [lightboxIndex, navigableImages.length])
 
   return (
     <div className="p-6 lg:p-8">
@@ -495,6 +538,19 @@ export default function ResultsPage() {
                       {getExpiryLabel(img.timestamp)}
                     </p>
                   ) : null}
+                  <div className="mt-2 flex justify-center">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-xs text-destructive hover:text-white"
+                      disabled={deletingAssetId != null}
+                      onClick={() => void deleteAsset(img.id)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-1" />
+                      {deletingAssetId === img.id ? 'Deleting…' : 'Delete'}
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -578,9 +634,22 @@ export default function ResultsPage() {
           {activeLightboxImage ? (
             <div className="px-4 py-3 border-t border-border text-sm text-muted-foreground flex items-center justify-between">
               <span>{formatViewTitle(activeLightboxImage.type)}</span>
-              <span className="text-xs">
-                {lightboxIndex != null ? `${lightboxIndex + 1}/${navigableImages.length}` : ''}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs">
+                  {lightboxIndex != null ? `${lightboxIndex + 1}/${navigableImages.length}` : ''}
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 px-2 text-xs text-destructive hover:text-white"
+                  disabled={deletingAssetId != null}
+                  onClick={() => void deleteAsset(activeLightboxImage.id)}
+                >
+                  <Trash2 className="w-3.5 h-3.5 mr-1" />
+                  {deletingAssetId === activeLightboxImage.id ? 'Deleting…' : 'Delete'}
+                </Button>
+              </div>
             </div>
           ) : null}
         </DialogContent>

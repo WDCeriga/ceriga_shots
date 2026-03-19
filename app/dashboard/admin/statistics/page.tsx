@@ -8,6 +8,24 @@ type StatsResponse = {
   projects: number
   queue: { queued: number; processing: number; failed: number }
   shares: { active: number }
+  finance: {
+    paidSubscribers: { total: number; starter: number; studio: number; label: number }
+    revenue: { mrr: number; arr: number }
+    costs: {
+      variableCostPerPaidUser: number
+      fixedMonthlyCost: number
+      estimatedMonthlyCosts: number
+    }
+    profitability: { grossProfitMonthly: number; grossMarginPercent: number }
+  }
+}
+
+function formatMoney(amount: number) {
+  return new Intl.NumberFormat('en-IE', {
+    style: 'currency',
+    currency: 'EUR',
+    maximumFractionDigits: 2,
+  }).format(amount)
 }
 
 export default function AdminStatisticsPage() {
@@ -44,6 +62,49 @@ export default function AdminStatisticsPage() {
         <Card><CardHeader><CardTitle className="text-sm">Queue: Processing</CardTitle></CardHeader><CardContent><div className="text-xl font-semibold">{stats?.queue.processing ?? '...'}</div></CardContent></Card>
         <Card><CardHeader><CardTitle className="text-sm">Queue: Failed</CardTitle></CardHeader><CardContent><div className="text-xl font-semibold">{stats?.queue.failed ?? '...'}</div></CardContent></Card>
         <Card><CardHeader><CardTitle className="text-sm">Queue Health</CardTitle></CardHeader><CardContent><div className="text-xl font-semibold">{stats ? (stats.queue.failed > 0 ? 'Attention needed' : 'Healthy') : '...'}</div></CardContent></Card>
+      </div>
+
+      <div className="space-y-3">
+        <h2 className="text-lg font-semibold">Finance</h2>
+        <p className="text-xs text-muted-foreground">
+          Revenue and cost estimates based on active paid subscriptions and role pricing.
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card><CardHeader><CardTitle className="text-sm">MRR</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats ? formatMoney(stats.finance.revenue.mrr) : '...'}</div></CardContent></Card>
+        <Card><CardHeader><CardTitle className="text-sm">ARR</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats ? formatMoney(stats.finance.revenue.arr) : '...'}</div></CardContent></Card>
+        <Card><CardHeader><CardTitle className="text-sm">Monthly Costs (est.)</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats ? formatMoney(stats.finance.costs.estimatedMonthlyCosts) : '...'}</div></CardContent></Card>
+        <Card><CardHeader><CardTitle className="text-sm">Gross Profit / mo</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats ? formatMoney(stats.finance.profitability.grossProfitMonthly) : '...'}</div></CardContent></Card>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <Card>
+          <CardHeader><CardTitle className="text-sm">Gross Margin</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-xl font-semibold">
+              {stats ? `${stats.finance.profitability.grossMarginPercent.toFixed(1)}%` : '...'}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="text-sm">Active Paid Subscribers</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-xl font-semibold">{stats?.finance.paidSubscribers.total ?? '...'}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Starter {stats?.finance.paidSubscribers.starter ?? '...'} • Studio {stats?.finance.paidSubscribers.studio ?? '...'} • Label {stats?.finance.paidSubscribers.label ?? '...'}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><CardTitle className="text-sm">Cost Assumptions</CardTitle></CardHeader>
+          <CardContent>
+            <div className="text-sm">
+              <p>Variable: {stats ? `${formatMoney(stats.finance.costs.variableCostPerPaidUser)} / paid user` : '...'}</p>
+              <p className="mt-1">Fixed: {stats ? `${formatMoney(stats.finance.costs.fixedMonthlyCost)} / month` : '...'}</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

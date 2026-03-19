@@ -119,6 +119,12 @@ export async function POST(req: Request) {
     client_reference_id: user.id,
     line_items: [{ price: priceId, quantity: 1 }],
     allow_promotion_codes: true,
+    locale: 'auto',
+    custom_text: {
+      submit: {
+        message: 'Cancel anytime from Settings > Manage billing.',
+      },
+    },
     success_url: `${origin}/dashboard/pricing?checkout=success`,
     cancel_url: `${origin}/dashboard/pricing?checkout=cancelled`,
     metadata: {
