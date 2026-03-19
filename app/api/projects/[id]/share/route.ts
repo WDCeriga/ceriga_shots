@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { isDatabaseConfigured } from '@/lib/db'
 import { getProjectForUser } from '@/lib/projects'
 import { createShareForProject } from '@/lib/shares'
+import { applyRateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 
@@ -20,6 +21,21 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { error: 'Database is not configured (missing DATABASE_URL).' },
       { status: 503 }
+    )
+  }
+
+  const shareRate = await applyRateLimit({
+    key: `rl:share:create:user:${session.user.id}`,
+    limit: 10,
+    windowSeconds: 60,
+  })
+  if (!shareRate.ok) {
+    return NextResponse.json(
+      { error: `Too many share link requests. Try again in ${shareRate.retryAfterSeconds}s.` },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(shareRate.retryAfterSeconds) },
+      }
     )
   }
 

@@ -1,7 +1,24 @@
 import { NextResponse } from 'next/server'
 import { createUser } from '@/lib/users'
+import { applyRateLimit, getRequestIp } from '@/lib/rate-limit'
 
 export async function POST(req: Request) {
+  const ip = getRequestIp(req)
+  const ipLimit = await applyRateLimit({
+    key: `rl:signup:ip:${ip}`,
+    limit: 5,
+    windowSeconds: 60,
+  })
+  if (!ipLimit.ok) {
+    return NextResponse.json(
+      { error: `Too many signup attempts. Try again in ${ipLimit.retryAfterSeconds}s.` },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(ipLimit.retryAfterSeconds) },
+      }
+    )
+  }
+
   let body: { email?: string; password?: string; brandName?: string }
   try {
     body = await req.json()
@@ -12,6 +29,23 @@ export async function POST(req: Request) {
   const email = body.email?.trim().toLowerCase()
   const password = body.password ?? ''
   const brandName = typeof body.brandName === 'string' ? body.brandName : undefined
+
+  if (email) {
+    const emailLimit = await applyRateLimit({
+      key: `rl:signup:email:${email}`,
+      limit: 5,
+      windowSeconds: 24 * 60 * 60,
+    })
+    if (!emailLimit.ok) {
+      return NextResponse.json(
+        { error: `Too many signup attempts for this email. Try again in ${emailLimit.retryAfterSeconds}s.` },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(emailLimit.retryAfterSeconds) },
+        }
+      )
+    }
+  }
 
   if (!email || !password || password.length < 8) {
     return NextResponse.json(

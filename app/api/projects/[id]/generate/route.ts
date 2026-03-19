@@ -15,6 +15,7 @@ import {
 import { findUserById } from '@/lib/users'
 import type { UserRole } from '@/lib/roles'
 import { decrementCredits, incrementCredits } from '@/lib/credits'
+import { applyRateLimit } from '@/lib/rate-limit'
 
 const SHOT_TYPES: ShotType[] = [
   'flatlay_topdown',
@@ -97,6 +98,36 @@ export async function POST(req: NextRequest) {
   const project = await getProjectForUser(session.user.id, id)
   if (!project) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  const userRate = await applyRateLimit({
+    key: `rl:generate:user:${session.user.id}`,
+    limit: 10,
+    windowSeconds: 60,
+  })
+  if (!userRate.ok) {
+    return NextResponse.json(
+      { error: `Too many generation requests. Try again in ${userRate.retryAfterSeconds}s.` },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(userRate.retryAfterSeconds) },
+      }
+    )
+  }
+
+  const projectRate = await applyRateLimit({
+    key: `rl:generate:project:${session.user.id}:${id}`,
+    limit: 4,
+    windowSeconds: 60,
+  })
+  if (!projectRate.ok) {
+    return NextResponse.json(
+      { error: `Too many generation requests for this project. Try again in ${projectRate.retryAfterSeconds}s.` },
+      {
+        status: 429,
+        headers: { 'Retry-After': String(projectRate.retryAfterSeconds) },
+      }
+    )
   }
 
   const user = await findUserById(session.user.id)
