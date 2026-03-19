@@ -1,12 +1,24 @@
 export type UserRole = 'free' | 'starter' | 'studio' | 'label' | 'admin'
 
 export type Preset = 'raw' | 'editorial' | 'luxury' | 'natural' | 'studio' | 'surprise'
+export type ShotType =
+  | 'flatlay_topdown'
+  | 'flatlay_45deg'
+  | 'flatlay_sleeves'
+  | 'flatlay_relaxed'
+  | 'flatlay_folded'
+  | 'surface_draped'
+  | 'surface_hanging'
+  | 'detail_print'
+  | 'detail_fabric'
+  | 'detail_collar'
 
 export interface RoleLimits {
   credits: number
   flatLayTypes: number
   surfaceShots: boolean
   detailShots: 'none' | 'print' | 'all'
+  blockedShotTypes: ShotType[]
   presets: Preset[]
   zip: boolean
   shareLinks: boolean
@@ -25,6 +37,7 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
     flatLayTypes: 2,
     surfaceShots: false,
     detailShots: 'print',
+    blockedShotTypes: ['flatlay_sleeves', 'flatlay_relaxed', 'flatlay_folded'],
     presets: ['studio'],
     zip: true,
     shareLinks: true,
@@ -40,6 +53,7 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
     flatLayTypes: 5,
     surfaceShots: false,
     detailShots: 'print',
+    blockedShotTypes: [],
     presets: ['raw', 'editorial'],
     zip: true,
     shareLinks: true,
@@ -55,6 +69,7 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
     flatLayTypes: 5,
     surfaceShots: true,
     detailShots: 'all',
+    blockedShotTypes: [],
     presets: ['raw', 'editorial', 'luxury', 'natural', 'studio', 'surprise'],
     zip: true,
     shareLinks: true,
@@ -70,6 +85,7 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
     flatLayTypes: 5,
     surfaceShots: true,
     detailShots: 'all',
+    blockedShotTypes: [],
     presets: ['raw', 'editorial', 'luxury', 'natural', 'studio', 'surprise'],
     zip: true,
     shareLinks: true,
@@ -85,6 +101,7 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
     flatLayTypes: 5,
     surfaceShots: true,
     detailShots: 'all',
+    blockedShotTypes: [],
     presets: ['raw', 'editorial', 'luxury', 'natural', 'studio', 'surprise'],
     zip: true,
     shareLinks: true,
@@ -97,7 +114,10 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
   },
 }
 
-export type Feature = keyof Omit<RoleLimits, 'credits' | 'flatLayTypes' | 'maxProjects' | 'presets' | 'detailShots' | 'resolution'>
+export type Feature = keyof Omit<
+  RoleLimits,
+  'credits' | 'flatLayTypes' | 'maxProjects' | 'presets' | 'detailShots' | 'resolution' | 'blockedShotTypes'
+>
 
 export function getRoleLimits(role: UserRole): RoleLimits {
   return ROLE_LIMITS[role] ?? ROLE_LIMITS.free

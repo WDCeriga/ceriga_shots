@@ -12,6 +12,21 @@ class HttpError extends Error {
   }
 }
 
+async function readHttpErrorMessage(res: Response): Promise<string> {
+  const fallback = `Request failed: ${res.status}`
+  const contentType = res.headers.get('content-type') || ''
+
+  if (contentType.includes('application/json')) {
+    const data = (await res.json().catch(() => null)) as { error?: unknown; message?: unknown } | null
+    const apiMessage = data?.error ?? data?.message
+    if (typeof apiMessage === 'string' && apiMessage.trim()) return apiMessage.trim()
+    return fallback
+  }
+
+  const text = (await res.text().catch(() => '')).trim()
+  return text || fallback
+}
+
 type ProjectsContextValue = {
   projects: Project[]
   isLoading: boolean
@@ -79,7 +94,8 @@ export function ProjectsProvider({ children }: { children: React.ReactNode }) {
           if (res.status === 401) {
             throw new HttpError(401, 'You must be logged in to generate content.')
           }
-          throw new HttpError(res.status, `Failed to create project: ${res.status}`)
+          const errorMessage = await readHttpErrorMessage(res)
+          throw new HttpError(res.status, errorMessage)
         }
         const data = (await res.json()) as { project: Project }
         setProjects((prev) => prev.map((p) => (p.id === optimistic.id ? data.project : p)))

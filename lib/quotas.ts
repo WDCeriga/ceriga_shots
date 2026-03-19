@@ -56,6 +56,13 @@ export function validateShotTypesForRole(
   shotTypes: string[]
 ): QuotaError | null {
   const limits = getRoleLimits(role)
+  const blocked = new Set(limits.blockedShotTypes)
+
+  for (const t of shotTypes) {
+    if (blocked.has(t as (typeof limits.blockedShotTypes)[number])) {
+      return { code: 'shot_type_not_allowed', shotType: t }
+    }
+  }
 
   if (!limits.surfaceShots) {
     for (const t of shotTypes) {

@@ -180,13 +180,23 @@ export default function GeneratePage() {
 
   const availableShotTypes = useMemo(() => {
     return SHOT_TYPES.filter((t) => {
+      if (limits.blockedShotTypes.includes(t.key)) return false
       if ((t.key === 'surface_draped' || t.key === 'surface_hanging') && !limits.surfaceShots) return false
       if (limits.detailShots === 'none' && t.key.startsWith('detail_')) return false
       if (limits.detailShots === 'print' && (t.key === 'detail_fabric' || t.key === 'detail_collar'))
         return false
       return true
     })
-  }, [limits.detailShots, limits.surfaceShots])
+  }, [limits.blockedShotTypes, limits.detailShots, limits.surfaceShots])
+  const sortedShotTypes = useMemo(() => {
+    const enabled = new Set(availableShotTypes.map((t) => t.key))
+    return [...SHOT_TYPES].sort((a, b) => {
+      const aEnabled = enabled.has(a.key)
+      const bEnabled = enabled.has(b.key)
+      if (aEnabled === bEnabled) return 0
+      return aEnabled ? -1 : 1
+    })
+  }, [availableShotTypes])
 
   useEffect(() => {
     if (!limits.presets.includes(visualDirection)) {
@@ -455,7 +465,7 @@ export default function GeneratePage() {
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
-                {SHOT_TYPES.map((t) => {
+                {sortedShotTypes.map((t) => {
                   const selected = shotTypes.has(t.key)
                   const enabled = availableShotTypes.some((s) => s.key === t.key)
                   return (
