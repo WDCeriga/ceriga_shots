@@ -508,10 +508,6 @@ export default function GeneratePage() {
               </div>
 
               <div className="my-7 h-px w-full bg-white/10" />
-              <p className="text-xs text-muted-foreground">
-                Flat-lay types selected: {Array.from(shotTypes).filter((k) => k.startsWith('flatlay_')).length}/
-                {limits.flatLayTypes}
-              </p>
 
               <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">
                 Visual direction

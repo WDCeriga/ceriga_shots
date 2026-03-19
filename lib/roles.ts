@@ -15,6 +15,8 @@ export type ShotType =
 
 export interface RoleLimits {
   credits: number
+  /** -1 = unlimited */
+  assetHistoryRetentionDays: number
   flatLayTypes: number
   surfaceShots: boolean
   detailShots: 'none' | 'print' | 'all'
@@ -34,6 +36,7 @@ export interface RoleLimits {
 export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
   free: {
     credits: 5,
+    assetHistoryRetentionDays: 7,
     flatLayTypes: 2,
     surfaceShots: false,
     detailShots: 'print',
@@ -50,11 +53,12 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
   },
   starter: {
     credits: 50,
+    assetHistoryRetentionDays: 90,
     flatLayTypes: 5,
     surfaceShots: false,
     detailShots: 'print',
     blockedShotTypes: [],
-    presets: ['raw', 'editorial'],
+    presets: ['raw', 'editorial', 'studio'],
     zip: true,
     shareLinks: true,
     resolution: 'hd',
@@ -66,6 +70,7 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
   },
   studio: {
     credits: 200,
+    assetHistoryRetentionDays: 365,
     flatLayTypes: 5,
     surfaceShots: true,
     detailShots: 'all',
@@ -82,6 +87,7 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
   },
   label: {
     credits: 500,
+    assetHistoryRetentionDays: -1,
     flatLayTypes: 5,
     surfaceShots: true,
     detailShots: 'all',
@@ -98,6 +104,7 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
   },
   admin: {
     credits: -1,
+    assetHistoryRetentionDays: -1,
     flatLayTypes: 5,
     surfaceShots: true,
     detailShots: 'all',
@@ -116,7 +123,7 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
 
 export type Feature = keyof Omit<
   RoleLimits,
-  'credits' | 'flatLayTypes' | 'maxProjects' | 'presets' | 'detailShots' | 'resolution' | 'blockedShotTypes'
+  'credits' | 'assetHistoryRetentionDays' | 'flatLayTypes' | 'maxProjects' | 'presets' | 'detailShots' | 'resolution' | 'blockedShotTypes'
 >
 
 export function getRoleLimits(role: UserRole): RoleLimits {

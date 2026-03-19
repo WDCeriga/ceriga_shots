@@ -1,7 +1,7 @@
 import type { NextAuthOptions } from 'next-auth'
 import Google from 'next-auth/providers/google'
 import Credentials from 'next-auth/providers/credentials'
-import { verifyUser } from '@/lib/users'
+import { findUserById, verifyUser } from '@/lib/users'
 
 const googleProviderConfigured =
   Boolean(process.env.AUTH_GOOGLE_ID) && Boolean(process.env.AUTH_GOOGLE_SECRET)
@@ -52,9 +52,22 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = (token as any).id ?? token.sub
+        const userId = (token as any).id ?? token.sub
+        session.user.id = userId
         session.user.email = token.email as string | undefined
-        session.user.role = (token.role as string) ?? 'free'
+        let resolvedRole = (token.role as string) ?? 'free'
+        if (userId) {
+          try {
+            const dbUser = await findUserById(userId)
+            if (dbUser?.role) {
+              resolvedRole = dbUser.role
+              token.role = dbUser.role
+            }
+          } catch {
+            // Keep token/session role fallback if DB read fails.
+          }
+        }
+        session.user.role = resolvedRole
       }
       return session
     },

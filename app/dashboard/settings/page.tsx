@@ -8,11 +8,16 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { AlertTriangle, CheckCircle2, Loader2, LogOut } from 'lucide-react'
+import { getRoleLimits, type UserRole } from '@/lib/roles'
 
 type StatusResponse = {
   database: { configured: boolean }
   gemini: { configured: boolean }
   auth: { googleConfigured: boolean; secretConfigured: boolean }
+}
+
+type ProjectsCountResponse = {
+  projects?: Array<{ id: string }>
 }
 
 export default function SettingsPage() {
@@ -34,6 +39,12 @@ export default function SettingsPage() {
     remaining: number
     resetAt: string | null
   } | null>(null)
+  const [projectsUsed, setProjectsUsed] = useState<number | null>(null)
+  const roleForLimits = (accountPlan as UserRole) ?? 'free'
+  const projectLimit = getRoleLimits(roleForLimits).maxProjects
+  const projectLimitLabel = projectLimit < 0 ? 'Unlimited' : `${projectLimit}`
+  const retentionDays = getRoleLimits(roleForLimits).assetHistoryRetentionDays
+  const retentionLabel = retentionDays < 0 ? 'Unlimited' : `${retentionDays} days`
 
   useEffect(() => {
     const next = {
@@ -77,6 +88,21 @@ export default function SettingsPage() {
         if (cancelled) return
         setBrandLoading(false)
       })
+
+    fetch('/api/projects', { method: 'GET' })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`projects ${res.status}`)
+        return (await res.json()) as ProjectsCountResponse
+      })
+      .then((data) => {
+        if (cancelled) return
+        setProjectsUsed(Array.isArray(data.projects) ? data.projects.length : 0)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setProjectsUsed(null)
+      })
+
     return () => {
       cancelled = true
     }
@@ -225,9 +251,29 @@ export default function SettingsPage() {
               <span className="text-sm text-muted-foreground">Remaining</span>
               <span className="text-sm font-medium">{credits ? credits.remaining : '...'}</span>
             </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Project limit</span>
+              <span className="text-sm font-medium">
+                {projectsUsed == null ? '.../' : `${projectsUsed}/`}
+                {projectLimitLabel}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Asset history retention</span>
+              <span className="text-sm font-medium">{retentionLabel}</span>
+            </div>
             <div className="text-xs text-muted-foreground">
               Reset: {credits?.resetAt ? new Date(credits.resetAt).toLocaleString() : 'Pending'}
             </div>
+            {retentionDays >= 0 ? (
+              <div className="text-xs text-muted-foreground">
+                Generated assets older than {retentionDays} days are automatically removed.
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground">
+                Your generated asset history is retained without a time limit.
+              </div>
+            )}
           </CardContent>
         </Card>
 

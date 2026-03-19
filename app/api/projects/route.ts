@@ -15,6 +15,8 @@ import {
 import { findUserById } from '@/lib/users'
 import type { UserRole } from '@/lib/roles'
 import { decrementCredits, incrementCredits, getCreditsForUser } from '@/lib/credits'
+import { applyAssetRetentionToProject } from '@/lib/asset-retention'
+import { updateProjectForUser } from '@/lib/projects'
 
 function quotaErrorMessage(err: QuotaError): string {
   switch (err.code) {
@@ -84,8 +86,21 @@ export async function GET() {
   }
 
   try {
+    const user = await findUserById(session.user.id)
+    const role = (user?.role ?? 'free') as UserRole
     const projects = await getProjectsForUser(session.user.id)
-    return NextResponse.json({ projects })
+    const now = Date.now()
+    const hydrated = await Promise.all(
+      projects.map(async (project) => {
+        const retained = applyAssetRetentionToProject(project, role, now)
+        if (!retained.changed) return project
+        const persisted = await updateProjectForUser(session.user.id, project.id, {
+          generatedImages: retained.project.generatedImages,
+        })
+        return persisted ?? retained.project
+      })
+    )
+    return NextResponse.json({ projects: hydrated })
   } catch (error) {
     console.error('GET /api/projects error', error)
     return NextResponse.json({ error: 'Failed to load projects' }, { status: 500 })

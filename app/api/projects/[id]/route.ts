@@ -6,6 +6,9 @@ import { deleteProjectForUser, getProjectForUser, updateProjectForUser } from '@
 import type { Project } from '@/hooks/use-projects'
 import { isDatabaseConfigured } from '@/lib/db'
 import { z } from 'zod'
+import { findUserById } from '@/lib/users'
+import type { UserRole } from '@/lib/roles'
+import { applyAssetRetentionToProject } from '@/lib/asset-retention'
 
 const GeneratedImageSchema = z
   .object({
@@ -157,7 +160,16 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
     if (!project) {
       return NextResponse.json({ error: 'Not found' }, { status: 404 })
     }
-    return NextResponse.json({ project })
+    const user = await findUserById(session.user.id)
+    const role = (user?.role ?? 'free') as UserRole
+    const retained = applyAssetRetentionToProject(project, role)
+    if (!retained.changed) {
+      return NextResponse.json({ project })
+    }
+    const persisted = await updateProjectForUser(session.user.id, id, {
+      generatedImages: retained.project.generatedImages,
+    })
+    return NextResponse.json({ project: persisted ?? retained.project })
   } catch (error) {
     console.error('GET /api/projects/[id] error', error)
     return NextResponse.json({ error: 'Failed to load project' }, { status: 500 })

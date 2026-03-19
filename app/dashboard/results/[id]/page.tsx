@@ -45,6 +45,16 @@ export default function ResultsPage() {
   const [nameDraft, setNameDraft] = useState('')
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const retentionDays = limits.assetHistoryRetentionDays
+
+  const getExpiryLabel = (timestamp: number) => {
+    if (retentionDays < 0) return 'No expiry'
+    const expiresAtMs = timestamp + retentionDays * 24 * 60 * 60 * 1000
+    const remainingMs = expiresAtMs - Date.now()
+    if (remainingMs <= 0) return 'Expired'
+    const daysLeft = Math.ceil(remainingMs / (24 * 60 * 60 * 1000))
+    return daysLeft <= 1 ? 'Expires in 1 day' : `Expires in ${daysLeft} days`
+  }
 
   const formatViewTitle = (t: string) => {
     switch (t) {
@@ -461,6 +471,11 @@ export default function ResultsPage() {
                   <p className="text-xs text-muted-foreground text-center">
                     {formatViewTitle(img.type)}
                   </p>
+                  {typeof img.timestamp === 'number' ? (
+                    <p className="text-[11px] text-muted-foreground/80 text-center mt-1">
+                      {getExpiryLabel(img.timestamp)}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             ))}

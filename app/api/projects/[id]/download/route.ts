@@ -3,8 +3,11 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { isDatabaseConfigured } from '@/lib/db'
-import { getProjectForUser } from '@/lib/projects'
+import { getProjectForUser, updateProjectForUser } from '@/lib/projects'
 import { bufferFromImageRef, safeFilename } from '@/lib/zip'
+import { findUserById } from '@/lib/users'
+import type { UserRole } from '@/lib/roles'
+import { applyAssetRetentionToProject } from '@/lib/asset-retention'
 
 export const runtime = 'nodejs'
 
@@ -24,10 +27,18 @@ export async function GET(req: Request) {
     )
   }
 
-  const project = await getProjectForUser(session.user.id, id)
-  if (!project) {
+  const rawProject = await getProjectForUser(session.user.id, id)
+  if (!rawProject) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
+  const user = await findUserById(session.user.id)
+  const role = (user?.role ?? 'free') as UserRole
+  const retained = applyAssetRetentionToProject(rawProject, role)
+  const project = retained.changed
+    ? (await updateProjectForUser(session.user.id, id, {
+        generatedImages: retained.project.generatedImages,
+      })) ?? retained.project
+    : rawProject
 
   const zip = new JSZip()
 
