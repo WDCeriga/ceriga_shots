@@ -176,30 +176,32 @@ export function DashboardPricingClient() {
         </p>
       </div>
 
-      <div className="mb-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+      <div className="mb-8 flex items-center justify-center">
         <div className="inline-flex items-center rounded-lg border border-border p-1 bg-card">
           <button
             type="button"
             onClick={() => setBilling('monthly')}
-            className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors ${
+            className={`min-w-[7.5rem] px-4 py-2 text-sm font-semibold rounded-md transition-colors ${
               billing === 'monthly' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Monthly
           </button>
-          <button
-            type="button"
-            onClick={() => setBilling('yearly')}
-            className={`px-4 py-2 text-sm font-semibold rounded-md transition-colors ${
-              billing === 'yearly' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Yearly
-          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setBilling('yearly')}
+              className={`min-w-[7.5rem] px-4 py-2 text-sm font-semibold rounded-md transition-colors ${
+                billing === 'yearly' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Yearly
+            </button>
+            <span className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 -translate-y-2/3 inline-flex items-center rounded-full border border-accent bg-accent px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-accent-foreground whitespace-nowrap">
+              Save 20%
+            </span>
+          </div>
         </div>
-        <span className="inline-flex items-center rounded-full border border-accent/50 bg-accent/10 px-3 py-1 text-xs font-semibold tracking-wide text-accent">
-          Save 20%
-        </span>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-14">
