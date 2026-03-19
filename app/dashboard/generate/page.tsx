@@ -318,7 +318,17 @@ export default function GeneratePage() {
         }),
       })
       if (!enqueueRes.ok) {
-        const data = (await enqueueRes.json().catch(() => ({}))) as { error?: string }
+        const data = (await enqueueRes.json().catch(() => ({}))) as { error?: string; code?: string }
+        if (data.code === 'email_not_verified') {
+          toast({
+            title: 'Email not verified',
+            description: 'Please verify your email before generating content. Check your inbox or use the banner above to resend.',
+            variant: 'destructive',
+          })
+          if (createdProjectId) deleteProject(createdProjectId)
+          setIsLoading(false)
+          return
+        }
         throw new Error(data.error || 'Failed to enqueue generation')
       }
 

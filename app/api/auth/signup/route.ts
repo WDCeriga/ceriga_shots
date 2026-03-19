@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
-import { createUser } from '@/lib/users'
+import { createUser, setEmailVerificationToken } from '@/lib/users'
 import { applyRateLimit, getRequestIp } from '@/lib/rate-limit'
+import { sendVerificationEmail } from '@/lib/email'
+import crypto from 'crypto'
 
 export async function POST(req: Request) {
   const ip = getRequestIp(req)
@@ -62,7 +64,17 @@ export async function POST(req: Request) {
   }
 
   try {
-    await createUser(email, password, brandName)
+    const user = await createUser(email, password, brandName)
+
+    try {
+      const token = crypto.randomUUID()
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
+      await setEmailVerificationToken(user.id, token, expiresAt)
+      await sendVerificationEmail(email, token)
+    } catch (emailErr) {
+      console.error('Failed to send verification email on signup:', emailErr)
+    }
+
     return NextResponse.json({ ok: true })
   } catch (error) {
     if (error instanceof Error && /exists/i.test(error.message)) {

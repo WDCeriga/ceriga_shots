@@ -447,8 +447,18 @@ export default function ResultsPage() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ mode: 'more', shotTypes: [moreType], preset }),
                       })
-                      const data = (await res.json().catch(() => ({}))) as { error?: string }
-                      if (!res.ok) throw new Error(data.error || 'Failed to enqueue generation')
+                      const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string }
+                      if (!res.ok) {
+                        if (data.code === 'email_not_verified') {
+                          toast({
+                            title: 'Email not verified',
+                            description: 'Please verify your email before generating content. Check your inbox or use the banner above to resend.',
+                            variant: 'destructive',
+                          })
+                          return
+                        }
+                        throw new Error(data.error || 'Failed to enqueue generation')
+                      }
                       await fetchProject(projectId)
                     } catch (e) {
                       toast({

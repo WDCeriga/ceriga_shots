@@ -1,7 +1,7 @@
 import type { NextAuthOptions } from 'next-auth'
 import Google from 'next-auth/providers/google'
 import Credentials from 'next-auth/providers/credentials'
-import { findUserRoleCached, verifyUser } from '@/lib/users'
+import { findUserRoleCached, verifyUser, isEmailVerified } from '@/lib/users'
 
 const googleProviderConfigured =
   Boolean(process.env.AUTH_GOOGLE_ID) && Boolean(process.env.AUTH_GOOGLE_SECRET)
@@ -47,6 +47,7 @@ export const authOptions: NextAuthOptions = {
         token.id = (user as any).id ?? token.sub
         token.email = user.email ?? token.email
         token.role = (user as any).role ?? 'free'
+        token.emailVerified = false
       }
       return token
     },
@@ -56,6 +57,7 @@ export const authOptions: NextAuthOptions = {
         session.user.id = userId
         session.user.email = token.email as string | undefined
         let resolvedRole = (token.role as string) ?? 'free'
+        let resolvedEmailVerified = token.emailVerified ?? false
         if (userId) {
           try {
             const dbRole = await findUserRoleCached(userId)
@@ -66,8 +68,15 @@ export const authOptions: NextAuthOptions = {
           } catch {
             // Keep token/session role fallback if DB read fails.
           }
+          try {
+            resolvedEmailVerified = await isEmailVerified(userId)
+            token.emailVerified = resolvedEmailVerified
+          } catch {
+            // Keep token fallback if DB read fails.
+          }
         }
         session.user.role = resolvedRole
+        session.user.emailVerified = resolvedEmailVerified
       }
       return session
     },

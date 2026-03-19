@@ -133,6 +133,13 @@ export async function POST(req: NextRequest) {
   const user = await findUserById(session.user.id)
   const role = (user?.role ?? 'free') as UserRole
 
+  if (!user?.email_verified) {
+    return NextResponse.json(
+      { error: 'Please verify your email before generating.', code: 'email_not_verified' },
+      { status: 403 }
+    )
+  }
+
   const generateMoreErr = mode === 'more' ? checkGenerateMore(role) : null
   if (generateMoreErr) {
     return NextResponse.json(

@@ -1,8 +1,11 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { useProjects } from '@/hooks/use-projects'
+import { toast } from '@/hooks/use-toast'
 
 function ProjectCardSkeleton() {
   return (
@@ -18,6 +21,29 @@ function ProjectCardSkeleton() {
 
 export default function DashboardHome() {
   const { projects, isLoading } = useProjects()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const verified = searchParams.get('verified')
+    if (verified === 'true') {
+      toast({
+        title: 'Email verified',
+        description: 'Your email has been verified. You can now generate content.',
+      })
+    } else if (verified === 'expired') {
+      toast({
+        title: 'Link expired',
+        description: 'Your verification link has expired. Please request a new one.',
+        variant: 'destructive',
+      })
+    } else if (verified === 'invalid') {
+      toast({
+        title: 'Invalid link',
+        description: 'The verification link is invalid. Please request a new one.',
+        variant: 'destructive',
+      })
+    }
+  }, [searchParams])
 
   return (
     <div className="p-8 max-w-6xl mx-auto">

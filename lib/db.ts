@@ -48,6 +48,10 @@ export async function ensureSchema() {
     await db`alter table users add column if not exists stripe_subscription_status text`
     await db`alter table users add column if not exists billing_period_ends_at timestamptz`
 
+    await db`alter table users add column if not exists email_verified boolean not null default false`
+    await db`alter table users add column if not exists email_verification_token text`
+    await db`alter table users add column if not exists email_verification_token_expires timestamptz`
+
     await db`
     create table if not exists projects (
       id uuid primary key default gen_random_uuid(),

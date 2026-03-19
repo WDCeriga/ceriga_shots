@@ -8,6 +8,9 @@ export type DbUserRow = {
   brand_name: string | null
   password_hash: string
   role: UserRole
+  email_verified: boolean
+  email_verification_token: string | null
+  email_verification_token_expires: string | null
   stripe_customer_id: string | null
   stripe_subscription_id: string | null
   stripe_price_id: string | null
@@ -119,5 +122,55 @@ export async function setUserStripeCustomerId(id: string, customerId: string): P
     returning *
   `) as DbUserRow[]
   return rows[0] ?? null
+}
+
+export async function setEmailVerificationToken(
+  userId: string,
+  token: string,
+  expiresAt: Date
+): Promise<void> {
+  await ensureSchema()
+  await db`
+    update users
+    set email_verification_token = ${token},
+        email_verification_token_expires = ${expiresAt.toISOString()}
+    where id = ${userId}
+  `
+}
+
+export async function verifyEmailByToken(token: string): Promise<DbUserRow | null> {
+  await ensureSchema()
+  const rows = (await db`
+    select * from users
+    where email_verification_token = ${token}
+    limit 1
+  `) as DbUserRow[]
+  const user = rows[0]
+  if (!user) return null
+
+  if (
+    user.email_verification_token_expires &&
+    new Date(user.email_verification_token_expires) < new Date()
+  ) {
+    return null
+  }
+
+  const updated = (await db`
+    update users
+    set email_verified = true,
+        email_verification_token = null,
+        email_verification_token_expires = null
+    where id = ${user.id}
+    returning *
+  `) as DbUserRow[]
+  return updated[0] ?? null
+}
+
+export async function isEmailVerified(userId: string): Promise<boolean> {
+  await ensureSchema()
+  const rows = (await db`
+    select email_verified from users where id = ${userId} limit 1
+  `) as Array<{ email_verified: boolean }>
+  return rows[0]?.email_verified ?? false
 }
 
