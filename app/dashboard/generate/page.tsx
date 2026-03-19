@@ -385,7 +385,9 @@ export default function GeneratePage() {
 
           {!isAuthLoading && !isAuthed && (
             <div className="mt-6 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
-              <span className="font-medium">Login required to generate.</span>{' '}
+              <span className="font-medium text-red-400 [text-shadow:0_0_10px_rgba(248,113,113,0.75)]">
+                Login required to generate.
+              </span>{' '}
               You can browse the dashboard, but generation is locked until you sign in.
             </div>
           )}
