@@ -42,7 +42,7 @@ export function Footer() {
     <footer className="border-t border-border py-12">
       <div className="max-w-7xl mx-auto px-6 lg:px-12 flex flex-col sm:flex-row items-center justify-between gap-6">
         <Link href="/" className="text-foreground text-sm font-semibold tracking-[0.2em] uppercase">
-          Ceriga<span className="text-accent">.</span>
+          Ceriga Shots<span className="text-accent">.</span>
         </Link>
 
         <nav className="w-full flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-x-8 sm:gap-y-0">

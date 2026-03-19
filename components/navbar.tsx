@@ -20,7 +20,7 @@ export function Navbar() {
     >
       <nav className="max-w-7xl mx-auto px-6 lg:px-12 flex items-center justify-between h-16">
         <Link href="/" className="text-foreground text-sm font-semibold tracking-[0.2em] uppercase">
-          Ceriga<span className="text-accent">.</span>
+          Ceriga Shots<span className="text-accent">.</span>
         </Link>
 
         <Link
