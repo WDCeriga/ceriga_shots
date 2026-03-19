@@ -46,15 +46,20 @@ export default function DashboardHome() {
   }, [searchParams])
 
   return (
-    <div className="p-8 max-w-6xl mx-auto">
-      <div className="mb-12">
-        <h1 className="text-4xl font-bold mb-4 text-balance">Welcome to Ceriga Shots</h1>
-        <p className="text-lg text-muted-foreground mb-8">Create AI-generated product content for your designs in seconds.</p>
+    <div className="px-4 py-6 sm:p-8 max-w-6xl mx-auto">
+      <div className="mb-10 sm:mb-12">
+        <h1 className="text-3xl sm:text-4xl font-bold mb-3 text-balance">Welcome to Ceriga Shots</h1>
+        <p className="text-base sm:text-lg text-muted-foreground mb-6 sm:mb-8">
+          Create AI-generated product content for your designs in seconds.
+        </p>
         
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
           <Link href="/dashboard/generate">
-            <Button variant="outline" className="w-full h-32 flex flex-col items-center justify-center gap-3 text-center">
-              <div className="text-3xl">+</div>
+            <Button
+              variant="outline"
+              className="w-full min-h-[96px] sm:h-32 flex flex-col items-center justify-center gap-2.5 sm:gap-3 text-center"
+            >
+              <div className="text-2xl sm:text-3xl leading-none">+</div>
               <div>
                 <div className="font-semibold">Create New</div>
                 <div className="text-xs text-muted-foreground">Start generating content</div>
@@ -62,7 +67,7 @@ export default function DashboardHome() {
             </Button>
           </Link>
 
-          <div className="border border-border rounded-lg p-6 flex flex-col items-center justify-center gap-2 text-center">
+          <div className="hidden sm:flex border border-border rounded-lg p-5 sm:p-6 flex-col items-center justify-center gap-2 text-center">
             {isLoading ? (
               <div className="h-8 w-10 bg-secondary rounded animate-pulse" />
             ) : (
@@ -72,11 +77,19 @@ export default function DashboardHome() {
           </div>
 
           <Link href="/dashboard/library">
-            <Button variant="outline" className="w-full h-32 flex flex-col items-center justify-center gap-3 text-center">
-              <div className="text-3xl">→</div>
+            <Button
+              variant="outline"
+              className="w-full min-h-[96px] sm:h-32 flex flex-col items-center justify-center gap-2.5 sm:gap-3 text-center"
+            >
+              <div className="text-2xl sm:text-3xl leading-none">→</div>
               <div>
                 <div className="font-semibold">View Library</div>
-                <div className="text-xs text-muted-foreground">All your projects</div>
+                <div className="text-xs text-muted-foreground">
+                  <span className="sm:hidden">
+                    {isLoading ? 'Loading…' : `${projects.length} projects`}
+                  </span>
+                  <span className="hidden sm:inline">All your projects</span>
+                </div>
               </div>
             </Button>
           </Link>
@@ -85,8 +98,8 @@ export default function DashboardHome() {
 
       {isLoading ? (
         <div>
-          <h2 className="text-2xl font-bold mb-6">Recent Projects</h2>
-          <div className="grid grid-cols-4 gap-4">
+          <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Recent Projects</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <ProjectCardSkeleton key={i} />
             ))}
@@ -94,8 +107,8 @@ export default function DashboardHome() {
         </div>
       ) : projects.length > 0 ? (
         <div>
-          <h2 className="text-2xl font-bold mb-6">Recent Projects</h2>
-          <div className="grid grid-cols-4 gap-4">
+          <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Recent Projects</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {projects.slice(0, 4).map((project) => (
               <Link key={project.id} href={`/dashboard/results/${project.id}`}>
                 <div className="border border-border rounded-lg overflow-hidden hover:border-accent transition-colors cursor-pointer">
