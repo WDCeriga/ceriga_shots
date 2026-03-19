@@ -3,11 +3,11 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { isDatabaseConfigured } from '@/lib/db'
 import { getProjectForUser } from '@/lib/projects'
-import { createShareForProject } from '@/lib/shares'
+import { listSharesForProject } from '@/lib/shares'
 
 export const runtime = 'nodejs'
 
-export async function POST(req: Request) {
+export async function GET(req: Request) {
   const url = new URL(req.url)
   const id = url.pathname.split('/').slice(-2)[0] as string
   const session = await getServerSession(authOptions)
@@ -28,27 +28,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  let expiresAt: Date | null | undefined
-  try {
-    const body = (await req.json().catch(() => ({}))) as { expiresAt?: string | null }
-    expiresAt = body.expiresAt
-      ? new Date(body.expiresAt)
-      : undefined
-  } catch {
-    expiresAt = undefined
-  }
-
-  const token = await createShareForProject(session.user.id, id, {
-    expiresAt: expiresAt ?? undefined,
-  })
-
   const base =
     process.env.NEXT_PUBLIC_SITE_URL && process.env.NEXT_PUBLIC_SITE_URL.length
       ? process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, '')
       : url.origin
 
-  const shareUrl = `${base}/share/${token}`
-
-  return NextResponse.json({ token, shareUrl })
+  const shares = await listSharesForProject(id, session.user.id, base)
+  return NextResponse.json({ shares })
 }
-

@@ -5,6 +5,15 @@ import { authOptions } from '@/lib/auth'
 import { isDatabaseConfigured } from '@/lib/db'
 import { getProjectForUser } from '@/lib/projects'
 import { enqueueGenerationJobs, type Preset, type ShotType } from '@/lib/generation-queue'
+import {
+  checkCreditsForBatch,
+  validateShotTypesForRole,
+  validatePresetForRole,
+  checkGenerateMore,
+  type QuotaError,
+} from '@/lib/quotas'
+import { findUserById } from '@/lib/users'
+import type { UserRole } from '@/lib/roles'
 
 const SHOT_TYPES: ShotType[] = [
   'flatlay_topdown',
@@ -20,6 +29,23 @@ const SHOT_TYPES: ShotType[] = [
 ]
 
 const PRESETS: Preset[] = ['raw', 'editorial', 'luxury', 'natural', 'studio', 'surprise']
+
+function quotaErrorMessage(err: QuotaError): string {
+  switch (err.code) {
+    case 'max_projects':
+      return `Project limit reached (${err.limit}). Upgrade to add more projects.`
+    case 'insufficient_credits':
+      return `Insufficient credits. Need ${err.required}, have ${err.remaining} remaining.`
+    case 'shot_type_not_allowed':
+      return `Shot type "${err.shotType}" is not available on your plan.`
+    case 'preset_not_allowed':
+      return `Preset "${err.preset}" is not available on your plan.`
+    case 'generate_more_disabled':
+      return 'Generate more is not available on the free plan.'
+    default:
+      return 'Quota exceeded.'
+  }
+}
 
 function isShotType(v: unknown): v is ShotType {
   return typeof v === 'string' && SHOT_TYPES.includes(v as ShotType)
@@ -68,6 +94,41 @@ export async function POST(req: NextRequest) {
   const project = await getProjectForUser(session.user.id, id)
   if (!project) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  const user = await findUserById(session.user.id)
+  const role = (user?.role ?? 'free') as UserRole
+
+  const generateMoreErr = checkGenerateMore(role)
+  if (generateMoreErr) {
+    return NextResponse.json(
+      { error: quotaErrorMessage(generateMoreErr), code: generateMoreErr.code },
+      { status: 403 }
+    )
+  }
+
+  const creditsErr = await checkCreditsForBatch(session.user.id, rawShotTypes.length)
+  if (creditsErr) {
+    return NextResponse.json(
+      { error: quotaErrorMessage(creditsErr), code: creditsErr.code },
+      { status: 403 }
+    )
+  }
+
+  const shotErr = validateShotTypesForRole(role, rawShotTypes)
+  if (shotErr) {
+    return NextResponse.json(
+      { error: quotaErrorMessage(shotErr), code: shotErr.code },
+      { status: 403 }
+    )
+  }
+
+  const presetErr = validatePresetForRole(role, rawPreset)
+  if (presetErr) {
+    return NextResponse.json(
+      { error: quotaErrorMessage(presetErr), code: presetErr.code },
+      { status: 403 }
+    )
   }
 
   await enqueueGenerationJobs({

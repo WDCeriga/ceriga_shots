@@ -8,6 +8,7 @@ import {
   failGenerationJob,
 } from '@/lib/generation-queue'
 import { getProjectForUser, updateProjectForUser } from '@/lib/projects'
+import { getCreditsForUser, decrementCredits } from '@/lib/credits'
 import type { GeneratedImage } from '@/types/projects'
 
 export const runtime = 'nodejs'
@@ -26,6 +27,19 @@ function canRunWithSecret(req: Request) {
 async function processSingle(baseUrl: string, workerId: string) {
   const job = await claimNextGenerationJob(workerId)
   if (!job) return { processed: false }
+
+  const credits = await getCreditsForUser(job.owner_id)
+  if (!credits || credits.remaining < 1) {
+    await failGenerationJob({
+      jobId: job.id,
+      ownerId: job.owner_id,
+      projectId: job.project_id,
+      attempts: job.attempts,
+      maxAttempts: job.max_attempts,
+      errorMessage: 'Insufficient credits',
+    })
+    return { processed: true }
+  }
 
   try {
     const project = await getProjectForUser(job.owner_id, job.project_id)
@@ -62,6 +76,19 @@ async function processSingle(baseUrl: string, workerId: string) {
     const payload = (await res.json()) as { generatedImage?: GeneratedImage; error?: string }
     if (!res.ok || !payload.generatedImage) {
       throw new Error(payload.error || `Generator returned ${res.status}`)
+    }
+
+    const decremented = await decrementCredits(job.owner_id, 1)
+    if (!decremented) {
+      await failGenerationJob({
+        jobId: job.id,
+        ownerId: job.owner_id,
+        projectId: job.project_id,
+        attempts: job.attempts,
+        maxAttempts: job.max_attempts,
+        errorMessage: 'Insufficient credits',
+      })
+      return { processed: true }
     }
 
     const latest = await getProjectForUser(job.owner_id, job.project_id)

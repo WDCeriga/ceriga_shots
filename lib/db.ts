@@ -30,6 +30,8 @@ export async function ensureSchema() {
   // Backfill/migrate older schemas.
   await db`alter table users add column if not exists brand_name text`
   await db`alter table users add column if not exists role text not null default 'free'`
+  await db`alter table users add column if not exists credits_used integer not null default 0`
+  await db`alter table users add column if not exists credits_reset_at timestamptz`
 
   await db`
     create table if not exists projects (
@@ -57,6 +59,22 @@ export async function ensureSchema() {
   `
   await db`create index if not exists project_shares_project_id_idx on project_shares(project_id)`
   await db`create index if not exists project_shares_owner_id_idx on project_shares(owner_id)`
+
+  await db`alter table project_shares add column if not exists revoked_at timestamptz`
+  await db`alter table project_shares add column if not exists expires_at timestamptz`
+
+  await db`
+    create table if not exists share_audit_log (
+      id uuid primary key default gen_random_uuid(),
+      share_token uuid not null references project_shares(token) on delete cascade,
+      action text not null,
+      actor_id text,
+      metadata jsonb,
+      created_at timestamptz not null default now()
+    )
+  `
+  await db`create index if not exists share_audit_log_share_token_idx on share_audit_log(share_token)`
+  await db`create index if not exists share_audit_log_created_at_idx on share_audit_log(created_at)`
 
   await db`
     create table if not exists generation_jobs (

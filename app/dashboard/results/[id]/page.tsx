@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
 import { Check, Pencil, X } from 'lucide-react'
+import { ShareDialog } from '@/components/share-dialog'
 import { toast } from '@/hooks/use-toast'
 import { LightboxAsset, LightboxImage } from '@/components/lightbox-image'
 import {
@@ -23,7 +24,6 @@ export default function ResultsPage() {
   const { getProject, fetchProject, updateProject } = useProjects()
   const project = getProject(projectId)
   const [isDownloading, setIsDownloading] = useState(false)
-  const [isSharing, setIsSharing] = useState(false)
   const [moreType, setMoreType] = useState<
     | 'flatlay_topdown'
     | 'flatlay_45deg'
@@ -40,6 +40,7 @@ export default function ResultsPage() {
   const [hydrateFailed, setHydrateFailed] = useState<string | null>(null)
   const [isRenaming, setIsRenaming] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
+  const [shareDialogOpen, setShareDialogOpen] = useState(false)
 
   const formatViewTitle = (t: string) => {
     switch (t) {
@@ -194,39 +195,6 @@ export default function ResultsPage() {
     }
   }
 
-  const share = async () => {
-    if (isSharing) return
-    setIsSharing(true)
-    try {
-      const res = await fetch(`/api/projects/${projectId}/share`, { method: 'POST' })
-      const data = (await res.json()) as { shareUrl?: string; error?: string }
-      if (!res.ok || !data.shareUrl) {
-        throw new Error(data.error || 'Failed to create share link')
-      }
-
-      const shareUrl = data.shareUrl
-      const canClipboard =
-        typeof navigator !== 'undefined' &&
-        !!navigator.clipboard &&
-        typeof navigator.clipboard.writeText === 'function'
-
-      if (canClipboard) {
-        await navigator.clipboard.writeText(shareUrl)
-        toast({ title: 'Share link copied', description: shareUrl })
-      } else {
-        toast({ title: 'Share link created', description: shareUrl })
-      }
-    } catch (e) {
-      toast({
-        title: 'Share failed',
-        description: e instanceof Error ? e.message : 'Please try again.',
-        variant: 'destructive',
-      })
-    } finally {
-      setIsSharing(false)
-    }
-  }
-
   return (
     <div className="p-6 lg:p-8">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -305,9 +273,14 @@ export default function ResultsPage() {
           <Button onClick={downloadAll} disabled={isDownloading}>
             {isDownloading ? 'Preparing…' : 'Download All'}
           </Button>
-          <Button variant="outline" onClick={share} disabled={isSharing}>
-            {isSharing ? 'Creating…' : 'Share'}
+          <Button variant="outline" onClick={() => setShareDialogOpen(true)}>
+            Share
           </Button>
+          <ShareDialog
+            projectId={projectId}
+            open={shareDialogOpen}
+            onOpenChange={setShareDialogOpen}
+          />
         </div>
       </div>
 

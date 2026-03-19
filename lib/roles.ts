@@ -1,6 +1,6 @@
 export type UserRole = 'free' | 'starter' | 'studio' | 'label' | 'admin'
 
-export type Preset = 'raw' | 'editorial' | 'luxury' | 'studio' | 'surprise'
+export type Preset = 'raw' | 'editorial' | 'luxury' | 'natural' | 'studio' | 'surprise'
 
 export interface RoleLimits {
   credits: number
@@ -55,7 +55,7 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
     flatLayTypes: 5,
     surfaceShots: true,
     detailShots: 'all',
-    presets: ['raw', 'editorial', 'luxury', 'studio', 'surprise'],
+    presets: ['raw', 'editorial', 'luxury', 'natural', 'studio', 'surprise'],
     zip: true,
     shareLinks: true,
     resolution: '4k',
@@ -70,7 +70,7 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
     flatLayTypes: 5,
     surfaceShots: true,
     detailShots: 'all',
-    presets: ['raw', 'editorial', 'luxury', 'studio', 'surprise'],
+    presets: ['raw', 'editorial', 'luxury', 'natural', 'studio', 'surprise'],
     zip: true,
     shareLinks: true,
     resolution: '4k',
@@ -85,7 +85,7 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
     flatLayTypes: 5,
     surfaceShots: true,
     detailShots: 'all',
-    presets: ['raw', 'editorial', 'luxury', 'studio', 'surprise'],
+    presets: ['raw', 'editorial', 'luxury', 'natural', 'studio', 'surprise'],
     zip: true,
     shareLinks: true,
     resolution: '4k',

@@ -6,6 +6,32 @@ import type { Project } from '@/hooks/use-projects'
 import { isDatabaseConfigured } from '@/lib/db'
 import { isR2Configured, putObjectToR2 } from '@/lib/r2'
 import { enqueueGenerationJobs, type Preset, type ShotType } from '@/lib/generation-queue'
+import {
+  checkProjectLimit,
+  checkCreditsForBatch,
+  validateShotTypesForRole,
+  validatePresetForRole,
+  type QuotaError,
+} from '@/lib/quotas'
+import { findUserById } from '@/lib/users'
+import type { UserRole } from '@/lib/roles'
+
+function quotaErrorMessage(err: QuotaError): string {
+  switch (err.code) {
+    case 'max_projects':
+      return `Project limit reached (${err.limit}). Upgrade to add more projects.`
+    case 'insufficient_credits':
+      return `Insufficient credits. Need ${err.required}, have ${err.remaining} remaining.`
+    case 'shot_type_not_allowed':
+      return `Shot type "${err.shotType}" is not available on your plan.`
+    case 'preset_not_allowed':
+      return `Preset "${err.preset}" is not available on your plan.`
+    case 'generate_more_disabled':
+      return 'Generate more is not available on the free plan.'
+    default:
+      return 'Quota exceeded.'
+  }
+}
 
 const ALLOWED_SHOT_TYPES = new Set<ShotType>([
   'flatlay_topdown',
@@ -93,6 +119,49 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
+  const user = await findUserById(session.user.id)
+  const role = (user?.role ?? 'free') as UserRole
+
+  const projectLimitErr = await checkProjectLimit(session.user.id, role)
+  if (projectLimitErr) {
+    return NextResponse.json(
+      {
+        error: quotaErrorMessage(projectLimitErr),
+        code: projectLimitErr.code,
+      },
+      { status: 403 }
+    )
+  }
+
+  const shotTypes = (input.generation?.shotTypes ?? []).filter(
+    (s): s is ShotType => typeof s === 'string' && ALLOWED_SHOT_TYPES.has(s as ShotType)
+  )
+  const preset = (input.generation?.preset ?? 'raw') as Preset
+
+  if (shotTypes.length > 0) {
+    const creditsErr = await checkCreditsForBatch(session.user.id, shotTypes.length)
+    if (creditsErr) {
+      return NextResponse.json(
+        { error: quotaErrorMessage(creditsErr), code: creditsErr.code },
+        { status: 403 }
+      )
+    }
+    const shotErr = validateShotTypesForRole(role, shotTypes)
+    if (shotErr) {
+      return NextResponse.json(
+        { error: quotaErrorMessage(shotErr), code: shotErr.code },
+        { status: 403 }
+      )
+    }
+    const presetErr = validatePresetForRole(role, preset)
+    if (presetErr) {
+      return NextResponse.json(
+        { error: quotaErrorMessage(presetErr), code: presetErr.code },
+        { status: 403 }
+      )
+    }
+  }
+
   try {
     let originalImage = input.originalImage
     if (isR2Configured()) {
@@ -115,10 +184,6 @@ export async function POST(req: Request) {
       generatedImages: input.generatedImages ?? [],
     })
 
-    const shotTypes = (input.generation?.shotTypes ?? []).filter(
-      (s): s is ShotType => typeof s === 'string' && ALLOWED_SHOT_TYPES.has(s as ShotType)
-    )
-    const preset = (input.generation?.preset ?? 'raw') as Preset
     if (input.generation?.status === 'generating' && shotTypes.length > 0) {
       await enqueueGenerationJobs({
         ownerId: session.user.id,
