@@ -10,7 +10,8 @@ export const metadata: Metadata = {
     default: 'Ceriga Shots',
     template: '%s | Ceriga Shots',
   },
-  description: 'AI Product Content for Clothing Brands',
+  description:
+    'Generate AI flat lays, product shots, and short fashion video clips for clothing brands. Upload your design and download a complete content pack.',
   applicationName: 'Ceriga Shots',
   icons: {
     icon: '/icon.svg',
@@ -18,13 +19,15 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     title: 'Ceriga Shots',
-    description: 'AI Product Content for Clothing Brands',
+    description:
+      'Generate AI flat lays, product shots, and short fashion video clips for clothing brands. Upload your design and download a complete content pack.',
     images: [{ url: '/icon.svg' }],
   },
   twitter: {
     card: 'summary',
     title: 'Ceriga Shots',
-    description: 'AI Product Content for Clothing Brands',
+    description:
+      'Generate AI flat lays, product shots, and short fashion video clips for clothing brands. Upload your design and download a complete content pack.',
     images: ['/icon.svg'],
   },
 }

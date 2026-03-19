@@ -21,7 +21,7 @@ export function VideoSection() {
   const [selected, setSelected] = useState<(typeof videoPreviews)[number] | null>(null)
 
   return (
-    <section className="py-32 max-w-7xl mx-auto px-6 lg:px-12">
+    <section className="py-32 max-w-7xl mx-auto px-6 lg:px-12 overflow-x-hidden">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
         {/* Text */}
         <div>
@@ -46,7 +46,7 @@ export function VideoSection() {
         </div>
 
         {/* Video previews */}
-        <div className="flex gap-3 justify-center lg:justify-end">
+        <div className="flex gap-2 sm:gap-3 justify-center lg:justify-end overflow-hidden w-full">
           {videoPreviews.map((video, i) => (
             <button
               type="button"
@@ -54,7 +54,9 @@ export function VideoSection() {
               onClick={() => setSelected(video)}
               aria-label={`Open ${video.platform} preview (${video.duration})`}
               className={`relative overflow-hidden group flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-                i === 1 ? "w-44 aspect-[9/16]" : "w-36 aspect-[9/16] mt-8"
+                i === 1
+                  ? "w-32 sm:w-36 aspect-[9/16]"
+                  : "w-28 sm:w-32 aspect-[9/16] mt-6 sm:mt-8"
               }`}
               style={{ transform: i === 0 ? "rotate(-2deg)" : i === 2 ? "rotate(2deg)" : "none" }}
             >

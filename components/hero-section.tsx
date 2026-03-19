@@ -1,5 +1,3 @@
-"use client"
-
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowRight } from "lucide-react"
@@ -42,8 +40,9 @@ export function HeroSection() {
 
         {/* Subtext */}
         <p className="animate-fade-up animation-delay-200 text-muted-foreground text-lg leading-relaxed max-w-xl mb-12">
-          Upload your design and instantly generate flat lays, product shots, and
-          short videos using AI. No photoshoots. No editing. No effort.
+          Upload your design and instantly generate AI flat lays, product shots,
+          and short fashion videos for clothing brands. No photoshoots. No
+          editing. No effort.
         </p>
 
         {/* CTAs */}
@@ -88,7 +87,7 @@ export function HeroSection() {
               AI Generated
             </div>
             <div className="grid grid-cols-2 gap-1">
-              {generatedShots.map((shot, i) => (
+              {generatedShots.map((shot) => (
                 <div key={shot.label} className="relative overflow-hidden group/card">
                   <Image
                     src={shot.src}

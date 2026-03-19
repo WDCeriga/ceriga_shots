@@ -3,7 +3,7 @@ import { ArrowRight, Instagram } from "lucide-react"
 
 export function CtaSection() {
   return (
-    <section className="py-40 border-t border-border relative overflow-hidden">
+    <section id="cta" className="py-40 border-t border-border relative overflow-hidden">
       {/* Background accent */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
         <span className="text-[20rem] font-black text-foreground/[0.02] leading-none tracking-tighter">
@@ -45,12 +45,15 @@ export function Footer() {
           Ceriga<span className="text-accent">.</span>
         </Link>
 
-        <nav className="flex items-center gap-8">
+        <nav className="w-full flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-x-8 sm:gap-y-0">
           {[
             { label: "Pricing", href: "#pricing" },
-            { label: "About", href: "#" },
-            { label: "Contact", href: "#" },
-            { label: "Privacy", href: "#" },
+            { label: "How it works", href: "#how-it-works" },
+            { label: "Flat lays", href: "/ai-flat-lay-generator" },
+            { label: "Product shots", href: "/ai-product-shots" },
+            { label: "Video clips", href: "/ai-fashion-video-generator" },
+            { label: "Privacy", href: "/privacy" },
+            { label: "Contact", href: "#cta" },
           ].map((link) => (
             <Link
               key={link.label}
@@ -62,7 +65,7 @@ export function Footer() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-4">
+        <div className="w-full sm:w-auto flex items-center justify-center sm:justify-end gap-4">
           <Link href="#" aria-label="Instagram" className="text-muted-foreground hover:text-foreground transition-colors">
             <Instagram className="w-4 h-4" />
           </Link>

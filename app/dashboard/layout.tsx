@@ -3,6 +3,12 @@ import { TopNav } from '@/components/top-nav'
 import { ProjectsProvider } from '@/components/projects-provider'
 import { VerifyEmailBanner } from '@/components/verify-email-banner'
 
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
+
 export default function DashboardLayout({
   children,
 }: {
