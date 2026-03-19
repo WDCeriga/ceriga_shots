@@ -31,6 +31,19 @@ function asPreset(input: string): Preset {
   return input as Preset
 }
 
+function toInt32Seed(n: number): number {
+  const min = 1
+  const max = 2_147_483_647
+  if (!Number.isFinite(n)) return min
+  const value = Math.trunc(Math.abs(n))
+  if (value < min) return min
+  if (value > max) {
+    // Wrap into signed 32-bit positive range accepted by Postgres INTEGER.
+    return (value % max) + 1
+  }
+  return value
+}
+
 type GenerationJobRow = {
   id: string
   owner_id: string
@@ -106,7 +119,8 @@ export async function enqueueGenerationJobs(args: {
     const shotType = args.shotTypes[i]!
     const indexForType = (countByType.get(shotType) ?? 0) + 1
     countByType.set(shotType, indexForType)
-    const variationSeed = Date.now() + i * 9973 + Math.floor(Math.random() * 1000)
+    const rawSeed = Date.now() + i * 9973 + Math.floor(Math.random() * 1000)
+    const variationSeed = toInt32Seed(rawSeed)
 
     await db`
       insert into generation_jobs (
