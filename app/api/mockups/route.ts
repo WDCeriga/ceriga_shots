@@ -517,8 +517,18 @@ function retryNote(lastErrorMessage: string) {
 export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user?.id) {
+  const internalSecret = process.env.INTERNAL_QUEUE_SECRET
+  const internalToken = req.headers.get('x-internal-queue-secret')
+  const internalOwnerId = req.headers.get('x-owner-id')
+  const isInternalQueueCall =
+    Boolean(internalSecret) &&
+    internalToken === internalSecret &&
+    typeof internalOwnerId === 'string' &&
+    internalOwnerId.trim().length > 0
+
+  const session = isInternalQueueCall ? null : await getServerSession(authOptions)
+  const actorUserId = isInternalQueueCall ? internalOwnerId!.trim() : session?.user?.id
+  if (!actorUserId) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -759,7 +769,7 @@ export async function POST(req: Request) {
             const projectId = (body as { projectId?: unknown }).projectId
             const projectPart = typeof projectId === 'string' && projectId.trim() ? projectId.trim() : 'unknown'
             const key =
-              `users/${session.user.id}/projects/${projectPart}/generated/` +
+              `users/${actorUserId}/projects/${projectPart}/generated/` +
               `${shotType}/${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Date.now()}.${ext}`
             const uploaded = await putObjectToR2({ key, body: bytes, contentType: mime })
             finalUrl = uploaded.url

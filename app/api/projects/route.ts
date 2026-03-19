@@ -5,6 +5,20 @@ import { createProjectForUser, getProjectsForUser } from '@/lib/projects'
 import type { Project } from '@/hooks/use-projects'
 import { isDatabaseConfigured } from '@/lib/db'
 import { isR2Configured, putObjectToR2 } from '@/lib/r2'
+import { enqueueGenerationJobs, type Preset, type ShotType } from '@/lib/generation-queue'
+
+const ALLOWED_SHOT_TYPES = new Set<ShotType>([
+  'flatlay_topdown',
+  'flatlay_45deg',
+  'flatlay_sleeves',
+  'flatlay_relaxed',
+  'flatlay_folded',
+  'surface_draped',
+  'surface_hanging',
+  'detail_print',
+  'detail_fabric',
+  'detail_collar',
+])
 
 function parseDataUrl(dataUrl: string): { mime: string; base64: string } | null {
   const match = /^data:([^;]+);base64,(.+)$/.exec(dataUrl)
@@ -100,6 +114,31 @@ export async function POST(req: Request) {
       originalImage,
       generatedImages: input.generatedImages ?? [],
     })
+
+    const shotTypes = (input.generation?.shotTypes ?? []).filter(
+      (s): s is ShotType => typeof s === 'string' && ALLOWED_SHOT_TYPES.has(s as ShotType)
+    )
+    const preset = (input.generation?.preset ?? 'raw') as Preset
+    if (input.generation?.status === 'generating' && shotTypes.length > 0) {
+      await enqueueGenerationJobs({
+        ownerId: session.user.id,
+        projectId: project.id,
+        shotTypes,
+        preset,
+      })
+      const origin = new URL(req.url).origin
+      const dispatchHeaders: Record<string, string> = {}
+      if (process.env.QUEUE_DISPATCH_SECRET) {
+        dispatchHeaders['x-queue-secret'] = process.env.QUEUE_DISPATCH_SECRET
+      } else if (process.env.CRON_SECRET) {
+        dispatchHeaders['authorization'] = `Bearer ${process.env.CRON_SECRET}`
+      }
+      void fetch(`${origin}/api/jobs/dispatch`, {
+        method: 'POST',
+        headers: dispatchHeaders,
+      }).catch(() => {})
+    }
+
     return NextResponse.json({ project }, { status: 201 })
   } catch (error) {
     console.error('POST /api/projects error', error)

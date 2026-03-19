@@ -164,13 +164,25 @@ export default function GeneratePage() {
         originalImageName: file.name,
         generatedImages: [],
         generation: {
-          status: 'generating',
-          total: assetCount,
+          status: 'idle',
+          total: 0,
           completed: 0,
-          shotTypes: Array.from(shotTypes),
           preset: visualDirection,
         },
       })
+
+      const enqueueRes = await fetch(`/api/projects/${project.id}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shotTypes: Array.from(shotTypes),
+          preset: visualDirection,
+        }),
+      })
+      if (!enqueueRes.ok) {
+        const data = (await enqueueRes.json().catch(() => ({}))) as { error?: string }
+        throw new Error(data.error || 'Failed to enqueue generation')
+      }
 
       router.push(`/dashboard/results/${project.id}`)
     } catch (e) {

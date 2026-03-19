@@ -57,6 +57,29 @@ export async function ensureSchema() {
   `
   await db`create index if not exists project_shares_project_id_idx on project_shares(project_id)`
   await db`create index if not exists project_shares_owner_id_idx on project_shares(owner_id)`
+
+  await db`
+    create table if not exists generation_jobs (
+      id uuid primary key default gen_random_uuid(),
+      owner_id text not null,
+      project_id uuid not null references projects(id) on delete cascade,
+      shot_type text not null,
+      preset text not null,
+      generation_index integer not null,
+      variation_seed integer not null,
+      status text not null default 'queued',
+      attempts integer not null default 0,
+      max_attempts integer not null default 3,
+      run_after timestamptz not null default now(),
+      locked_at timestamptz,
+      locked_by text,
+      error_message text,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    )
+  `
+  await db`create index if not exists generation_jobs_status_run_after_idx on generation_jobs(status, run_after, created_at)`
+  await db`create index if not exists generation_jobs_project_id_idx on generation_jobs(project_id)`
 }
 
 

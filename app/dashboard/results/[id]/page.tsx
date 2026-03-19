@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useProjects } from '@/hooks/use-projects'
-import type { GeneratedImage } from '@/hooks/use-projects'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
@@ -23,7 +22,6 @@ export default function ResultsPage() {
   const projectId = params.id as string
   const { getProject, fetchProject, updateProject } = useProjects()
   const project = getProject(projectId)
-  const isRunningRef = useRef(false)
   const [isDownloading, setIsDownloading] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
   const [moreType, setMoreType] = useState<
@@ -42,35 +40,6 @@ export default function ResultsPage() {
   const [hydrateFailed, setHydrateFailed] = useState<string | null>(null)
   const [isRenaming, setIsRenaming] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
-
-  const types = useMemo<
-    Array<
-      | 'flatlay_topdown'
-      | 'flatlay_45deg'
-      | 'flatlay_sleeves'
-      | 'flatlay_relaxed'
-      | 'flatlay_folded'
-      | 'surface_draped'
-      | 'surface_hanging'
-      | 'detail_print'
-      | 'detail_fabric'
-      | 'detail_collar'
-    >
-  >(
-    () => [
-      'flatlay_topdown',
-      'flatlay_45deg',
-      'flatlay_sleeves',
-      'flatlay_relaxed',
-      'flatlay_folded',
-      'surface_draped',
-      'surface_hanging',
-      'detail_print',
-      'detail_fabric',
-      'detail_collar',
-    ],
-    []
-  )
 
   const formatViewTitle = (t: string) => {
     switch (t) {
@@ -130,149 +99,28 @@ export default function ResultsPage() {
   }, [fetchProject, project, projectId])
 
   useEffect(() => {
-    if (!project) return
-    const total = project.generation?.total ?? 0
-    const savedCount = project.generatedImages.length
+    if (!project || project.generation?.status !== 'generating') return
+    let stopped = false
 
-    // If we already have enough saved images, ensure the project is marked complete
-    // and do NOT re-run generation on load.
-    if (project.generation?.status === 'generating' && total > 0 && savedCount >= total) {
-      void updateProject(projectId, {
-        generation: { status: 'complete', total, completed: total },
-      }).catch(() => {})
-      return
-    }
-
-    const shouldGenerate =
-      project.generation?.status === 'generating' &&
-      total > 0 &&
-      savedCount < total
-
-    if (!shouldGenerate || isRunningRef.current) return
-
-    isRunningRef.current = true
-
-    const run = async () => {
-      const total = project.generation?.total ?? 0
-      let completed = Math.max(project.generation?.completed ?? 0, project.generatedImages.length)
-      const images = [...project.generatedImages]
-      let overrideNextType = project.generation?.nextType
-
-      console.info('[results] generation start', { projectId, total, completed })
-
-      while (completed < total) {
-        const configured = project.generation?.shotTypes
-        const nextType =
-          overrideNextType ??
-          (configured && configured[completed] ? configured[completed] : types[completed % types.length])
-        overrideNextType = undefined
-
-        const existingOfType = images.filter((img) => img.type === nextType).length
-        const generationIndex = existingOfType + 1
-        const preset = project.generation?.preset ?? 'raw'
-
-        void updateProject(projectId, {
-          generation: {
-            status: 'generating',
-            total,
-            completed,
-            nextType,
-          },
-        }).catch(() => {})
-
-        const startedAt = performance.now()
-        console.info(`[results] generating ${completed + 1}/${total}`, { nextType })
-
-        try {
-          const res = await fetch('/api/mockups', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ...(project.originalImage.startsWith('data:')
-                ? { imageDataUrl: project.originalImage }
-                : { imageUrl: project.originalImage }),
-              projectId,
-              shotType: nextType,
-              preset,
-              generationIndex,
-              attempts: 2,
-              variationSeed: Date.now() + completed * 9973,
-            }),
-          })
-
-          const data = (await res.json()) as { generatedImage?: GeneratedImage; error?: string }
-
-          if (!res.ok || data.error || !data.generatedImage) {
-            const message = data.error || 'Please try again.'
-            console.error('[results] generation failed', {
-              status: res.status,
-              message,
-              ms: Math.round(performance.now() - startedAt),
-            })
-            void updateProject(projectId, {
-              generation: {
-                status: 'error',
-                total,
-                completed,
-                nextType,
-                errorMessage: message,
-              },
-            }).catch(() => {})
-            return
-          }
-
-          images.push(data.generatedImage)
-          void updateProject(projectId, {
-            generatedImages: images,
-            generation: {
-              status: 'generating',
-              total,
-              completed: Math.max(completed + 1, images.length),
-            },
-          }).catch(() => {})
-          completed += 1
-          console.info(`[results] done ${completed}/${total}`, {
-            ms: Math.round(performance.now() - startedAt),
-          })
-        } catch (e) {
-          const message = e instanceof Error ? e.message : 'Unknown error'
-          console.error('[results] generation error', { message })
-          void updateProject(projectId, {
-            generation: {
-              status: 'error',
-              total,
-              completed,
-              nextType,
-              errorMessage: message,
-            },
-          }).catch(() => {})
-          return
-        }
+    const tick = async () => {
+      try {
+        await fetchProject(projectId)
+      } catch {
+        // Polling errors are non-fatal; the next tick retries.
       }
-
-      void updateProject(projectId, {
-        generation: {
-          status: 'complete',
-          total,
-          completed: total,
-        },
-      }).catch(() => {})
-      console.info('[results] generation complete', { projectId, total })
     }
 
-    run().finally(() => {
-      isRunningRef.current = false
-    })
-  }, [
-    project?.generation?.status,
-    project?.generation?.completed,
-    project?.generation?.total,
-    project?.generatedImages,
-    project?.originalImage,
-    projectId,
-    types,
-    updateProject,
-  ])
+    void tick()
+    const interval = window.setInterval(() => {
+      if (stopped) return
+      void tick()
+    }, 2500)
+
+    return () => {
+      stopped = true
+      window.clearInterval(interval)
+    }
+  }, [fetchProject, project, projectId])
 
   if (!project) {
     return (
@@ -531,25 +379,24 @@ export default function ResultsPage() {
                 <Button
                   className="flex-1"
                   disabled={isActivelyGenerating}
-                  onClick={() => {
-                    const totalNow =
-                      typeof project.generation?.total === 'number'
-                        ? project.generation.total
-                        : project.generatedImages.length
-                    const newTotal = totalNow + 1
-                    const completed = project.generatedImages.length
-                    const nextType = moreType
+                  onClick={async () => {
                     const preset = project.generation?.preset ?? 'raw'
-
-                    updateProject(projectId, {
-                      generation: {
-                        status: 'generating',
-                        total: newTotal,
-                        completed,
-                        nextType,
-                        preset,
-                      },
-                    })
+                    try {
+                      const res = await fetch(`/api/projects/${projectId}/generate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ shotTypes: [moreType], preset }),
+                      })
+                      const data = (await res.json().catch(() => ({}))) as { error?: string }
+                      if (!res.ok) throw new Error(data.error || 'Failed to enqueue generation')
+                      await fetchProject(projectId)
+                    } catch (e) {
+                      toast({
+                        title: 'Generation failed',
+                        description: e instanceof Error ? e.message : 'Please try again.',
+                        variant: 'destructive',
+                      })
+                    }
                   }}
                 >
                   {isActivelyGenerating ? 'Generating…' : 'Generate more'}
