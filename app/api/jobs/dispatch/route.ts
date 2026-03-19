@@ -42,13 +42,22 @@ async function processSingle(baseUrl: string, workerId: string) {
       return { processed: true }
     }
 
+    const mockupHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'x-owner-id': job.owner_id,
+    }
+    if (process.env.INTERNAL_QUEUE_SECRET) {
+      mockupHeaders['x-internal-queue-secret'] = process.env.INTERNAL_QUEUE_SECRET
+    }
+    if (process.env.QUEUE_DISPATCH_SECRET) {
+      mockupHeaders['x-queue-secret'] = process.env.QUEUE_DISPATCH_SECRET
+    } else if (process.env.CRON_SECRET) {
+      mockupHeaders.authorization = `Bearer ${process.env.CRON_SECRET}`
+    }
+
     const res = await fetch(`${baseUrl}/api/mockups`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-internal-queue-secret': process.env.INTERNAL_QUEUE_SECRET ?? '',
-        'x-owner-id': job.owner_id,
-      },
+      headers: mockupHeaders,
       body: JSON.stringify({
         imageUrl: project.originalImage,
         projectId: project.id,

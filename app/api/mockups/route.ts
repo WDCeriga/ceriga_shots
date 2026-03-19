@@ -519,10 +519,16 @@ export const runtime = 'nodejs'
 export async function POST(req: Request) {
   const internalSecret = process.env.INTERNAL_QUEUE_SECRET
   const internalToken = req.headers.get('x-internal-queue-secret')
+  const queueSecret = process.env.QUEUE_DISPATCH_SECRET
+  const queueToken = req.headers.get('x-queue-secret')
+  const cronSecret = process.env.CRON_SECRET
+  const authHeader = req.headers.get('authorization')
   const internalOwnerId = req.headers.get('x-owner-id')
+  const hasDispatchSecret =
+    (Boolean(queueSecret) && queueToken === queueSecret) ||
+    (Boolean(cronSecret) && authHeader === `Bearer ${cronSecret}`)
   const isInternalQueueCall =
-    Boolean(internalSecret) &&
-    internalToken === internalSecret &&
+    ((Boolean(internalSecret) && internalToken === internalSecret) || hasDispatchSecret) &&
     typeof internalOwnerId === 'string' &&
     internalOwnerId.trim().length > 0
 
