@@ -27,7 +27,7 @@ export function AppSidebar({
     { href: '/dashboard/settings', label: 'Settings' },
   ]
   const generateLinks = [
-    { href: '/dashboard/generate', label: 'Generate Image' },
+    { href: '/dashboard/generate', label: 'Generate Product Shots' },
     { href: null, label: 'Coming soon...' },
     //{ href: null, label: 'Coming soon' },
   ] as const
