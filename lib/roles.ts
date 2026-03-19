@@ -35,7 +35,7 @@ export interface RoleLimits {
 
 export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
   free: {
-    credits: 5,
+    credits: 3,
     assetHistoryRetentionDays: 7,
     flatLayTypes: 2,
     surfaceShots: false,

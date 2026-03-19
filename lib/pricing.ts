@@ -14,7 +14,7 @@ export const pricingPlans: PricingPlan[] = [
   {
     name: 'Free',
     monthlyPrice: 0,
-    creditsPerMonth: 5,
+    creditsPerMonth: 3,
     landingCta: 'Sign Up Free',
     dashboardCta: 'Start Free',
     useCase: 'Best for first-time testing',
