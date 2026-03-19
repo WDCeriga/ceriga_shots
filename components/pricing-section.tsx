@@ -3,73 +3,7 @@
 import Link from "next/link"
 import { useSession } from "next-auth/react"
 import { Check } from "lucide-react"
-
-const plans = [
-  {
-    name: "Free",
-    price: "€0",
-    period: "",
-    credits: "5 credits / mo",
-    description: "Try it out — no card required.",
-    features: [
-      "2 flat lay types",
-      "1 detail shot (print only)",
-      "ZIP downloads & share links",
-      "1 project (deleted after 7d)",
-    ],
-    cta: "Sign Up Free",
-    href: "/signup",
-    highlighted: false,
-  },
-  {
-    name: "Starter",
-    price: "€19",
-    period: " / mo",
-    credits: "50 credits / mo",
-    description: "For indie brands getting started.",
-    features: [
-      "All 5 flat lay types",
-      "Raw + Editorial presets",
-      "ZIP downloads & share links",
-      "Up to 20 projects stored",
-    ],
-    cta: "Get Starter",
-    href: "/signup",
-    highlighted: false,
-  },
-  {
-    name: "Studio",
-    price: "€49",
-    period: " / mo",
-    credits: "200 credits / mo",
-    description: "Full creative power for growing brands.",
-    features: [
-      "Surface shots & all 3 detail shots",
-      "All 5 visual presets",
-      "4K resolution, no watermark",
-      "Up to 100 projects stored",
-    ],
-    cta: "Try Studio Free",
-    href: "/signup",
-    highlighted: true,
-  },
-  {
-    name: "Label",
-    price: "€99",
-    period: " / mo",
-    credits: "500 credits / mo",
-    description: "For labels with high-volume needs.",
-    features: [
-      "Everything in Studio",
-      "Unlimited projects stored",
-      "Priority generation & API access",
-      "Dedicated support",
-    ],
-    cta: "Go Label",
-    href: "/signup",
-    highlighted: false,
-  },
-]
+import { pricingPlans } from "@/lib/pricing"
 
 export function PricingSection() {
   const { status } = useSession()
@@ -95,7 +29,7 @@ export function PricingSection() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto mb-10">
-          {plans.map((plan) => (
+          {pricingPlans.map((plan) => (
             <div
               key={plan.name}
               className={`relative flex flex-col border p-7 transition-colors duration-300 ${
@@ -116,14 +50,12 @@ export function PricingSection() {
                 </h3>
                 <div className="flex items-baseline gap-1 mb-1">
                   <span className="text-4xl font-black text-foreground tracking-tight">
-                    {plan.price}
+                    €{plan.monthlyPrice}
                   </span>
-                  {plan.period && (
-                    <span className="text-muted-foreground text-sm">{plan.period}</span>
-                  )}
+                  <span className="text-muted-foreground text-sm">/ mo</span>
                 </div>
                 <p className="text-accent text-xs font-semibold tracking-wide mb-3">
-                  {plan.credits}
+                  {plan.creditsPerMonth} credits / mo
                 </p>
                 <p className="text-muted-foreground text-sm leading-relaxed">
                   {plan.description}
@@ -147,7 +79,7 @@ export function PricingSection() {
                     : "border border-border text-foreground hover:border-foreground"
                 }`}
               >
-                {plan.cta}
+                {plan.landingCta}
               </Link>
             </div>
           ))}
