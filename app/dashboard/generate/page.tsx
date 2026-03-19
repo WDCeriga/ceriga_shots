@@ -103,7 +103,7 @@ export default function GeneratePage() {
     () => new Set(['flatlay_topdown', 'flatlay_45deg', 'detail_print', 'flatlay_relaxed'])
   )
   const assetCount = shotTypes.size
-  const { addProject } = useProjects()
+  const { addProject, deleteProject } = useProjects()
   const router = useRouter()
   const { status } = useSession()
   const { role, limits } = useRole()
@@ -279,7 +279,20 @@ export default function GeneratePage() {
       return
     }
 
+    const allowedShotTypes = Array.from(shotTypes).filter((k) =>
+      availableShotTypes.some((t) => t.key === k)
+    )
+    if (allowedShotTypes.length === 0) {
+      toast({
+        title: 'No valid shot types selected',
+        description: 'Your current plan does not allow the selected shot types.',
+        variant: 'destructive',
+      })
+      return
+    }
+
     setIsLoading(true)
+    let createdProjectId: string | null = null
     try {
       const project = await addProject({
         name: file.name.replace(/\.[^/.]+$/, ''),
@@ -293,13 +306,14 @@ export default function GeneratePage() {
           preset: visualDirection,
         },
       })
+      createdProjectId = project.id
 
       const enqueueRes = await fetch(`/api/projects/${project.id}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           mode: 'initial',
-          shotTypes: Array.from(shotTypes),
+          shotTypes: allowedShotTypes,
           preset: visualDirection,
         }),
       })
@@ -323,6 +337,8 @@ export default function GeneratePage() {
       })
       if (isAuth) {
         router.push(`/login?callbackUrl=${encodeURIComponent('/dashboard/generate')}`)
+      } else if (createdProjectId) {
+        deleteProject(createdProjectId)
       }
     } finally {
       setIsLoading(false)
