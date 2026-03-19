@@ -5,9 +5,7 @@ import { AppSessionProvider } from '@/components/session-provider'
 import './globals.css'
 
 export const metadata: Metadata = {
-  metadataBase: process.env.NEXT_PUBLIC_SITE_URL
-    ? new URL(process.env.NEXT_PUBLIC_SITE_URL)
-    : undefined,
+  metadataBase: new URL('https://ceriga-shots.vercel.app'),
   title: {
     default: 'Ceriga Shots',
     template: '%s | Ceriga Shots',
