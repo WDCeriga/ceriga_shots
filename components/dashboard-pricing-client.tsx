@@ -168,7 +168,7 @@ export function DashboardPricingClient() {
   }
 
   return (
-    <div className="relative p-6 sm:p-10 pb-28 max-w-7xl mx-auto">
+    <div className="relative p-6 sm:p-10 max-w-7xl mx-auto">
       <div className="mb-10">
         <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-foreground mb-3">Pricing</h1>
         <p className="text-muted-foreground text-sm sm:text-base max-w-2xl">
@@ -346,27 +346,6 @@ export function DashboardPricingClient() {
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-3">
-          <p className="hidden sm:block text-sm text-muted-foreground">
-            Launch faster with predictable pricing and flexible monthly credits.
-          </p>
-          <div className="ml-auto flex items-center gap-2">
-            <Link
-              href="/dashboard/generate"
-              className="inline-flex items-center justify-center rounded-md border border-border px-4 py-2 text-xs font-semibold uppercase tracking-wider text-foreground hover:border-foreground transition-colors"
-            >
-              Start free
-            </Link>
-            <Link
-              href="/dashboard/settings"
-              className="inline-flex items-center justify-center rounded-md bg-foreground px-4 py-2 text-xs font-semibold uppercase tracking-wider text-background hover:bg-accent hover:text-foreground transition-colors"
-            >
-              Book demo
-            </Link>
-          </div>
-        </div>
-      </div>
     </div>
   )
 }
