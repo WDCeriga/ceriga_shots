@@ -1,0 +1,58 @@
+import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { isDatabaseConfigured, db, ensureSchema } from '@/lib/db'
+import { findUserById } from '@/lib/users'
+
+export const runtime = 'nodejs'
+
+type Row = {
+  id: string
+  owner_email: string | null
+  name: string
+  generated_images: unknown
+  created_at: string
+  updated_at: string
+}
+
+export async function GET() {
+  const session = await getServerSession(authOptions)
+  const userId = session?.user?.id
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const user = await findUserById(userId)
+  if (user?.role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  if (!isDatabaseConfigured()) {
+    return NextResponse.json({ error: 'Database is not configured (missing DATABASE_URL).' }, { status: 503 })
+  }
+  await ensureSchema()
+
+  const rows = (await db`
+    select
+      p.id,
+      u.email as owner_email,
+      p.name,
+      p.generated_images,
+      p.created_at,
+      p.updated_at
+    from projects p
+    left join users u on u.id::text = p.owner_id
+    order by created_at desc
+    limit 300
+  `) as Row[]
+
+  return NextResponse.json({
+    projects: rows.map((r) => {
+      const images = Array.isArray(r.generated_images) ? r.generated_images : []
+      return {
+        id: r.id,
+        ownerEmail: r.owner_email ?? 'Unknown',
+        name: r.name,
+        generatedCount: images.length,
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      }
+    }),
+  })
+}

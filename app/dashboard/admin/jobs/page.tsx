@@ -1,0 +1,73 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+
+type AdminJob = {
+  id: string
+  ownerId: string
+  projectId: string
+  shotType: string
+  preset: string
+  status: string
+  attempts: number
+  maxAttempts: number
+  errorMessage: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export default function AdminJobsPage() {
+  const [jobs, setJobs] = useState<AdminJob[]>([])
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/admin/jobs')
+      .then(async (res) => {
+        const data = (await res.json().catch(() => ({}))) as { jobs?: AdminJob[]; error?: string }
+        if (!res.ok) throw new Error(data.error || 'Failed to load jobs')
+        setJobs(data.jobs ?? [])
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load jobs'))
+  }, [])
+
+  return (
+    <div className="p-6 lg:p-8 space-y-4">
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Queue Jobs</h1>
+        <p className="text-sm text-muted-foreground mt-1">Latest generation jobs and failure reasons.</p>
+      </div>
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Status</TableHead>
+            <TableHead>Shot</TableHead>
+            <TableHead>Preset</TableHead>
+            <TableHead>Attempts</TableHead>
+            <TableHead>Project</TableHead>
+            <TableHead>Error</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {jobs.map((j) => (
+            <TableRow key={j.id}>
+              <TableCell className="capitalize">{j.status}</TableCell>
+              <TableCell>{j.shotType}</TableCell>
+              <TableCell>{j.preset}</TableCell>
+              <TableCell>{j.attempts}/{j.maxAttempts}</TableCell>
+              <TableCell className="text-xs text-muted-foreground">{j.projectId}</TableCell>
+              <TableCell className="text-xs">{j.errorMessage ?? '-'}</TableCell>
+            </TableRow>
+          ))}
+          {jobs.length === 0 ? (
+            <TableRow>
+              <TableCell colSpan={6} className="text-center text-muted-foreground">No jobs found.</TableCell>
+            </TableRow>
+          ) : null}
+        </TableBody>
+      </Table>
+    </div>
+  )
+}
