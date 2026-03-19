@@ -77,6 +77,7 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const userId = session.user.id
 
   if (!isDatabaseConfigured()) {
     return NextResponse.json({
@@ -86,15 +87,15 @@ export async function GET() {
   }
 
   try {
-    const user = await findUserById(session.user.id)
+    const user = await findUserById(userId)
     const role = (user?.role ?? 'free') as UserRole
-    const projects = await getProjectsForUser(session.user.id)
+    const projects = await getProjectsForUser(userId)
     const now = Date.now()
     const hydrated = await Promise.all(
       projects.map(async (project) => {
         const retained = applyAssetRetentionToProject(project, role, now)
         if (!retained.changed) return project
-        const persisted = await updateProjectForUser(session.user.id, project.id, {
+        const persisted = await updateProjectForUser(userId, project.id, {
           generatedImages: retained.project.generatedImages,
         })
         return persisted ?? retained.project
@@ -113,6 +114,7 @@ export async function POST(req: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+  const userId = session.user.id
 
   if (!isDatabaseConfigured()) {
     return NextResponse.json(
@@ -134,10 +136,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
-  const user = await findUserById(session.user.id)
+  const user = await findUserById(userId)
   const role = (user?.role ?? 'free') as UserRole
 
-  const projectLimitErr = await checkProjectLimit(session.user.id, role)
+  const projectLimitErr = await checkProjectLimit(userId, role)
   if (projectLimitErr) {
     return NextResponse.json(
       {
@@ -154,7 +156,7 @@ export async function POST(req: Request) {
   const preset = (input.generation?.preset ?? 'raw') as Preset
 
   if (shotTypes.length > 0) {
-    const credits = await getCreditsForUser(session.user.id)
+    const credits = await getCreditsForUser(userId)
     if (!credits || credits.remaining < shotTypes.length) {
       return NextResponse.json(
         {
@@ -187,9 +189,9 @@ export async function POST(req: Request) {
   const shouldQueueInitial = input.generation?.status === 'generating' && shotTypes.length > 0
   let reservedCredits = false
   if (shouldQueueInitial) {
-    reservedCredits = await decrementCredits(session.user.id, shotTypes.length)
+    reservedCredits = await decrementCredits(userId, shotTypes.length)
     if (!reservedCredits) {
-      const credits = await getCreditsForUser(session.user.id)
+      const credits = await getCreditsForUser(userId)
       return NextResponse.json(
         {
           error: quotaErrorMessage({
@@ -213,14 +215,14 @@ export async function POST(req: Request) {
         const ext = extFromMime(parsed.mime)
         const safeBase = (input.originalImageName || 'original').replace(/\.[^/.]+$/, '')
         const key =
-          `users/${session.user.id}/original/` +
+          `users/${userId}/original/` +
           `${typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Date.now()}-${safeBase}.${ext}`
         const uploaded = await putObjectToR2({ key, body: bytes, contentType: parsed.mime })
         originalImage = uploaded.url
       }
     }
 
-    const project = await createProjectForUser(session.user.id, {
+    const project = await createProjectForUser(userId, {
       ...input,
       originalImage,
       generatedImages: input.generatedImages ?? [],
@@ -228,7 +230,7 @@ export async function POST(req: Request) {
 
     if (shouldQueueInitial) {
       await enqueueGenerationJobs({
-        ownerId: session.user.id,
+        ownerId: userId,
         projectId: project.id,
         shotTypes,
         preset,
@@ -249,7 +251,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ project }, { status: 201 })
   } catch (error) {
     if (reservedCredits) {
-      await incrementCredits(session.user.id, shotTypes.length)
+      await incrementCredits(userId, shotTypes.length)
     }
     console.error('POST /api/projects error', error)
     return NextResponse.json({ error: 'Failed to create project' }, { status: 500 })
