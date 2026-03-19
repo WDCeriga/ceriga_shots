@@ -1,4 +1,7 @@
+ "use client"
+
 import Link from "next/link"
+import { useSession } from "next-auth/react"
 import { Check } from "lucide-react"
 
 const plans = [
@@ -69,6 +72,9 @@ const plans = [
 ]
 
 export function PricingSection() {
+  const { status } = useSession()
+  const pricingCtaHref = status === "authenticated" ? "/dashboard/pricing" : "/signup"
+
   return (
     <section id="pricing" className="py-32 border-t border-border">
       <div className="max-w-7xl mx-auto px-6 lg:px-12">
@@ -134,7 +140,7 @@ export function PricingSection() {
               </ul>
 
               <Link
-                href={plan.href}
+                href={pricingCtaHref}
                 className={`mt-auto inline-flex items-center justify-center text-xs font-semibold tracking-wider uppercase px-5 py-3.5 transition-all duration-300 ${
                   plan.highlighted
                     ? "bg-foreground text-background hover:bg-accent hover:text-foreground"
