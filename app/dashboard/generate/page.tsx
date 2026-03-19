@@ -516,7 +516,7 @@ export default function GeneratePage() {
 
           {/* Right: Direction + shot types + CTA */}
           <aside className="rounded-t-none rounded-b-2xl border border-white/10 border-t-0 bg-card/40 shadow-sm">
-            <div className="px-6 pb-6 pt-0 sm:px-8 sm:pb-8 sm:pt-0">
+            <div className="border-t border-white/10 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-6">
               <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">
                 Shot types
               </div>
