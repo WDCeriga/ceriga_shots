@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   // Lock down high-cost endpoints that should never be public.
   if (req.nextUrl.pathname.startsWith('/api/mockups')) {
     const token = await getToken({
@@ -27,4 +27,3 @@ export async function middleware(req: NextRequest) {
 export const config = {
   matcher: ['/api/mockups'],
 }
-
