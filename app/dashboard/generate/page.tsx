@@ -100,13 +100,14 @@ export default function GeneratePage() {
     return options[Math.floor(Math.random() * options.length)]
   })
   const [shotTypes, setShotTypes] = useState<Set<ShotTypeKey>>(
-    () => new Set(['flatlay_topdown', 'flatlay_45deg', 'detail_print', 'flatlay_relaxed'])
+    // Start with a low-cost baseline selection; users can add more from Results.
+    () => new Set(['flatlay_topdown', 'detail_print'])
   )
   const assetCount = shotTypes.size
   const { addProject, deleteProject, updateProject } = useProjects()
   const router = useRouter()
   const { status } = useSession()
-  const { role, limits } = useRole()
+  const { limits } = useRole()
   const isAuthed = status === 'authenticated'
   const isAuthLoading = status === 'loading'
   const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null)
@@ -344,11 +345,11 @@ export default function GeneratePage() {
       }).catch(() => {})
 
       router.push(`/dashboard/results/${project.id}`)
-    } catch (e) {
+    } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Failed to generate. Please try again.'
-      const isAuth =
-        (e as any)?.status === 401 ||
-        /logged in|unauthorized/i.test(message)
+      const status =
+        typeof e === 'object' && e !== null && 'status' in e ? (e as { status?: unknown }).status : undefined
+      const isAuth = status === 401 || /logged in|unauthorized/i.test(message)
       toast({
         title: isAuth ? 'Login required' : 'Generation failed',
         description: isAuth
@@ -489,10 +490,32 @@ export default function GeneratePage() {
                 </div>
               </label>
             </div>
+
+            <div className="hidden lg:block mt-2">
+              <Button
+                onClick={handleGenerate}
+                disabled={!canGenerateNow}
+                className={cn(
+                  'w-full rounded-full py-6 text-sm tracking-[0.35em] uppercase cursor-pointer disabled:cursor-not-allowed',
+                  'bg-transparent border border-white/15 hover:border-white/25 hover:bg-accent/5'
+                )}
+                variant="outline"
+              >
+                {isLoading ? 'Generating…' : 'Generate Content'}
+              </Button>
+              {!hasEnoughCredits ? (
+                <p className="mt-3 text-xs text-destructive">Not enough credits for selected assets.</p>
+              ) : null}
+              {selectedAllowedCount === 0 ? (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Your current plan does not allow the selected shot types.
+                </p>
+              ) : null}
+            </div>
           </section>
 
           {/* Right: Direction + shot types + CTA */}
-          <aside className="rounded-2xl border border-white/10 bg-card/40 shadow-sm">
+          <aside className="rounded-t-none rounded-b-2xl border border-white/10 border-t-0 bg-card/40 shadow-sm">
             <div className="px-6 pb-6 pt-0 sm:px-8 sm:pb-8 sm:pt-0">
               <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">
                 Shot types
@@ -529,7 +552,7 @@ export default function GeneratePage() {
                         })
                       }}
                       className={cn(
-                        'rounded-md border px-3 py-1.5 text-xs transition-colors',
+                        'rounded-md border px-3 py-1.5 text-xs transition-colors cursor-pointer',
                         !enabled && 'opacity-40 cursor-not-allowed',
                         selected
                           ? 'border-accent/80 bg-accent/10 text-accent'
@@ -565,7 +588,7 @@ export default function GeneratePage() {
                         setVisualDirection(d.key)
                       }}
                       className={cn(
-                        'group rounded-lg border bg-background/20 p-4 text-left transition-colors',
+                        'group rounded-lg border bg-background/20 p-4 text-left transition-colors cursor-pointer',
                         !presetEnabled && 'opacity-40 cursor-not-allowed',
                         selected
                           ? 'border-accent/80 ring-1 ring-accent/40'
@@ -587,12 +610,12 @@ export default function GeneratePage() {
                 })}
               </div>
 
-              <div className="mt-10">
+              <div className="mt-10 lg:hidden">
                 <Button
                   onClick={handleGenerate}
                   disabled={!canGenerateNow}
                   className={cn(
-                    'w-full rounded-full py-6 text-sm tracking-[0.35em] uppercase',
+                    'w-full rounded-full py-6 text-sm tracking-[0.35em] uppercase cursor-pointer disabled:cursor-not-allowed',
                     'bg-transparent border border-white/15 hover:border-white/25 hover:bg-accent/5'
                   )}
                   variant="outline"

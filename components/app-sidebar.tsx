@@ -28,8 +28,8 @@ export function AppSidebar({
   ]
   const generateLinks = [
     { href: '/dashboard/generate', label: 'Generate Image' },
-    { href: null, label: 'Coming soon' },
-    { href: null, label: 'Coming soon' },
+    { href: null, label: 'Coming soon...' },
+    //{ href: null, label: 'Coming soon' },
   ] as const
   const adminLinks = [
     { href: '/dashboard/admin/statistics', label: 'Statistics' },
