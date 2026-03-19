@@ -102,6 +102,7 @@ export async function ensureSchema() {
       variation_seed integer not null,
       status text not null default 'queued',
       attempts integer not null default 0,
+      model_calls integer not null default 0,
       max_attempts integer not null default 3,
       run_after timestamptz not null default now(),
       locked_at timestamptz,
@@ -111,6 +112,7 @@ export async function ensureSchema() {
       updated_at timestamptz not null default now()
     )
   `
+    await db`alter table generation_jobs add column if not exists model_calls integer not null default 0`
     await db`create index if not exists generation_jobs_status_run_after_idx on generation_jobs(status, run_after, created_at)`
     await db`create index if not exists generation_jobs_project_id_idx on generation_jobs(project_id)`
   })()

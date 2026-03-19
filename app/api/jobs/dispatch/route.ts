@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { isDatabaseConfigured } from '@/lib/db'
 import {
+  addGenerationJobModelCalls,
   claimNextGenerationJob,
   completeGenerationJob,
   failGenerationJob,
@@ -69,7 +70,15 @@ async function processSingle(baseUrl: string, workerId: string) {
       }),
     })
 
-    const payload = (await res.json()) as { generatedImage?: GeneratedImage; error?: string }
+    const payload = (await res.json().catch(() => ({}))) as {
+      generatedImage?: GeneratedImage
+      error?: string
+      modelCalls?: number
+    }
+    const modelCalls = Math.max(0, Math.trunc(Number(payload.modelCalls ?? 0)))
+    if (modelCalls > 0) {
+      await addGenerationJobModelCalls({ jobId: job.id, calls: modelCalls })
+    }
     if (!res.ok || !payload.generatedImage) {
       throw new Error(payload.error || `Generator returned ${res.status}`)
     }

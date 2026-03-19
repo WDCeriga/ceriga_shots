@@ -1,7 +1,7 @@
 import type { NextAuthOptions } from 'next-auth'
 import Google from 'next-auth/providers/google'
 import Credentials from 'next-auth/providers/credentials'
-import { findUserById, verifyUser } from '@/lib/users'
+import { findUserRoleCached, verifyUser } from '@/lib/users'
 
 const googleProviderConfigured =
   Boolean(process.env.AUTH_GOOGLE_ID) && Boolean(process.env.AUTH_GOOGLE_SECRET)
@@ -58,10 +58,10 @@ export const authOptions: NextAuthOptions = {
         let resolvedRole = (token.role as string) ?? 'free'
         if (userId) {
           try {
-            const dbUser = await findUserById(userId)
-            if (dbUser?.role) {
-              resolvedRole = dbUser.role
-              token.role = dbUser.role
+            const dbRole = await findUserRoleCached(userId)
+            if (dbRole) {
+              resolvedRole = dbRole
+              token.role = dbRole
             }
           } catch {
             // Keep token/session role fallback if DB read fails.

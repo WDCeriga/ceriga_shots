@@ -538,19 +538,6 @@ export default function ResultsPage() {
                       {getExpiryLabel(img.timestamp)}
                     </p>
                   ) : null}
-                  <div className="mt-2 flex justify-center">
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-7 px-2 text-xs text-destructive hover:text-white"
-                      disabled={deletingAssetId != null}
-                      onClick={() => void deleteAsset(img.id)}
-                    >
-                      <Trash2 className="w-3.5 h-3.5 mr-1" />
-                      {deletingAssetId === img.id ? 'Deleting…' : 'Delete'}
-                    </Button>
-                  </div>
                 </div>
               </div>
             ))}

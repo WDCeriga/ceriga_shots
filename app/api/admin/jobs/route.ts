@@ -14,6 +14,7 @@ type Row = {
   preset: string
   status: string
   attempts: number
+  model_calls: number
   max_attempts: number
   error_message: string | null
   created_at: string
@@ -42,6 +43,7 @@ export async function GET() {
       preset,
       status,
       attempts,
+      model_calls,
       max_attempts,
       error_message,
       created_at,
@@ -60,6 +62,7 @@ export async function GET() {
       preset: r.preset,
       status: r.status,
       attempts: Number(r.attempts),
+      modelCalls: Number(r.model_calls ?? 0),
       maxAttempts: Number(r.max_attempts),
       errorMessage: r.error_message,
       createdAt: r.created_at,

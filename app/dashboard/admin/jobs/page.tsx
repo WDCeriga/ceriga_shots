@@ -11,6 +11,7 @@ type AdminJob = {
   preset: string
   status: string
   attempts: number
+  modelCalls: number
   maxAttempts: number
   errorMessage: string | null
   createdAt: string
@@ -46,6 +47,7 @@ export default function AdminJobsPage() {
             <TableHead>Shot</TableHead>
             <TableHead>Preset</TableHead>
             <TableHead>Attempts</TableHead>
+            <TableHead>Total Model Calls</TableHead>
             <TableHead>Project</TableHead>
             <TableHead>Error</TableHead>
           </TableRow>
@@ -57,13 +59,14 @@ export default function AdminJobsPage() {
               <TableCell>{j.shotType}</TableCell>
               <TableCell>{j.preset}</TableCell>
               <TableCell>{j.attempts}/{j.maxAttempts}</TableCell>
+              <TableCell>{j.modelCalls}</TableCell>
               <TableCell className="text-xs text-muted-foreground">{j.projectId}</TableCell>
               <TableCell className="text-xs">{j.errorMessage ?? '-'}</TableCell>
             </TableRow>
           ))}
           {jobs.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-center text-muted-foreground">No jobs found.</TableCell>
+              <TableCell colSpan={7} className="text-center text-muted-foreground">No jobs found.</TableCell>
             </TableRow>
           ) : null}
         </TableBody>

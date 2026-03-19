@@ -722,6 +722,7 @@ export async function POST(req: Request) {
     const prompt = buildPrompt({ shotType, preset, generationIndex, variationSeed })
 
     let lastErrorMessage = ''
+    let modelCalls = 0
     console.debug?.(
       `[mockups:${requestId}] start shotType=${shotType} preset=${preset} attempts=${maxAttempts} inputMime=${inputMime} generationIndex=${generationIndex}`
     )
@@ -729,6 +730,7 @@ export async function POST(req: Request) {
       try {
         const attemptStartedAt = Date.now()
         console.debug?.(`[mockups:${requestId}] attempt ${attempt}/${maxAttempts} generating...`)
+        modelCalls += 1
         const interaction = await ai.interactions.create({
           model: 'gemini-2.5-flash-image',
           input: [
@@ -795,6 +797,7 @@ export async function POST(req: Request) {
               timestamp: Date.now(),
               prompt,
             },
+            modelCalls,
           })
         }
 
@@ -813,7 +816,10 @@ export async function POST(req: Request) {
       `[mockups:${requestId}] failed after ${maxAttempts} attempt(s) totalMs=${Date.now() - startedAt} lastError=${lastErrorMessage}`
     )
     return NextResponse.json(
-      { error: `Image generation failed after ${maxAttempts} attempt(s). Last error: ${lastErrorMessage}` },
+      {
+        error: `Image generation failed after ${maxAttempts} attempt(s). Last error: ${lastErrorMessage}`,
+        modelCalls,
+      },
       { status: 502 }
     )
   } catch (e) {

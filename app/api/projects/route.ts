@@ -12,7 +12,7 @@ import {
   validatePresetForRole,
   type QuotaError,
 } from '@/lib/quotas'
-import { findUserById } from '@/lib/users'
+import { findUserById, findUserRoleCached } from '@/lib/users'
 import type { UserRole } from '@/lib/roles'
 import { decrementCredits, incrementCredits, getCreditsForUser } from '@/lib/credits'
 import { applyAssetRetentionToProject } from '@/lib/asset-retention'
@@ -87,20 +87,26 @@ export async function GET() {
   }
 
   try {
-    const user = await findUserById(userId)
-    const role = (user?.role ?? 'free') as UserRole
+    const role = ((await findUserRoleCached(userId)) ?? 'free') as UserRole
     const projects = await getProjectsForUser(userId)
     const now = Date.now()
-    const hydrated = await Promise.all(
-      projects.map(async (project) => {
-        const retained = applyAssetRetentionToProject(project, role, now)
-        if (!retained.changed) return project
-        const persisted = await updateProjectForUser(userId, project.id, {
-          generatedImages: retained.project.generatedImages,
-        })
-        return persisted ?? retained.project
-      })
-    )
+    const results = projects.map((p) => applyAssetRetentionToProject(p, role, now))
+    const hydrated = results.map((r) => r.project)
+
+    // Persist retention changes in background — don't block the response
+    const toPersist = results
+      .map((r, i) => (r.changed ? { project: projects[i]!, retained: r } : null))
+      .filter((x): x is NonNullable<typeof x> => x != null)
+    if (toPersist.length > 0) {
+      void Promise.all(
+        toPersist.map(({ project, retained }) =>
+          updateProjectForUser(userId, project.id, {
+            generatedImages: retained.project.generatedImages,
+          })
+        )
+      )
+    }
+
     return NextResponse.json({ projects: hydrated })
   } catch (error) {
     console.error('GET /api/projects error', error)

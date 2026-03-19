@@ -15,6 +15,7 @@ export type GenerationJob = {
   variation_seed: number
   status: 'queued' | 'processing' | 'done' | 'failed'
   attempts: number
+  model_calls: number
   max_attempts: number
   run_after: string
 }
@@ -54,6 +55,7 @@ type GenerationJobRow = {
   variation_seed: number
   status: string
   attempts: number
+  model_calls: number
   max_attempts: number
   run_after: string
 }
@@ -69,6 +71,7 @@ function toJobs(rows: GenerationJobRow[]): GenerationJob[] {
     variation_seed: Number(row.variation_seed),
     status: row.status as GenerationJob['status'],
     attempts: Number(row.attempts),
+    model_calls: Number(row.model_calls ?? 0),
     max_attempts: Number(row.max_attempts),
     run_after: String(row.run_after),
   }))
@@ -269,6 +272,20 @@ export async function completeGenerationJob(args: {
       errorMessage: undefined,
     },
   })
+}
+
+export async function addGenerationJobModelCalls(args: {
+  jobId: string
+  calls: number
+}) {
+  await ensureSchema()
+  const calls = Math.max(0, Math.trunc(args.calls))
+  if (calls <= 0) return
+  await db`
+    update generation_jobs
+    set model_calls = model_calls + ${calls}, updated_at = now()
+    where id = ${args.jobId}::uuid
+  `
 }
 
 export async function failGenerationJob(args: {

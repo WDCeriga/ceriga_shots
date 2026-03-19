@@ -38,6 +38,21 @@ export async function findUserById(id: string): Promise<DbUserRow | null> {
   return rows[0] ?? null
 }
 
+const ROLE_CACHE_TTL_MS = 60_000 // 1 minute
+const roleCache = new Map<string, { role: UserRole; expiresAt: number }>()
+
+/** Cached role lookup for session — avoids DB hit on every request */
+export async function findUserRoleCached(id: string): Promise<UserRole | null> {
+  const now = Date.now()
+  const cached = roleCache.get(id)
+  if (cached && cached.expiresAt > now) return cached.role
+
+  const user = await findUserById(id)
+  const role = user?.role ?? null
+  if (role) roleCache.set(id, { role, expiresAt: now + ROLE_CACHE_TTL_MS })
+  return role
+}
+
 export async function updateUserBrandName(id: string, brandName: string | null): Promise<DbUserRow | null> {
   await ensureSchema()
   const normalized =
