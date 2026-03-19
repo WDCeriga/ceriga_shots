@@ -133,6 +133,16 @@ export async function revokeShare(token: string, ownerId: string): Promise<boole
   return false
 }
 
+export async function deleteRevokedShare(token: string, ownerId: string): Promise<boolean> {
+  await ensureSchema()
+  const rows = (await db`
+    delete from project_shares
+    where token = ${token}::uuid and owner_id = ${ownerId} and revoked_at is not null
+    returning token
+  `) as Array<{ token: string }>
+  return rows.length > 0
+}
+
 export async function listSharesForProject(
   projectId: string,
   ownerId: string,

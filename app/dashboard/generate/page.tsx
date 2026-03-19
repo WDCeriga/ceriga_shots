@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { useProjects } from '@/hooks/use-projects'
 import { useRouter } from 'next/navigation'
@@ -9,6 +9,7 @@ import { Upload } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
+import { useRole } from '@/hooks/use-role'
 
 type VisualDirectionKey = 'raw' | 'editorial' | 'luxury' | 'natural' | 'studio' | 'surprise'
 
@@ -105,8 +106,120 @@ export default function GeneratePage() {
   const { addProject } = useProjects()
   const router = useRouter()
   const { status } = useSession()
+  const { role, limits } = useRole()
   const isAuthed = status === 'authenticated'
   const isAuthLoading = status === 'loading'
+  const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null)
+  const [creditsLimit, setCreditsLimit] = useState<number | null>(null)
+  const [creditsSyncing, setCreditsSyncing] = useState(false)
+
+  useEffect(() => {
+    if (!isAuthed) {
+      setCreditsRemaining(null)
+      setCreditsLimit(null)
+      setCreditsSyncing(false)
+      return
+    }
+
+    // Instant optimistic values so UI is responsive before /api/me resolves.
+    if (limits.credits < 0) {
+      setCreditsLimit(-1)
+      setCreditsRemaining(Number.MAX_SAFE_INTEGER)
+    } else {
+      setCreditsLimit(limits.credits)
+      setCreditsRemaining(limits.credits)
+    }
+    try {
+      const cachedRaw = window.localStorage.getItem('credits-cache')
+      if (cachedRaw) {
+        const cached = JSON.parse(cachedRaw) as { remaining?: number; limit?: number; ts?: number }
+        if (
+          typeof cached.ts === 'number' &&
+          Date.now() - cached.ts < 60_000 &&
+          typeof cached.remaining === 'number'
+        ) {
+          setCreditsRemaining(cached.remaining)
+          if (typeof cached.limit === 'number') setCreditsLimit(cached.limit)
+        }
+      }
+    } catch {}
+
+    let cancelled = false
+    setCreditsSyncing(true)
+    fetch('/api/me')
+      .then(async (res) => {
+        if (!res.ok) return null
+        return (await res.json()) as {
+          user?: { credits?: { remaining?: number; limit?: number } | null }
+        }
+      })
+      .then((data) => {
+        if (cancelled) return
+        const remaining = data?.user?.credits?.remaining
+        const limit = data?.user?.credits?.limit
+        setCreditsRemaining(typeof remaining === 'number' ? remaining : null)
+        setCreditsLimit(typeof limit === 'number' ? limit : null)
+        if (typeof remaining === 'number' && typeof limit === 'number') {
+          try {
+            window.localStorage.setItem(
+              'credits-cache',
+              JSON.stringify({ remaining, limit, ts: Date.now() })
+            )
+          } catch {}
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (cancelled) return
+        setCreditsSyncing(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [isAuthed, limits.credits])
+
+  const availableShotTypes = useMemo(() => {
+    return SHOT_TYPES.filter((t) => {
+      if ((t.key === 'surface_draped' || t.key === 'surface_hanging') && !limits.surfaceShots) return false
+      if (limits.detailShots === 'none' && t.key.startsWith('detail_')) return false
+      if (limits.detailShots === 'print' && (t.key === 'detail_fabric' || t.key === 'detail_collar'))
+        return false
+      return true
+    })
+  }, [limits.detailShots, limits.surfaceShots])
+
+  useEffect(() => {
+    if (!limits.presets.includes(visualDirection)) {
+      setVisualDirection(limits.presets[0] ?? 'studio')
+    }
+  }, [limits.presets, visualDirection])
+
+  useEffect(() => {
+    setShotTypes((prev) => {
+      const filtered = Array.from(prev).filter((k) => availableShotTypes.some((t) => t.key === k))
+      const flatlays = filtered.filter((k) => k.startsWith('flatlay_'))
+      if (flatlays.length <= limits.flatLayTypes) return new Set(filtered)
+
+      const keptFlatlays = flatlays.slice(0, limits.flatLayTypes)
+      const next = filtered.filter((k) => !k.startsWith('flatlay_')).concat(keptFlatlays)
+      return new Set(next)
+    })
+  }, [availableShotTypes, limits.flatLayTypes])
+
+  const selectedAllowedCount = Array.from(shotTypes).filter((k) =>
+    availableShotTypes.some((t) => t.key === k)
+  ).length
+  const hasEnoughCredits =
+    creditsRemaining == null || creditsRemaining === Number.MAX_SAFE_INTEGER
+      ? true
+      : creditsRemaining >= selectedAllowedCount
+  const canGenerateNow =
+    !!preview &&
+    !isLoading &&
+    !isAuthLoading &&
+    isAuthed &&
+    selectedAllowedCount > 0 &&
+    hasEnoughCredits
 
   const handleFile = (selectedFile: File) => {
     if (!selectedFile.type.startsWith('image/')) {
@@ -175,6 +288,7 @@ export default function GeneratePage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          mode: 'initial',
           shotTypes: Array.from(shotTypes),
           preset: visualDirection,
         }),
@@ -227,6 +341,27 @@ export default function GeneratePage() {
               You can browse the dashboard, but generation is locked until you sign in.
             </div>
           )}
+
+          {isAuthed ? (
+            <div className="mt-6">
+              <div className="rounded-xl border border-accent/40 bg-accent/5 px-4 py-3">
+                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Credits Remaining</p>
+                <p className="mt-1 text-2xl font-bold">
+                  {creditsRemaining == null
+                    ? '...'
+                    : creditsLimit != null && creditsLimit < 0
+                      ? 'Unlimited'
+                      : creditsRemaining}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {selectedAllowedCount} credit{selectedAllowedCount === 1 ? '' : 's'} needed for current selection
+                </p>
+                {creditsSyncing ? (
+                  <p className="text-[10px] text-muted-foreground mt-1">Syncing latest usage...</p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-8">
@@ -315,27 +450,40 @@ export default function GeneratePage() {
               <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">
                 Shot types
               </div>
+              <div className="mt-2 text-xs text-muted-foreground">
+                Selection uses {selectedAllowedCount} credit{selectedAllowedCount === 1 ? '' : 's'}.
+              </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
                 {SHOT_TYPES.map((t) => {
                   const selected = shotTypes.has(t.key)
+                  const enabled = availableShotTypes.some((s) => s.key === t.key)
                   return (
                     <button
                       key={t.key}
                       type="button"
+                      disabled={!enabled}
                       onClick={() => {
+                        if (!enabled) return
                         setShotTypes((prev) => {
                           const next = new Set(prev)
                           if (next.has(t.key)) {
                             if (next.size === 1) return next
                             next.delete(t.key)
                           }
-                          else next.add(t.key)
+                          else {
+                            if (t.key.startsWith('flatlay_')) {
+                              const existingFlatlays = Array.from(next).filter((k) => k.startsWith('flatlay_'))
+                              if (existingFlatlays.length >= limits.flatLayTypes) return next
+                            }
+                            next.add(t.key)
+                          }
                           return next
                         })
                       }}
                       className={cn(
                         'rounded-md border px-3 py-1.5 text-xs transition-colors',
+                        !enabled && 'opacity-40 cursor-not-allowed',
                         selected
                           ? 'border-accent/80 bg-accent/10 text-accent'
                           : 'border-white/10 text-muted-foreground hover:border-white/20 hover:text-foreground hover:bg-accent/5'
@@ -343,12 +491,17 @@ export default function GeneratePage() {
                       aria-pressed={selected}
                     >
                       {t.label}
+                      {!enabled ? ' (Upgrade)' : ''}
                     </button>
                   )
                 })}
               </div>
 
               <div className="my-7 h-px w-full bg-white/10" />
+              <p className="text-xs text-muted-foreground">
+                Flat-lay types selected: {Array.from(shotTypes).filter((k) => k.startsWith('flatlay_')).length}/
+                {limits.flatLayTypes}
+              </p>
 
               <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">
                 Visual direction
@@ -357,14 +510,20 @@ export default function GeneratePage() {
               <div className="mt-4 grid grid-cols-2 gap-4">
                 {VISUAL_DIRECTIONS.map((d) => {
                   const selected = visualDirection === d.key
+                  const presetEnabled = limits.presets.includes(d.key)
                   const swatchClassName = d.key === 'surprise' ? surpriseSwatchClassName : d.swatchClassName
                   return (
                     <button
                       key={d.key}
                       type="button"
-                      onClick={() => setVisualDirection(d.key)}
+                      disabled={!presetEnabled}
+                      onClick={() => {
+                        if (!presetEnabled) return
+                        setVisualDirection(d.key)
+                      }}
                       className={cn(
                         'group rounded-lg border bg-background/20 p-4 text-left transition-colors',
+                        !presetEnabled && 'opacity-40 cursor-not-allowed',
                         selected
                           ? 'border-accent/80 ring-1 ring-accent/40'
                           : 'border-white/10 hover:border-white/20'
@@ -375,6 +534,11 @@ export default function GeneratePage() {
                       <div className="mt-1 text-xs text-muted-foreground leading-snug">
                         {d.subtitle}
                       </div>
+                      {!presetEnabled ? (
+                        <div className="mt-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Upgrade required
+                        </div>
+                      ) : null}
                     </button>
                   )
                 })}
@@ -383,7 +547,7 @@ export default function GeneratePage() {
               <div className="mt-10">
                 <Button
                   onClick={handleGenerate}
-                  disabled={!preview || isLoading || isAuthLoading || !isAuthed}
+                  disabled={!canGenerateNow}
                   className={cn(
                     'w-full rounded-full py-6 text-sm tracking-[0.35em] uppercase',
                     'bg-transparent border border-white/15 hover:border-white/25 hover:bg-accent/5'
@@ -392,6 +556,16 @@ export default function GeneratePage() {
                 >
                   {isLoading ? 'Generating…' : 'Generate Content'}
                 </Button>
+                {!hasEnoughCredits ? (
+                  <p className="mt-3 text-xs text-destructive">
+                    Not enough credits for selected assets.
+                  </p>
+                ) : null}
+                {selectedAllowedCount === 0 ? (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Your current plan does not allow the selected shot types.
+                  </p>
+                ) : null}
               </div>
             </div>
           </aside>

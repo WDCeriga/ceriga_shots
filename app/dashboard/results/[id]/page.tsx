@@ -6,10 +6,10 @@ import { useProjects } from '@/hooks/use-projects'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { Input } from '@/components/ui/input'
-import { Check, Pencil, X } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Pencil, X } from 'lucide-react'
 import { ShareDialog } from '@/components/share-dialog'
 import { toast } from '@/hooks/use-toast'
-import { LightboxAsset, LightboxImage } from '@/components/lightbox-image'
+import { LightboxAsset } from '@/components/lightbox-image'
 import {
   Select,
   SelectContent,
@@ -17,11 +17,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useRole } from '@/hooks/use-role'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 
 export default function ResultsPage() {
   const params = useParams()
   const projectId = params.id as string
   const { getProject, fetchProject, updateProject } = useProjects()
+  const { role, limits } = useRole()
   const project = getProject(projectId)
   const [isDownloading, setIsDownloading] = useState(false)
   const [moreType, setMoreType] = useState<
@@ -41,6 +44,7 @@ export default function ResultsPage() {
   const [isRenaming, setIsRenaming] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   const formatViewTitle = (t: string) => {
     switch (t) {
@@ -141,6 +145,10 @@ export default function ResultsPage() {
     typeof project.generation.total === 'number' &&
     typeof project.generation.completed === 'number' &&
     project.generation.completed < project.generation.total
+  const canGenerateMoreFeature = limits.generateMore
+  const canGenerateMore = !isActivelyGenerating && canGenerateMoreFeature
+  const navigableImages = project.generatedImages.filter((img) => !!img.url)
+  const activeLightboxImage = lightboxIndex == null ? null : navigableImages[lightboxIndex] ?? null
 
   const startRename = () => {
     setNameDraft(project.name)
@@ -177,7 +185,7 @@ export default function ResultsPage() {
           project.generation.nextType ? ` • Next: ${project.generation.nextType}` : ''
         }`
       : project.generation.status === 'complete'
-        ? `Complete • ${project.generation.completed}/${project.generation.total}`
+        ? ''
         : project.generation.status === 'error'
           ? `Error • ${project.generation.completed}/${project.generation.total}`
           : ''
@@ -194,6 +202,22 @@ export default function ResultsPage() {
       window.setTimeout(() => setIsDownloading(false), 1200)
     }
   }
+
+  useEffect(() => {
+    if (lightboxIndex == null) return
+    const onKey = (e: KeyboardEvent) => {
+      if (!navigableImages.length) return
+      if (e.key === 'ArrowRight') {
+        setLightboxIndex((prev) => (prev == null ? 0 : (prev + 1) % navigableImages.length))
+      } else if (e.key === 'ArrowLeft') {
+        setLightboxIndex((prev) =>
+          prev == null ? 0 : (prev - 1 + navigableImages.length) % navigableImages.length
+        )
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [lightboxIndex, navigableImages.length])
 
   return (
     <div className="p-6 lg:p-8">
@@ -351,14 +375,14 @@ export default function ResultsPage() {
 
                 <Button
                   className="flex-1"
-                  disabled={isActivelyGenerating}
+                  disabled={!canGenerateMore}
                   onClick={async () => {
                     const preset = project.generation?.preset ?? 'raw'
                     try {
                       const res = await fetch(`/api/projects/${projectId}/generate`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ shotTypes: [moreType], preset }),
+                        body: JSON.stringify({ mode: 'more', shotTypes: [moreType], preset }),
                       })
                       const data = (await res.json().catch(() => ({}))) as { error?: string }
                       if (!res.ok) throw new Error(data.error || 'Failed to enqueue generation')
@@ -375,6 +399,11 @@ export default function ResultsPage() {
                   {isActivelyGenerating ? 'Generating…' : 'Generate more'}
                 </Button>
               </div>
+              {!canGenerateMoreFeature ? (
+                <p className="text-xs text-muted-foreground">
+                  Generate more is not available on your current plan.
+                </p>
+              ) : null}
 
               <div className="text-xs text-muted-foreground">
                 Tip: you can generate dozens of assets; the gallery will keep expanding below.
@@ -403,12 +432,22 @@ export default function ResultsPage() {
                 className="rounded-xl overflow-hidden border border-border bg-card hover:border-accent transition-colors"
               >
                 {img.url ? (
-                  <LightboxImage
-                    src={img.url}
-                    alt={img.type}
-                    title={formatViewTitle(img.type)}
-                    imgClassName="w-full aspect-square object-cover"
-                  />
+                  <button
+                    type="button"
+                    className="block w-full text-left"
+                    onClick={() => {
+                      const idx = navigableImages.findIndex((x) => x.id === img.id)
+                      if (idx >= 0) setLightboxIndex(idx)
+                    }}
+                    aria-label={`Open ${formatViewTitle(img.type)}`}
+                  >
+                    <img
+                      src={img.url}
+                      alt={img.type}
+                      className="w-full aspect-square object-cover"
+                      loading="lazy"
+                    />
+                  </button>
                 ) : (
                   <LightboxAsset title={formatViewTitle(img.type)} prompt={img.prompt}>
                     <div className="w-full aspect-square flex items-center justify-center bg-secondary/50">
@@ -459,6 +498,59 @@ export default function ResultsPage() {
           </div>
         </section>
       </div>
+
+      <Dialog open={lightboxIndex != null} onOpenChange={(open) => !open && setLightboxIndex(null)}>
+        <DialogContent className="[&>button]:right-3 [&>button]:top-3 [&>button]:z-50 [&>button]:rounded-md [&>button]:bg-background/90 [&>button]:p-1 [&>button]:text-red-500 [&>button:hover]:text-red-400 max-w-[min(1100px,calc(100vw-2rem))] p-0 overflow-hidden">
+          <DialogTitle className="sr-only">
+            {activeLightboxImage ? formatViewTitle(activeLightboxImage.type) : 'Image preview'}
+          </DialogTitle>
+          {activeLightboxImage ? (
+            <div className="relative bg-black/40">
+              <img
+                src={activeLightboxImage.url}
+                alt={activeLightboxImage.type}
+                className="block w-full h-auto max-h-[80vh] object-contain"
+              />
+              {navigableImages.length > 1 ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLightboxIndex((prev) =>
+                        prev == null ? 0 : (prev - 1 + navigableImages.length) % navigableImages.length
+                      )
+                    }
+                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full border border-border bg-background/85 p-2"
+                    aria-label="Previous image"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setLightboxIndex((prev) =>
+                        prev == null ? 0 : (prev + 1) % navigableImages.length
+                      )
+                    }
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full border border-border bg-background/85 p-2"
+                    aria-label="Next image"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </>
+              ) : null}
+            </div>
+          ) : null}
+          {activeLightboxImage ? (
+            <div className="px-4 py-3 border-t border-border text-sm text-muted-foreground flex items-center justify-between">
+              <span>{formatViewTitle(activeLightboxImage.type)}</span>
+              <span className="text-xs">
+                {lightboxIndex != null ? `${lightboxIndex + 1}/${navigableImages.length}` : ''}
+              </span>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -14,6 +14,7 @@ import {
 } from '@/lib/quotas'
 import { findUserById } from '@/lib/users'
 import type { UserRole } from '@/lib/roles'
+import { decrementCredits, incrementCredits } from '@/lib/credits'
 
 const SHOT_TYPES: ShotType[] = [
   'flatlay_topdown',
@@ -80,6 +81,8 @@ export async function POST(req: NextRequest) {
 
   const rawShotTypes = (body as { shotTypes?: unknown }).shotTypes
   const rawPreset = (body as { preset?: unknown }).preset
+  const modeRaw = (body as { mode?: unknown }).mode
+  const mode: 'initial' | 'more' = modeRaw === 'initial' ? 'initial' : 'more'
 
   if (!Array.isArray(rawShotTypes) || rawShotTypes.length === 0) {
     return NextResponse.json({ error: 'shotTypes must be a non-empty array' }, { status: 400 })
@@ -99,7 +102,7 @@ export async function POST(req: NextRequest) {
   const user = await findUserById(session.user.id)
   const role = (user?.role ?? 'free') as UserRole
 
-  const generateMoreErr = checkGenerateMore(role)
+  const generateMoreErr = mode === 'more' ? checkGenerateMore(role) : null
   if (generateMoreErr) {
     return NextResponse.json(
       { error: quotaErrorMessage(generateMoreErr), code: generateMoreErr.code },
@@ -131,24 +134,48 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  await enqueueGenerationJobs({
-    ownerId: session.user.id,
-    projectId: project.id,
-    shotTypes: rawShotTypes,
-    preset: rawPreset,
-  })
-
-  const baseUrl = `${url.protocol}//${url.host}`
-  const dispatchHeaders: Record<string, string> = {}
-  if (process.env.QUEUE_DISPATCH_SECRET) {
-    dispatchHeaders['x-queue-secret'] = process.env.QUEUE_DISPATCH_SECRET
-  } else if (process.env.CRON_SECRET) {
-    dispatchHeaders['authorization'] = `Bearer ${process.env.CRON_SECRET}`
+  const creditsOk = await decrementCredits(session.user.id, rawShotTypes.length)
+  if (!creditsOk) {
+    const latestErr = await checkCreditsForBatch(session.user.id, rawShotTypes.length)
+    return NextResponse.json(
+      {
+        error: quotaErrorMessage(
+          latestErr ?? {
+            code: 'insufficient_credits',
+            required: rawShotTypes.length,
+            remaining: 0,
+          }
+        ),
+        code: 'insufficient_credits',
+      },
+      { status: 403 }
+    )
   }
-  void fetch(`${baseUrl}/api/jobs/dispatch`, {
-    method: 'POST',
-    headers: dispatchHeaders,
-  }).catch(() => {})
 
-  return NextResponse.json({ ok: true })
+  try {
+    await enqueueGenerationJobs({
+      ownerId: session.user.id,
+      projectId: project.id,
+      shotTypes: rawShotTypes,
+      preset: rawPreset,
+    })
+
+    const baseUrl = `${url.protocol}//${url.host}`
+    const dispatchHeaders: Record<string, string> = {}
+    if (process.env.QUEUE_DISPATCH_SECRET) {
+      dispatchHeaders['x-queue-secret'] = process.env.QUEUE_DISPATCH_SECRET
+    } else if (process.env.CRON_SECRET) {
+      dispatchHeaders['authorization'] = `Bearer ${process.env.CRON_SECRET}`
+    }
+    void fetch(`${baseUrl}/api/jobs/dispatch`, {
+      method: 'POST',
+      headers: dispatchHeaders,
+    }).catch(() => {})
+
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    await incrementCredits(session.user.id, rawShotTypes.length)
+    console.error('POST /api/projects/[id]/generate error', error)
+    return NextResponse.json({ error: 'Failed to enqueue generation' }, { status: 500 })
+  }
 }

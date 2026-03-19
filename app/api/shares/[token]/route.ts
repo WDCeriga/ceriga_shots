@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { isDatabaseConfigured } from '@/lib/db'
-import { getProjectForShareToken, revokeShare } from '@/lib/shares'
+import { getProjectForShareToken, revokeShare, deleteRevokedShare } from '@/lib/shares'
 
 export const runtime = 'nodejs'
 
@@ -71,6 +71,17 @@ export async function PATCH(req: Request) {
       )
     }
     return NextResponse.json({ revoked: true })
+  }
+
+  if (body.action === 'delete') {
+    const ok = await deleteRevokedShare(token, session.user.id)
+    if (!ok) {
+      return NextResponse.json(
+        { error: 'Share not found or must be revoked before deleting' },
+        { status: 404 }
+      )
+    }
+    return NextResponse.json({ deleted: true })
   }
 
   return NextResponse.json({ error: 'Unknown action' }, { status: 400 })

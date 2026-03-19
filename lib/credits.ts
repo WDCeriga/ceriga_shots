@@ -103,3 +103,16 @@ export async function decrementCredits(userId: string, amount: number): Promise<
 
   return updated.length > 0
 }
+
+/**
+ * Refund credits by amount (best-effort, capped at 0 floor).
+ */
+export async function incrementCredits(userId: string, amount: number): Promise<void> {
+  if (amount <= 0) return
+  await ensureSchema()
+  await db`
+    update users
+    set credits_used = greatest(0, credits_used - ${amount})
+    where id = ${userId}
+  `
+}

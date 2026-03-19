@@ -7,18 +7,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Separator } from '@/components/ui/separator'
-import { AlertTriangle, CheckCircle2, ExternalLink, Loader2, LogOut, Sparkles } from 'lucide-react'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { AlertTriangle, CheckCircle2, Loader2, LogOut } from 'lucide-react'
 
 type StatusResponse = {
   database: { configured: boolean }
@@ -38,6 +27,13 @@ export default function SettingsPage() {
   const [brandSaving, setBrandSaving] = useState(false)
   const [sysStatus, setSysStatus] = useState<StatusResponse | null>(null)
   const [statusLoading, setStatusLoading] = useState(true)
+  const [accountPlan, setAccountPlan] = useState<string>('free')
+  const [credits, setCredits] = useState<{
+    used: number
+    limit: number
+    remaining: number
+    resetAt: string | null
+  } | null>(null)
 
   useEffect(() => {
     const next = {
@@ -53,13 +49,26 @@ export default function SettingsPage() {
     fetch('/api/me', { method: 'GET' })
       .then(async (res) => {
         if (!res.ok) throw new Error(`me ${res.status}`)
-        return (await res.json()) as { user: { brandName: string | null } }
+        return (await res.json()) as {
+          user: {
+            brandName: string | null
+            role?: string
+            credits?: {
+              used: number
+              limit: number
+              remaining: number
+              resetAt: string | null
+            } | null
+          }
+        }
       })
       .then((data) => {
         if (cancelled) return
         const next = data.user.brandName ?? ''
         setBrandName(next)
         setInitialBrandName(next)
+        setAccountPlan(data.user.role ?? 'free')
+        setCredits(data.user.credits ?? null)
       })
       .catch(() => {
         if (cancelled) return
@@ -74,6 +83,12 @@ export default function SettingsPage() {
   }, [])
 
   useEffect(() => {
+    if (accountPlan !== 'admin') {
+      setSysStatus(null)
+      setStatusLoading(false)
+      return
+    }
+
     let cancelled = false
     setStatusLoading(true)
     fetch('/api/status', { method: 'GET' })
@@ -97,7 +112,7 @@ export default function SettingsPage() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [accountPlan])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -184,6 +199,34 @@ export default function SettingsPage() {
                 <LogOut className="w-4 h-4 mr-2" />
                 Sign out
               </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="border-b">
+            <CardTitle>Usage</CardTitle>
+            <CardDescription>Plan and monthly credit usage.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Plan</span>
+              <Badge variant="secondary" className="capitalize">
+                {accountPlan}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Credits used</span>
+              <span className="text-sm font-medium">
+                {credits ? `${credits.used}/${credits.limit < 0 ? 'Unlimited' : credits.limit}` : '...'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Remaining</span>
+              <span className="text-sm font-medium">{credits ? credits.remaining : '...'}</span>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Reset: {credits?.resetAt ? new Date(credits.resetAt).toLocaleString() : 'Pending'}
             </div>
           </CardContent>
         </Card>

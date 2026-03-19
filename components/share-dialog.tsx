@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Copy, Loader2, Link2Off, History } from 'lucide-react'
+import { Copy, Loader2, Link2Off, History, Trash2 } from 'lucide-react'
 import {
   Collapsible,
   CollapsibleContent,
@@ -51,6 +51,7 @@ type ShareDialogProps = {
 
 const EXPIRY_PRESETS = [
   { value: 'never', label: 'Never expires' },
+  { value: '24h', label: '24 hours' },
   { value: '7d', label: '7 days' },
   { value: '30d', label: '30 days' },
   { value: '90d', label: '90 days' },
@@ -66,7 +67,8 @@ function formatDate(iso: string): string {
 function getExpiresAtFromPreset(preset: string): string | null {
   if (preset === 'never') return null
   const d = new Date()
-  if (preset === '7d') d.setDate(d.getDate() + 7)
+  if (preset === '24h') d.setHours(d.getHours() + 24)
+  else if (preset === '7d') d.setDate(d.getDate() + 7)
   else if (preset === '30d') d.setDate(d.getDate() + 30)
   else if (preset === '90d') d.setDate(d.getDate() + 90)
   else return null
@@ -79,6 +81,7 @@ export function ShareDialog({ projectId, open, onOpenChange }: ShareDialogProps)
   const [creating, setCreating] = useState(false)
   const [expiryPreset, setExpiryPreset] = useState<string>('never')
   const [revoking, setRevoking] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
   const [auditOpen, setAuditOpen] = useState<Record<string, boolean>>({})
   const [auditCache, setAuditCache] = useState<Record<string, ShareAuditEntry[]>>({})
 
@@ -166,6 +169,42 @@ export function ShareDialog({ projectId, open, onOpenChange }: ShareDialogProps)
     }
   }
 
+  const deleteShare = async (token: string) => {
+    if (deleting) return
+    setDeleting(token)
+    try {
+      const res = await fetch(`/api/shares/${token}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete' }),
+      })
+      const data = (await res.json()) as { deleted?: boolean; error?: string }
+      if (!res.ok || !data.deleted) {
+        throw new Error(data.error ?? 'Failed to delete')
+      }
+      await fetchShares()
+      setAuditCache((prev) => {
+        const next = { ...prev }
+        delete next[token]
+        return next
+      })
+      setAuditOpen((prev) => {
+        const next = { ...prev }
+        delete next[token]
+        return next
+      })
+      toast({ title: 'Share link deleted' })
+    } catch (e) {
+      toast({
+        title: 'Delete failed',
+        description: e instanceof Error ? e.message : 'Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setDeleting(null)
+    }
+  }
+
   const copyLink = async (url: string) => {
     const canClipboard =
       typeof navigator !== 'undefined' &&
@@ -211,7 +250,7 @@ export function ShareDialog({ projectId, open, onOpenChange }: ShareDialogProps)
         <div className="space-y-4">
           {/* Create new */}
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-            <div className="flex-1 space-y-2">
+            <div className="w-full sm:w-40 space-y-2">
               <label className="text-sm font-medium">Expiration</label>
               <Select value={expiryPreset} onValueChange={setExpiryPreset}>
                 <SelectTrigger>
@@ -295,6 +334,22 @@ export function ShareDialog({ projectId, open, onOpenChange }: ShareDialogProps)
                               )}
                             </Button>
                           </>
+                        )}
+                        {s.revoked && (
+                          <Button
+                            size="icon-sm"
+                            variant="ghost"
+                            onClick={() => void deleteShare(s.token)}
+                            disabled={deleting === s.token}
+                            aria-label="Delete revoked link"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            {deleting === s.token ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
+                          </Button>
                         )}
                       </div>
                     </div>

@@ -12,12 +12,22 @@ export const db =
         throw new Error('DATABASE_URL is not set')
       }) as unknown as ReturnType<typeof neon>)
 
-export async function ensureSchema() {
-  // Neon serverless prepared statements can't include multiple SQL commands.
-  // Execute schema statements individually.
-  await db`create extension if not exists pgcrypto`
+let schemaReady = false
+let schemaInitPromise: Promise<void> | null = null
 
-  await db`
+export async function ensureSchema() {
+  if (schemaReady) return
+  if (schemaInitPromise) {
+    await schemaInitPromise
+    return
+  }
+
+  schemaInitPromise = (async () => {
+    // Neon serverless prepared statements can't include multiple SQL commands.
+    // Execute schema statements individually.
+    await db`create extension if not exists pgcrypto`
+
+    await db`
     create table if not exists users (
       id uuid primary key default gen_random_uuid(),
       email text not null unique,
@@ -27,13 +37,13 @@ export async function ensureSchema() {
     )
   `
 
-  // Backfill/migrate older schemas.
-  await db`alter table users add column if not exists brand_name text`
-  await db`alter table users add column if not exists role text not null default 'free'`
-  await db`alter table users add column if not exists credits_used integer not null default 0`
-  await db`alter table users add column if not exists credits_reset_at timestamptz`
+    // Backfill/migrate older schemas.
+    await db`alter table users add column if not exists brand_name text`
+    await db`alter table users add column if not exists role text not null default 'free'`
+    await db`alter table users add column if not exists credits_used integer not null default 0`
+    await db`alter table users add column if not exists credits_reset_at timestamptz`
 
-  await db`
+    await db`
     create table if not exists projects (
       id uuid primary key default gen_random_uuid(),
       owner_id text not null,
@@ -47,9 +57,9 @@ export async function ensureSchema() {
     )
   `
 
-  await db`create index if not exists projects_owner_id_idx on projects(owner_id)`
+    await db`create index if not exists projects_owner_id_idx on projects(owner_id)`
 
-  await db`
+    await db`
     create table if not exists project_shares (
       token uuid primary key default gen_random_uuid(),
       project_id uuid not null references projects(id) on delete cascade,
@@ -57,13 +67,13 @@ export async function ensureSchema() {
       created_at timestamptz not null default now()
     )
   `
-  await db`create index if not exists project_shares_project_id_idx on project_shares(project_id)`
-  await db`create index if not exists project_shares_owner_id_idx on project_shares(owner_id)`
+    await db`create index if not exists project_shares_project_id_idx on project_shares(project_id)`
+    await db`create index if not exists project_shares_owner_id_idx on project_shares(owner_id)`
 
-  await db`alter table project_shares add column if not exists revoked_at timestamptz`
-  await db`alter table project_shares add column if not exists expires_at timestamptz`
+    await db`alter table project_shares add column if not exists revoked_at timestamptz`
+    await db`alter table project_shares add column if not exists expires_at timestamptz`
 
-  await db`
+    await db`
     create table if not exists share_audit_log (
       id uuid primary key default gen_random_uuid(),
       share_token uuid not null references project_shares(token) on delete cascade,
@@ -73,10 +83,10 @@ export async function ensureSchema() {
       created_at timestamptz not null default now()
     )
   `
-  await db`create index if not exists share_audit_log_share_token_idx on share_audit_log(share_token)`
-  await db`create index if not exists share_audit_log_created_at_idx on share_audit_log(created_at)`
+    await db`create index if not exists share_audit_log_share_token_idx on share_audit_log(share_token)`
+    await db`create index if not exists share_audit_log_created_at_idx on share_audit_log(created_at)`
 
-  await db`
+    await db`
     create table if not exists generation_jobs (
       id uuid primary key default gen_random_uuid(),
       owner_id text not null,
@@ -96,8 +106,16 @@ export async function ensureSchema() {
       updated_at timestamptz not null default now()
     )
   `
-  await db`create index if not exists generation_jobs_status_run_after_idx on generation_jobs(status, run_after, created_at)`
-  await db`create index if not exists generation_jobs_project_id_idx on generation_jobs(project_id)`
+    await db`create index if not exists generation_jobs_status_run_after_idx on generation_jobs(status, run_after, created_at)`
+    await db`create index if not exists generation_jobs_project_id_idx on generation_jobs(project_id)`
+  })()
+
+  try {
+    await schemaInitPromise
+    schemaReady = true
+  } finally {
+    schemaInitPromise = null
+  }
 }
 
 

@@ -8,13 +8,13 @@ import { isR2Configured, putObjectToR2 } from '@/lib/r2'
 import { enqueueGenerationJobs, type Preset, type ShotType } from '@/lib/generation-queue'
 import {
   checkProjectLimit,
-  checkCreditsForBatch,
   validateShotTypesForRole,
   validatePresetForRole,
   type QuotaError,
 } from '@/lib/quotas'
 import { findUserById } from '@/lib/users'
 import type { UserRole } from '@/lib/roles'
+import { decrementCredits, incrementCredits, getCreditsForUser } from '@/lib/credits'
 
 function quotaErrorMessage(err: QuotaError): string {
   switch (err.code) {
@@ -139,10 +139,17 @@ export async function POST(req: Request) {
   const preset = (input.generation?.preset ?? 'raw') as Preset
 
   if (shotTypes.length > 0) {
-    const creditsErr = await checkCreditsForBatch(session.user.id, shotTypes.length)
-    if (creditsErr) {
+    const credits = await getCreditsForUser(session.user.id)
+    if (!credits || credits.remaining < shotTypes.length) {
       return NextResponse.json(
-        { error: quotaErrorMessage(creditsErr), code: creditsErr.code },
+        {
+          error: quotaErrorMessage({
+            code: 'insufficient_credits',
+            required: shotTypes.length,
+            remaining: credits?.remaining ?? 0,
+          }),
+          code: 'insufficient_credits',
+        },
         { status: 403 }
       )
     }
@@ -157,6 +164,26 @@ export async function POST(req: Request) {
     if (presetErr) {
       return NextResponse.json(
         { error: quotaErrorMessage(presetErr), code: presetErr.code },
+        { status: 403 }
+      )
+    }
+  }
+
+  const shouldQueueInitial = input.generation?.status === 'generating' && shotTypes.length > 0
+  let reservedCredits = false
+  if (shouldQueueInitial) {
+    reservedCredits = await decrementCredits(session.user.id, shotTypes.length)
+    if (!reservedCredits) {
+      const credits = await getCreditsForUser(session.user.id)
+      return NextResponse.json(
+        {
+          error: quotaErrorMessage({
+            code: 'insufficient_credits',
+            required: shotTypes.length,
+            remaining: credits?.remaining ?? 0,
+          }),
+          code: 'insufficient_credits',
+        },
         { status: 403 }
       )
     }
@@ -184,7 +211,7 @@ export async function POST(req: Request) {
       generatedImages: input.generatedImages ?? [],
     })
 
-    if (input.generation?.status === 'generating' && shotTypes.length > 0) {
+    if (shouldQueueInitial) {
       await enqueueGenerationJobs({
         ownerId: session.user.id,
         projectId: project.id,
@@ -206,6 +233,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ project }, { status: 201 })
   } catch (error) {
+    if (reservedCredits) {
+      await incrementCredits(session.user.id, shotTypes.length)
+    }
     console.error('POST /api/projects error', error)
     return NextResponse.json({ error: 'Failed to create project' }, { status: 500 })
   }

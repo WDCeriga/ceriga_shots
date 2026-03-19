@@ -9,11 +9,13 @@ export default function DashboardLayout({
 }) {
   return (
     <ProjectsProvider>
-      <div className="flex h-screen bg-background">
+      <div className="flex min-h-dvh md:h-screen bg-background">
         <AppSidebar className="hidden md:flex" />
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           <TopNav />
-          <main className="flex-1 overflow-auto pt-16 md:pt-0">{children}</main>
+          <main className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain pt-16 pb-6 md:pt-0 md:pb-0">
+            {children}
+          </main>
         </div>
       </div>
     </ProjectsProvider>

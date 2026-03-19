@@ -25,7 +25,7 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
     flatLayTypes: 2,
     surfaceShots: false,
     detailShots: 'print',
-    presets: ['raw'],
+    presets: ['studio'],
     zip: true,
     shareLinks: true,
     resolution: 'standard',
