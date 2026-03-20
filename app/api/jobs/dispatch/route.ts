@@ -67,6 +67,7 @@ async function processSingle(baseUrl: string, workerId: string) {
         generationIndex: job.generation_index,
         attempts: 2,
         variationSeed: job.variation_seed,
+        garmentType: project.generation?.garmentType,
       }),
     })
 

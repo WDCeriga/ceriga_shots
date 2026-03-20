@@ -57,6 +57,13 @@ function isPreset(v: unknown): v is Preset {
   return typeof v === 'string' && PRESETS.includes(v as Preset)
 }
 
+function normalizeGarmentType(input: unknown): string | undefined {
+  if (typeof input !== 'string') return undefined
+  const cleaned = input.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!cleaned) return undefined
+  return cleaned.length > 50 ? cleaned.slice(0, 50).trim() : cleaned
+}
+
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
@@ -84,6 +91,7 @@ export async function POST(req: NextRequest) {
   const rawPreset = (body as { preset?: unknown }).preset
   const modeRaw = (body as { mode?: unknown }).mode
   const mode: 'initial' | 'more' = modeRaw === 'initial' ? 'initial' : 'more'
+  const garmentType = normalizeGarmentType((body as { garmentType?: unknown }).garmentType)
 
   if (!Array.isArray(rawShotTypes) || rawShotTypes.length === 0) {
     return NextResponse.json({ error: 'shotTypes must be a non-empty array' }, { status: 400 })
@@ -196,6 +204,7 @@ export async function POST(req: NextRequest) {
       projectId: project.id,
       shotTypes: rawShotTypes,
       preset: rawPreset,
+      garmentType,
     })
 
     const baseUrl = `${url.protocol}//${url.host}`

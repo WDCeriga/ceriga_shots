@@ -20,11 +20,12 @@ export type DbUserRow = {
 }
 
 export async function findUserByEmail(email: string): Promise<DbUserRow | null> {
+  const normalized = email.trim().toLowerCase()
   await ensureSchema()
   const rows = (await db`
     select *
     from users
-    where email = ${email}
+    where lower(email) = ${normalized}
     limit 1
   `) as DbUserRow[]
   return rows[0] ?? null
@@ -76,7 +77,8 @@ export async function createUser(
 ): Promise<DbUserRow> {
   await ensureSchema()
 
-  const existing = await findUserByEmail(email)
+  const normalizedEmail = email.trim().toLowerCase()
+  const existing = await findUserByEmail(normalizedEmail)
   if (existing) {
     throw new Error('User already exists')
   }
@@ -86,14 +88,15 @@ export async function createUser(
     typeof brandName === 'string' && brandName.trim() !== '' ? brandName.trim() : null
   const rows = (await db`
     insert into users (email, brand_name, password_hash)
-    values (${email}, ${normalizedBrand}, ${hash})
+    values (${normalizedEmail}, ${normalizedBrand}, ${hash})
     returning *
   `) as DbUserRow[]
   return rows[0]
 }
 
 export async function verifyUser(email: string, password: string): Promise<DbUserRow | null> {
-  const user = await findUserByEmail(email)
+  const normalizedEmail = email.trim().toLowerCase()
+  const user = await findUserByEmail(normalizedEmail)
   if (!user) return null
   const ok = await bcrypt.compare(password, user.password_hash)
   return ok ? user : null

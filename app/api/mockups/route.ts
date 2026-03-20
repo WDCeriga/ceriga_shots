@@ -17,6 +17,7 @@ type ShotType =
   | 'detail_collar'
 
 type Preset = 'raw' | 'editorial' | 'luxury' | 'natural' | 'studio' | 'surprise'
+type GarmentType = string
 type InteractionsImageMime =
   | 'image/png'
   | 'image/jpeg'
@@ -28,6 +29,20 @@ type ShotCategory = 'flatlay' | 'surface' | 'detail'
 
 function getApiKey(): string | undefined {
   return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY
+}
+
+function normalizeGarmentType(input: unknown): GarmentType | undefined {
+  if (typeof input !== 'string') return undefined
+
+  // Keep it short and prompt-safe:
+  // - remove newlines
+  // - collapse multiple spaces
+  // - trim
+  const cleaned = input.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!cleaned) return undefined
+
+  // Hard limit to reduce token bloat and prompt injection surface.
+  return cleaned.length > 50 ? cleaned.slice(0, 50).trim() : cleaned
 }
 
 function parseDataUrl(dataUrl: string): { mimeType: string; base64: string } | null {
@@ -51,13 +66,14 @@ async function fetchImageUrlAsBase64(imageUrl: string): Promise<{ mimeType: stri
 }
 
 function normalizeInteractionsImageMime(mimeType: string): InteractionsImageMime {
-  switch (mimeType) {
+  const base = mimeType.split(';')[0].trim().toLowerCase()
+  switch (base) {
     case 'image/png':
     case 'image/jpeg':
     case 'image/webp':
     case 'image/heic':
     case 'image/heif':
-      return mimeType
+      return base
     default:
       return 'image/png'
   }
@@ -136,10 +152,11 @@ const BASE_FIDELITY = [
   '- Remove dust, lint, and sensor noise',
   '- Improve fabric clarity and thread definition',
   '- Correct uneven or poor lighting from the reference image',
-  '- Make the garment look professionally pressed and shoot-ready',
+  '- Make the garment look professionally pressed and shoot-ready where appropriate (for relaxed/crumpled styling, preserve natural folds and do NOT over-smooth)',
   '',
   'OUTPUT:',
-  '- Aspect ratio: 1:1 square',
+  '- Aspect ratio: 1:1 square; crop centered on the subject',
+  '- When the shot type requires full garment visibility, ensure no cropped hems/sleeves/logo edges',
   '- Must read as a real studio photograph, not a render or illustration',
   '- Zero AI artifacts, surreal elements, or uncanny fabric distortion',
   '- No added text, overlays, or watermarks',
@@ -154,16 +171,10 @@ const BASE_DETAIL_CARVEOUT = [
 
 const NEGATIVE_GLOBAL = [
   'NEGATIVE (do NOT do any of the following):',
-  '- Do NOT add extra garments, duplicate sleeves, duplicate collars, or mirrored/duplicated prints.',
-  '- Do NOT alter typography, warp logos, or “correct” artwork; keep graphics identical.',
-  '- Do NOT invent new seams, pockets, zippers, tags, drawstrings, buttons, or fabric panels.',
-  '- Do NOT add hangers/hands/mannequins/people unless the shot type explicitly requires it.',
-  '- Do NOT output CGI/illustration/painterly styles, plastic sheen, or “AI texture”. Photoreal only.',
-  '- Do NOT add text, watermarks, brand marks, UI overlays, or borders.',
-  '- Do NOT reproduce ANY input image context: phone/tablet/desktop UI, status bars, battery icons, signal indicators, dynamic island, home indicator, navigation bars, browser chrome, URL bars, tabs, app interfaces, social media overlays, e-commerce UI, price tags, chat bubbles, device bezels, mock device frames, window title bars, taskbars, or screen recording artifacts.',
-  '- Do NOT reproduce watermarks, stock photo marks, "SAMPLE" overlays, supplier stamps, or any text overlay from the input image.',
-  '- Do NOT reproduce solid-colour bars, letterboxing, borders, or padding from the input image.',
-  '- Do NOT reproduce background clutter, other objects, accessories, or retail context from the input image.',
+  '- Output MUST depict ONLY the garment and any minimal required, unbranded support (e.g., a simple hook/hanger for hanging shots); no UI, no device frames, no other surrounding objects.',
+  '- Photoreal only: no CGI/illustration/painterly styles and no “AI texture”.',
+  '- Do NOT alter the garment design: prints/logos/colors/seams/pockets/zippers/buttons must match the reference exactly.',
+  '- Do NOT add or reproduce watermarks, any text overlays, borders, padding, or letterboxing.',
 ].join('\n')
 
 const NEGATIVE_BY_CATEGORY: Record<ShotCategory, string> = {
@@ -184,6 +195,7 @@ const NEGATIVE_BY_CATEGORY: Record<ShotCategory, string> = {
   ].join('\n'),
   detail: [
     'NEGATIVE (detail shots specific):',
+    '- No hangers/hooks/people/hands/mannequins/props.',
     '- Do NOT turn texture into noise or watercolor; avoid over-smoothing.',
     '- Avoid blown highlights on fabric; preserve weave detail and realistic shading.',
     '- Background must be minimal and non-distracting; no warped patterns behind the subject.',
@@ -269,7 +281,7 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
   detail_fabric: [
     'SHOT TYPE: Fabric texture macro',
     '- Extreme close-up on the material weave and texture',
-    '- No print or graphic needed — pure material study',
+    '- Focus is on weave/texture; if any print/graphics are visible inside the crop, preserve them exactly and do not remove/alter them.',
     '- Communicates fabric quality and weight',
     '- Slightly off-centre crop for editorial feel',
     '- Depth of field can be shallow — edges can softly fall off',
@@ -330,8 +342,7 @@ const PRESET_BASE: Record<Preset, string> = {
   ].join('\n'),
   surprise: [
     'VISUAL DIRECTION: Surprise',
-    '- Surface: [RANDOMISED — see variation seed]',
-    '- Lighting: [RANDOMISED — see variation seed]',
+    '- Surface and lighting are provided in the variation instructions below',
     '- Mood: unexpected combination — lean into the contrast',
     '- Colour temperature: follow the surface and lighting choice',
     "- Feel: something the brand hasn't tried before",
@@ -346,7 +357,7 @@ const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
       '- Concrete texture is subtle and uniform-scale; do not stretch/smear/repeat texture.',
       '- Shadows are crisp but controlled; do not create big gradients that imply a curved surface.',
       '- Keep edges crisp and proportions true; do not obscure the primary graphic with shadow.',
-    ].join('\\n'),
+    ].join('\n'),
     surface:
       'CONTEXT (surface): maintain realistic gravity folds and clean separation from background; keep background premium and not cluttered.',
     detail:
@@ -358,7 +369,7 @@ const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
       '- Seamless paper reads as a perfectly flat, textureless studio surface (single plane), no visible corner or horizon.',
       '- Keep styling minimal and precise; even exposure; avoid harsh shadow cut-offs.',
       '- Surface must be completely uniform — no grain, streaks, banding, mottling, or warped patterns.',
-    ].join('\\n'),
+    ].join('\n'),
     surface:
       'CONTEXT (surface): keep environment understated; the garment is hero; no busy scene elements.',
     detail:
@@ -370,7 +381,7 @@ const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
       '- Marble reads as a flat tabletop surface; veins must be subtle, non-repeating, and not warped.',
       '- Premium softness; no gritty noise; keep highlights gentle and controlled.',
       '- Avoid strong reflections or mirrored sheen; keep a low-sheen, upscale finish.',
-    ].join('\\n'),
+    ].join('\n'),
     surface:
       'CONTEXT (surface): quiet luxury; minimal scene; ensure hanger/hook is subtle and unbranded.',
     detail:
@@ -382,7 +393,7 @@ const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
       '- Wood reads as a flat tabletop surface; grain direction consistent; no warped or repeating plank patterns.',
       '- Light feels natural; shadows soft; no dramatic studio hard edges.',
       '- Avoid heavy vignettes or “curved table” gradients.',
-    ].join('\\n'),
+    ].join('\n'),
     surface:
       'CONTEXT (surface): believable window-light falloff; keep background calm and coherent.',
     detail:
@@ -395,7 +406,7 @@ const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
       '- Background must be pure, even white — no grey gradients, no banding, no visible seams or creases.',
       '- Lighting is even and wrap-around; shadows are minimal and soft — just enough to ground the garment.',
       '- The garment should "pop" against the white with clean edges and natural color reproduction.',
-    ].join('\\n'),
+    ].join('\n'),
     surface:
       'CONTEXT (surface): white background extends cleanly behind the garment; soft edge lighting for separation; no grey zones or uneven falloff.',
     detail:
@@ -406,7 +417,7 @@ const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
       'CONTEXT (flat lay):',
       '- Surprise comes from surface + lighting choices, but the surface must still be a single flat plane (no corners/horizon).',
       '- Keep it clean and symmetric when required; do not introduce warped patterns or curved geometry.',
-    ].join('\\n'),
+    ].join('\n'),
     surface:
       'CONTEXT (surface): surprise comes from surface/lighting choices, not clutter or extra props.',
     detail:
@@ -422,13 +433,48 @@ function buildVariationSeed(
 ) {
   const rand = mulberry32(variationSeed)
 
-  const compositions = [
-    'centred with generous breathing room',
-    'slightly off-centre to the left',
-    'slightly off-centre to the right',
-    'centred tight — garment fills 80% of frame',
-    'centred with asymmetric negative space',
-  ] as const
+  const centredBreathingRoom = 'centred with generous breathing room' as const
+  const slightlyOffLeft = 'slightly off-centre to the left' as const
+  const slightlyOffRight = 'slightly off-centre to the right' as const
+  const centredTight = 'centred tight — garment fills 80% of frame' as const
+  const asymmetricNegativeSpace = 'centred with asymmetric negative space' as const
+
+  // Shot prompts often imply strict symmetry/centering (especially top-down/sleeves/folded).
+  // If the variation block suggests asymmetric composition, Gemini may override earlier constraints.
+  // So we restrict allowed composition variants by shotType.
+  let compositions: readonly string[]
+  switch (shotType) {
+    case 'flatlay_topdown':
+    case 'flatlay_sleeves':
+    case 'flatlay_folded': {
+      compositions = [centredBreathingRoom, centredTight]
+      break
+    }
+    case 'flatlay_45deg': {
+      compositions = [centredBreathingRoom, slightlyOffLeft, slightlyOffRight, centredTight]
+      break
+    }
+    case 'flatlay_relaxed': {
+      // Keep it candid/off-centre, but avoid “asymmetric negative space” which tends to break the garment layout.
+      compositions = [centredBreathingRoom, slightlyOffLeft, slightlyOffRight, centredTight]
+      break
+    }
+    case 'surface_draped':
+    case 'surface_hanging': {
+      compositions = [centredBreathingRoom, slightlyOffLeft, slightlyOffRight, centredTight]
+      break
+    }
+    case 'detail_print':
+    case 'detail_collar': {
+      compositions = [centredTight]
+      break
+    }
+    case 'detail_fabric': {
+      // Your shot prompt explicitly allows a slightly off-centre crop for editorial feel.
+      compositions = [centredTight, slightlyOffLeft, slightlyOffRight]
+      break
+    }
+  }
 
   const surfaces = [
     'raw concrete',
@@ -461,8 +507,6 @@ function buildVariationSeed(
   const lines = [
     'VARIATION INSTRUCTIONS:',
     `- Composition: ${pickOne(rand, compositions)}`,
-    `- This is generation #${generationIndex} of this shot type for this project — ensure it looks noticeably different from previous generations`,
-    '- Do not repeat the exact same composition or lighting setup as any prior generation',
   ]
 
   if (preset === 'surprise') {
@@ -475,21 +519,48 @@ function buildVariationSeed(
   return lines.join('\n')
 }
 
+const FIDELITY_REMINDER = [
+  'FINAL REMINDER — PRODUCT FIDELITY:',
+  '- The garment in the output must be IDENTICAL to the garment in the input image.',
+  '- If any detail is unclear in the reference image, reproduce ambiguity faithfully — do NOT invent or assume.',
+  '- Do not "improve" the design. Do not add details that seem logical. Only reproduce what is visible.',
+  '- If you are uncertain about a design element, keep it simple and faithful rather than creative.',
+].join('\n')
+
+function buildGarmentTypeAnchor(garmentType: GarmentType): string {
+  if (!garmentType) return ''
+
+  return [
+    'GARMENT TYPE ANCHOR (hard constraint):',
+    `- The garment is a ${garmentType}.`,
+    '- Reproduce the correct silhouette for this garment type (neckline, hem length, sleeve cut, and body shape).',
+    '- Do NOT substitute a different garment category.',
+  ].join('\n')
+}
+
 function buildPrompt(args: {
   shotType: ShotType
   preset: Preset
   generationIndex: number
   variationSeed: number
+  garmentType?: GarmentType
 }) {
   const category = categoryForShotType(args.shotType)
-  const base = category === 'detail' ? `${BASE_FIDELITY}\n\n${BASE_DETAIL_CARVEOUT}` : BASE_FIDELITY
+  const baseCore = category === 'detail' ? `${BASE_FIDELITY}\n\n${BASE_DETAIL_CARVEOUT}` : BASE_FIDELITY
+  const garmentTypeAnchor = buildGarmentTypeAnchor(args.garmentType ?? '')
+  const base = garmentTypeAnchor ? `${baseCore}\n\n${garmentTypeAnchor}` : baseCore
 
   const negative = [NEGATIVE_GLOBAL, NEGATIVE_BY_CATEGORY[category]].join('\n')
   const preset = [PRESET_BASE[args.preset], PRESET_BY_CATEGORY[args.preset][category]].join('\n')
 
-  return [base, negative, SHOT_PROMPTS[args.shotType], preset, buildVariationSeed(args.preset, args.shotType, args.generationIndex, args.variationSeed)].join(
-    '\n---\n'
-  )
+  return [
+    base,
+    negative,
+    SHOT_PROMPTS[args.shotType],
+    preset,
+    buildVariationSeed(args.preset, args.shotType, args.generationIndex, args.variationSeed),
+    FIDELITY_REMINDER,
+  ].join('\n---\n')
 }
 
 function asErrorMessage(e: unknown) {
@@ -598,6 +669,8 @@ export async function POST(req: Request) {
       hashStringToInt(`${shotType ?? 'unknown'}|${preset}|${generationIndex}`)
     )
 
+    const garmentType = normalizeGarmentType((body as { garmentType?: unknown }).garmentType)
+
     if (!shotType) {
       return NextResponse.json(
         {
@@ -608,7 +681,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const prompt = buildPrompt({ shotType, preset, generationIndex, variationSeed })
+    const prompt = buildPrompt({ shotType, preset, generationIndex, variationSeed, garmentType })
 
     console.warn(`[mockups:${requestId}] Missing API key; returning placeholder for shotType=${shotType}`)
     return NextResponse.json({
@@ -715,11 +788,13 @@ export async function POST(req: Request) {
   const derivedSeed = hashStringToInt(`${shotType}|${preset}|${generationIndex}|${seedBasis}`)
   const variationSeed = clampInt(providedVariationSeed, 1, 2_147_483_647, derivedSeed || Date.now())
 
+  const garmentType = normalizeGarmentType((body as { garmentType?: unknown }).garmentType)
+
   const ai = new GoogleGenAI({ apiKey })
 
   try {
-    const maxAttempts = clampInt((body as { attempts?: unknown }).attempts, 1, 3, 2)
-    const prompt = buildPrompt({ shotType, preset, generationIndex, variationSeed })
+    const maxAttempts = 2
+    const prompt = buildPrompt({ shotType, preset, generationIndex, variationSeed, garmentType })
 
     let lastErrorMessage = ''
     let modelCalls = 0

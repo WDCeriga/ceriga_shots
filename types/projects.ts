@@ -27,6 +27,7 @@ export interface GenerationState {
   nextType?: GeneratedImage['type']
   shotTypes?: GeneratedImage['type'][]
   preset?: 'raw' | 'editorial' | 'luxury' | 'natural' | 'studio' | 'surprise'
+  garmentType?: string
   errorMessage?: string
 }
 

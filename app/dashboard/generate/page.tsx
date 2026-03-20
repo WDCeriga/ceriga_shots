@@ -10,6 +10,14 @@ import { toast } from '@/hooks/use-toast'
 import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
 import { useRole } from '@/hooks/use-role'
+import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 type VisualDirectionKey = 'raw' | 'editorial' | 'luxury' | 'natural' | 'studio' | 'surprise'
 
@@ -88,6 +96,10 @@ export default function GeneratePage() {
   const [isDragging, setIsDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [visualDirection, setVisualDirection] = useState<VisualDirectionKey>('raw')
+  const [productType, setProductType] = useState<'auto' | 'hoodie' | 'tshirt' | 'jacket' | 'sweatshirt' | 'pants' | 'custom'>(
+    'auto'
+  )
+  const [customProductType, setCustomProductType] = useState('')
   const [surpriseSwatchClassName] = useState(() => {
     const options = [
       'bg-[linear-gradient(135deg,rgba(14,116,144,0.55),rgba(30,58,138,0.45),rgba(244,244,245,0.06))]',
@@ -295,6 +307,13 @@ export default function GeneratePage() {
     setIsLoading(true)
     let createdProjectId: string | null = null
     try {
+      const resolvedGarmentType =
+        productType === 'auto'
+          ? undefined
+          : productType === 'custom'
+            ? customProductType.trim() || undefined
+            : productType
+
       const project = await addProject({
         name: file.name.replace(/\.[^/.]+$/, ''),
         originalImage: preview,
@@ -316,6 +335,7 @@ export default function GeneratePage() {
           mode: 'initial',
           shotTypes: allowedShotTypes,
           preset: visualDirection,
+          ...(resolvedGarmentType ? { garmentType: resolvedGarmentType } : {}),
         }),
       })
       if (!enqueueRes.ok) {
@@ -422,6 +442,39 @@ export default function GeneratePage() {
                 Number of assets
               </div>
               <div className="text-sm font-medium text-foreground tabular-nums">{assetCount}</div>
+            </div>
+
+            <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground ml-4">
+              Product type
+            </div>
+            <div className="mt-0">
+              <Select
+                value={productType}
+                onValueChange={(v) => setProductType(v as typeof productType)}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Auto-detect" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="auto">Auto-detect</SelectItem>
+                  <SelectItem value="hoodie">Hoodie</SelectItem>
+                  <SelectItem value="tshirt">T-Shirt</SelectItem>
+                  <SelectItem value="jacket">Jacket</SelectItem>
+                  <SelectItem value="sweatshirt">Sweatshirt</SelectItem>
+                  <SelectItem value="pants">Pants</SelectItem>
+                  <SelectItem value="custom">Other (type)</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {productType === 'custom' ? (
+                <div className="mt-3">
+                  <Input
+                    value={customProductType}
+                    onChange={(e) => setCustomProductType(e.target.value)}
+                    placeholder="e.g., jumpsuit, robe, hoodie with zipper…"
+                  />
+                </div>
+              ) : null}
             </div>
 
             <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground ml-4">

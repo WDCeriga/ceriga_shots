@@ -101,6 +101,7 @@ export async function enqueueGenerationJobs(args: {
   projectId: string
   shotTypes: ShotType[]
   preset: Preset
+  garmentType?: string
 }) {
   if (!args.shotTypes.length) return
   await ensureSchema()
@@ -193,6 +194,7 @@ export async function enqueueGenerationJobs(args: {
       nextType: args.shotTypes[0],
       errorMessage: undefined,
       shotTypes: undefined,
+      garmentType: args.garmentType,
     },
   })
 }
@@ -270,6 +272,7 @@ export async function completeGenerationJob(args: {
       preset: project.generation?.preset ?? 'raw',
       nextType: (nextRows[0]?.shot_type as ShotType | undefined) ?? undefined,
       errorMessage: undefined,
+      garmentType: project.generation?.garmentType,
     },
   })
 }
@@ -346,6 +349,7 @@ export async function failGenerationJob(args: {
       preset: project.generation?.preset,
       nextType: project.generation?.nextType,
       errorMessage: shouldRetry ? undefined : args.errorMessage,
+      garmentType: project.generation?.garmentType,
     },
   })
 }
