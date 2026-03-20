@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { useProjects } from '@/hooks/use-projects'
 import { useRouter } from 'next/navigation'
@@ -90,6 +90,37 @@ const SHOT_TYPES: Array<{ key: ShotTypeKey; label: string }> = [
   { key: 'detail_collar', label: 'Collar / neckline detail' },
 ]
 
+const HEADING_WORDS = ['Drop', 'Campaign', 'Vision', 'Standard'] as const
+
+type HeadingAnimVariantKey = 'flip' | 'slide' | 'accordion' | 'cuboid' | 'typing'
+type NonTypingHeadingAnimVariantKey = Exclude<HeadingAnimVariantKey, 'typing'>
+
+const HEADING_ANIM_VARIANTS: Record<
+  NonTypingHeadingAnimVariantKey,
+  { visible: string; hidden: string; out: string; in: string }
+> = {
+  flip: { visible: 'heading-flip-visible', hidden: 'heading-flip-hidden', out: 'heading-flip-out', in: 'heading-flip-in' },
+  slide: { visible: 'heading-slide-visible', hidden: 'heading-slide-hidden', out: 'heading-slide-out', in: 'heading-slide-in' },
+  accordion: {
+    visible: 'heading-accordion-visible',
+    hidden: 'heading-accordion-hidden',
+    out: 'heading-accordion-out',
+    in: 'heading-accordion-in',
+  },
+  cuboid: { visible: 'heading-cuboid-visible', hidden: 'heading-cuboid-hidden', out: 'heading-cuboid-out', in: 'heading-cuboid-in' },
+}
+
+const HEADING_ANIM_LABELS: Record<HeadingAnimVariantKey, string> = {
+  flip: 'Flip',
+  slide: 'Slide',
+  accordion: 'Accordion',
+  cuboid: 'Cuboid',
+  typing: 'Typing',
+}
+
+const HEADING_WORD_WIDTH_ANCHOR = HEADING_WORDS.reduce((acc, w) => (w.length > acc.length ? w : acc), HEADING_WORDS[0])
+const HEADING_WORD_WIDTH_CHARS = HEADING_WORD_WIDTH_ANCHOR.length
+
 export default function GeneratePage() {
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string>('')
@@ -115,7 +146,6 @@ export default function GeneratePage() {
     // Start with a low-cost baseline selection; users can add more from Results.
     () => new Set(['flatlay_topdown', 'detail_print'])
   )
-  const assetCount = shotTypes.size
   const { addProject, deleteProject, updateProject } = useProjects()
   const router = useRouter()
   const { status } = useSession()
@@ -125,6 +155,15 @@ export default function GeneratePage() {
   const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null)
   const [creditsLimit, setCreditsLimit] = useState<number | null>(null)
   const [creditsSyncing, setCreditsSyncing] = useState(false)
+  const [headingWordIndex, setHeadingWordIndex] = useState(0)
+  const [nextHeadingWordIndex, setNextHeadingWordIndex] = useState(() => 1 % HEADING_WORDS.length)
+  const [isHeadingWordRolling, setIsHeadingWordRolling] = useState(false)
+  const [activeHeadingAnimVariant, setActiveHeadingAnimVariant] = useState<HeadingAnimVariantKey>('typing')
+  const [typingCharCount, setTypingCharCount] = useState(0)
+  const [typingPhase, setTypingPhase] = useState<'type' | 'hold' | 'delete'>('type')
+  const typingTimeoutRef = useRef<number | null>(null)
+  const headingWordIndexRef = useRef(0)
+  const isHeadingWordRollingRef = useRef(false)
 
   useEffect(() => {
     if (!isAuthed) {
@@ -190,6 +229,113 @@ export default function GeneratePage() {
       cancelled = true
     }
   }, [isAuthed, limits.credits])
+
+  useEffect(() => {
+    headingWordIndexRef.current = headingWordIndex
+  }, [headingWordIndex])
+
+  useEffect(() => {
+    if (activeHeadingAnimVariant === 'typing') {
+      setIsHeadingWordRolling(false)
+      isHeadingWordRollingRef.current = false
+      return
+    }
+
+    // 3D “cuboid roll” for the heading word.
+    const media = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    const intervalMs = 2600
+    const rollMs = 240
+
+    let timeoutId: number | null = null
+
+    const id = window.setInterval(() => {
+      if (media?.matches) {
+        setHeadingWordIndex((idx) => (idx + 1) % HEADING_WORDS.length)
+        return
+      }
+
+      if (isHeadingWordRollingRef.current) return
+
+      const current = headingWordIndexRef.current
+      const next = (current + 1) % HEADING_WORDS.length
+
+      setNextHeadingWordIndex(next)
+      setIsHeadingWordRolling(true)
+      isHeadingWordRollingRef.current = true
+
+      timeoutId = window.setTimeout(() => {
+        headingWordIndexRef.current = next
+        setHeadingWordIndex(next)
+        setIsHeadingWordRolling(false)
+        isHeadingWordRollingRef.current = false
+        timeoutId = null
+      }, rollMs)
+    }, intervalMs)
+
+    return () => {
+      if (timeoutId != null) window.clearTimeout(timeoutId)
+      window.clearInterval(id)
+    }
+  }, [activeHeadingAnimVariant])
+
+  useEffect(() => {
+    // Reset typing animation when switching modes.
+    if (activeHeadingAnimVariant !== 'typing') return
+
+    const media = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    if (media?.matches) {
+      setTypingPhase('hold')
+      setTypingCharCount(HEADING_WORDS[headingWordIndex]?.length ?? 0)
+      return
+    }
+
+    setTypingPhase('type')
+    setTypingCharCount(0)
+  }, [activeHeadingAnimVariant, headingWordIndex])
+
+  useEffect(() => {
+    if (activeHeadingAnimVariant !== 'typing') return
+
+    const media = window.matchMedia?.('(prefers-reduced-motion: reduce)')
+    if (media?.matches) return
+
+    const word = HEADING_WORDS[headingWordIndex]
+
+    const typeMs = 90
+    const holdMs = 800
+    const deleteMs = 45
+
+    if (typingTimeoutRef.current != null) window.clearTimeout(typingTimeoutRef.current)
+
+    if (typingPhase === 'type') {
+      if (typingCharCount < word.length) {
+        typingTimeoutRef.current = window.setTimeout(() => {
+          setTypingCharCount((c) => c + 1)
+        }, typeMs)
+      } else {
+        setTypingPhase('hold')
+      }
+    } else if (typingPhase === 'hold') {
+      typingTimeoutRef.current = window.setTimeout(() => {
+        setTypingPhase('delete')
+      }, holdMs)
+    } else {
+      if (typingCharCount > 0) {
+        typingTimeoutRef.current = window.setTimeout(() => {
+          setTypingCharCount((c) => c - 1)
+        }, deleteMs)
+      } else {
+        const next = (headingWordIndex + 1) % HEADING_WORDS.length
+        setHeadingWordIndex(next)
+        setTypingPhase('type')
+      }
+    }
+
+    return () => {
+      if (typingTimeoutRef.current != null) window.clearTimeout(typingTimeoutRef.current)
+      typingTimeoutRef.current = null
+    }
+  }, [activeHeadingAnimVariant, headingWordIndex, typingCharCount, typingPhase])
 
   const availableShotTypes = useMemo(() => {
     return SHOT_TYPES.filter((t) => {
@@ -387,63 +533,76 @@ export default function GeneratePage() {
     }
   }
 
+  const AnimatedHeadingWord = ({
+    variant,
+    animate = true,
+  }: {
+    variant: NonTypingHeadingAnimVariantKey
+    animate?: boolean
+  }) => {
+    const v = HEADING_ANIM_VARIANTS[variant]
+    const shouldAnimate = animate && isHeadingWordRolling
+
+    return (
+      <span
+        className="relative inline-block overflow-hidden align-middle text-red-500"
+        style={{ height: '1.12em', minWidth: `${HEADING_WORD_WIDTH_CHARS}ch` }}
+      >
+        {/* Keeps width stable while animated words are absolutely positioned. */}
+        <span className="invisible whitespace-nowrap leading-none">{HEADING_WORD_WIDTH_ANCHOR}</span>
+
+        <span className={cn('absolute left-0 top-0 block w-full whitespace-nowrap heading-cuboid-word', shouldAnimate ? v.out : v.visible)}>
+          {HEADING_WORDS[headingWordIndex]}
+        </span>
+
+        <span
+          className={cn('absolute left-0 top-0 block w-full whitespace-nowrap heading-cuboid-word', shouldAnimate ? v.in : v.hidden)}
+          aria-hidden={!shouldAnimate}
+        >
+          {HEADING_WORDS[nextHeadingWordIndex]}
+        </span>
+      </span>
+    )
+  }
+
   return (
     <div className="px-6 py-10 sm:px-10">
       <div className="mx-auto max-w-6xl">
         <div className="mb-10">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="w-7 h-px bg-accent" />
-            <span className="text-accent text-xs tracking-[0.35em] uppercase font-medium">
-              Start here
-            </span>
-          </div>
-          <h1 className="text-4xl sm:text-5xl font-semibold tracking-tight">Upload Your Design</h1>
+          <h1 className="whitespace-nowrap text-3xl sm:text-5xl font-semibold tracking-tight leading-none">
+            Creating{' '}
+            {activeHeadingAnimVariant === 'typing' ? (
+              <span
+                className="inline-block text-red-500"
+                style={{
+                  height: '1.12em',
+                  minWidth: `${HEADING_WORD_WIDTH_CHARS}ch`,
+                }}
+              >
+                {HEADING_WORDS[headingWordIndex].slice(0, typingCharCount)}
+                <span className="ml-1 inline-block w-[2px] align-middle bg-red-500 animate-pulse" aria-hidden />
+              </span>
+            ) : (
+              <AnimatedHeadingWord variant={activeHeadingAnimVariant as NonTypingHeadingAnimVariantKey} />
+            )}
+          </h1>
           <p className="mt-4 max-w-2xl text-sm sm:text-base text-muted-foreground leading-relaxed">
-            Drop your front or back design. We handle the rest — flat lays, angles, lifestyle shots,
-            and motion content.
+            Transform your concepts into studio-grade visuals with precision lighting and composition control.
           </p>
 
           {!isAuthLoading && !isAuthed && (
             <div className="mt-6 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
-              <span className="font-medium text-red-400 [text-shadow:0_0_10px_rgba(248,113,113,0.75)]">
+              <span className="font-medium text-red-500 [text-shadow:0_0_10px_rgba(239,68,68,0.75)]">
                 Login required to generate.
               </span>{' '}
               You can browse the dashboard, but generation is locked until you sign in.
             </div>
           )}
-
-          {isAuthed ? (
-            <div className="mt-6">
-              <div className="rounded-xl border border-accent/40 bg-accent/5 px-4 py-3">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Credits Remaining</p>
-                <p className="mt-1 text-2xl font-bold">
-                  {creditsRemaining == null
-                    ? '...'
-                    : creditsLimit != null && creditsLimit < 0
-                      ? 'Unlimited'
-                      : creditsRemaining}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {selectedAllowedCount} credit{selectedAllowedCount === 1 ? '' : 's'} needed for current selection
-                </p>
-                {creditsSyncing ? (
-                  <p className="text-[10px] text-muted-foreground mt-1">Syncing latest usage...</p>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-8">
-          {/* Left: Upload + asset count */}
+          {/* Left: Upload + generation options */}
           <section className="space-y-6">
-            <div className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-card/30 px-4 py-3">
-              <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">
-                Number of assets
-              </div>
-              <div className="text-sm font-medium text-foreground tabular-nums">{assetCount}</div>
-            </div>
-
             <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground ml-4">
               Product type
             </div>
@@ -533,10 +692,10 @@ export default function GeneratePage() {
                             <Upload className="h-6 w-6" />
                           </div>
                           <p className="text-center text-sm font-medium text-foreground">
-                            Drag &amp; drop or click to upload
+                            Upload your design
                           </p>
                           <p className="mt-2 text-center text-xs text-muted-foreground">
-                            PNG / JPG · Max 20MB
+                            Drag and drop your high-res PNG or TIFF files here to begin the process.
                           </p>
                         </div>
                       </div>
@@ -572,11 +731,27 @@ export default function GeneratePage() {
           {/* Right: Direction + shot types + CTA */}
           <aside className="rounded-t-none rounded-b-2xl border border-white/10 border-t-0 bg-card/40 shadow-sm">
             <div className="border-t border-white/10 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-6">
+              {isAuthed ? (
+                <div className="mb-6 rounded-lg border border-accent/40 bg-accent/5 px-4 py-3">
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Credits Remaining</p>
+                  <p className="mt-1 text-lg font-bold leading-none">
+                    {creditsRemaining == null
+                      ? '...'
+                      : creditsLimit != null && creditsLimit < 0
+                        ? 'Unlimited'
+                        : creditsRemaining}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-1 leading-tight">
+                    {selectedAllowedCount} credit{selectedAllowedCount === 1 ? '' : 's'} needed
+                  </p>
+                  {creditsSyncing ? (
+                    <p className="text-[10px] text-muted-foreground mt-1">Syncing latest usage...</p>
+                  ) : null}
+                </div>
+              ) : null}
+
               <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">
                 Shot types
-              </div>
-              <div className="mt-2 text-xs text-muted-foreground">
-                Selection uses {selectedAllowedCount} credit{selectedAllowedCount === 1 ? '' : 's'}.
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">
