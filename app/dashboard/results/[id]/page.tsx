@@ -158,6 +158,7 @@ export default function ResultsPage() {
   useEffect(() => {
     if (lightboxIndex == null) return
     const onKey = (e: KeyboardEvent) => {
+      if (isEditingAsset) return
       if (!navigableImages.length) return
       if (e.key === 'ArrowRight') {
         setLightboxIndex((prev) => (prev == null ? 0 : (prev + 1) % navigableImages.length))
@@ -169,7 +170,7 @@ export default function ResultsPage() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [lightboxIndex, navigableImages.length])
+  }, [lightboxIndex, navigableImages.length, isEditingAsset])
 
   useEffect(() => {
     if (!pendingEditedFromId) return
@@ -662,18 +663,18 @@ export default function ResultsPage() {
       </div>
 
       <Dialog open={lightboxIndex != null} onOpenChange={(open) => !open && setLightboxIndex(null)}>
-        <DialogContent className="[&>button]:right-3 [&>button]:top-3 [&>button]:z-50 [&>button]:rounded-md [&>button]:bg-background/90 [&>button]:p-1 [&>button]:text-red-500 [&>button:hover]:text-red-400 max-w-[min(1100px,calc(100vw-2rem))] p-0 overflow-hidden max-h-[calc(100vh-2rem)] flex flex-col">
+        <DialogContent className="[&>button]:right-3 [&>button]:top-3 [&>button]:z-50 [&>button]:rounded-md [&>button]:bg-background/90 [&>button]:p-1 [&>button]:text-red-500 [&>button:hover]:text-red-400 max-w-[min(1100px,calc(100vw-2rem))] p-0 overflow-hidden">
           <DialogTitle className="sr-only">
             {activeLightboxImage ? formatViewTitle(activeLightboxImage.type) : 'Image preview'}
           </DialogTitle>
           {activeLightboxImage ? (
-            <div className="relative bg-black/40 flex-1 min-h-0 overflow-hidden">
+            <div className="relative bg-black/40">
               <img
                 src={activeLightboxImage.url}
                 alt={activeLightboxImage.type}
-                className="block w-full h-full max-h-full object-contain"
+                className="block w-full h-auto max-h-[80vh] object-contain"
               />
-              {navigableImages.length > 1 ? (
+              {!isEditingAsset && navigableImages.length > 1 ? (
                 <>
                   <button
                     type="button"
@@ -682,7 +683,7 @@ export default function ResultsPage() {
                         prev == null ? 0 : (prev - 1 + navigableImages.length) % navigableImages.length
                       )
                     }
-                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full border border-border bg-background/85 p-2"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full border border-border bg-background/85 p-2 z-30"
                     aria-label="Previous image"
                   >
                     <ChevronLeft className="w-4 h-4" />
@@ -694,29 +695,30 @@ export default function ResultsPage() {
                         prev == null ? 0 : (prev + 1) % navigableImages.length
                       )
                     }
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full border border-border bg-background/85 p-2"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full border border-border bg-background/85 p-2 z-30"
                     aria-label="Next image"
                   >
                     <ChevronRight className="w-4 h-4" />
                   </button>
                 </>
               ) : null}
+
+              {activeLightboxImage.editRequest && !isEditingAsset ? (
+                <div className="absolute left-0 right-0 bottom-0 px-4 pb-3 z-20">
+                  <div className="rounded-md border border-border bg-background/80 backdrop-blur px-3 py-2">
+                    <div className="text-xs text-muted-foreground/80 mb-1">
+                      Edited by {activeLightboxImage.editedByBrandName ?? 'Editor'}
+                    </div>
+                    <pre className="whitespace-pre-wrap break-words max-h-[22vh] overflow-auto rounded-md bg-secondary/30 p-2 text-xs leading-relaxed">
+                      {activeLightboxImage.editRequest}
+                    </pre>
+                  </div>
+                </div>
+              ) : null}
             </div>
           ) : null}
           {activeLightboxImage ? (
-            <div className="flex-shrink-0 overflow-auto">
-              <>
-              {activeLightboxImage.editRequest && !isEditingAsset ? (
-                <div className="px-4 py-3 border-t border-border text-sm text-muted-foreground">
-                  <div className="text-xs text-muted-foreground/80">
-                    Edited by {activeLightboxImage.editedByBrandName ?? 'Editor'}
-                  </div>
-                  <pre className="mt-2 whitespace-pre-wrap break-words rounded-md border border-border bg-secondary/30 p-3 text-xs leading-relaxed max-h-40 overflow-auto">
-                    {activeLightboxImage.editRequest}
-                  </pre>
-                </div>
-              ) : null}
-
+            <>
               {isEditingAsset ? (
                 <div className="px-4 py-3 border-t border-border bg-background/60">
                   <div className="text-sm font-medium">Edit instructions</div>
@@ -782,8 +784,7 @@ export default function ResultsPage() {
                   ) : null}
                 </div>
               </div>
-              </>
-            </div>
+            </>
           ) : null}
         </DialogContent>
       </Dialog>
