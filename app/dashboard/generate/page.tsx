@@ -92,6 +92,15 @@ const SHOT_TYPES: Array<{ key: ShotTypeKey; label: string }> = [
 
 const HEADING_WORDS = ['Drop', 'Campaign', 'Vision', 'Standard'] as const
 
+const SURPRISE_SWATCH_CLASS_OPTIONS = [
+  'bg-[linear-gradient(135deg,rgba(14,116,144,0.55),rgba(30,58,138,0.45),rgba(244,244,245,0.06))]',
+  'bg-[linear-gradient(135deg,rgba(190,18,60,0.45),rgba(88,28,135,0.45),rgba(244,244,245,0.06))]',
+  'bg-[linear-gradient(135deg,rgba(22,101,52,0.50),rgba(5,46,22,0.45),rgba(244,244,245,0.06))]',
+  'bg-[linear-gradient(135deg,rgba(180,83,9,0.55),rgba(124,45,18,0.40),rgba(254,243,199,0.08))]',
+  'bg-[linear-gradient(135deg,rgba(30,41,59,0.70),rgba(2,6,23,0.65),rgba(226,232,240,0.06))]',
+  'bg-[linear-gradient(135deg,rgba(7,89,133,0.50),rgba(17,24,39,0.55),rgba(255,255,255,0.05))]',
+] as const
+
 type HeadingAnimVariantKey = 'flip' | 'slide' | 'accordion' | 'cuboid' | 'typing'
 type NonTypingHeadingAnimVariantKey = Exclude<HeadingAnimVariantKey, 'typing'>
 
@@ -131,17 +140,9 @@ export default function GeneratePage() {
     'auto'
   )
   const [customProductType, setCustomProductType] = useState('')
-  const [surpriseSwatchClassName] = useState(() => {
-    const options = [
-      'bg-[linear-gradient(135deg,rgba(14,116,144,0.55),rgba(30,58,138,0.45),rgba(244,244,245,0.06))]',
-      'bg-[linear-gradient(135deg,rgba(190,18,60,0.45),rgba(88,28,135,0.45),rgba(244,244,245,0.06))]',
-      'bg-[linear-gradient(135deg,rgba(22,101,52,0.50),rgba(5,46,22,0.45),rgba(244,244,245,0.06))]',
-      'bg-[linear-gradient(135deg,rgba(180,83,9,0.55),rgba(124,45,18,0.40),rgba(254,243,199,0.08))]',
-      'bg-[linear-gradient(135deg,rgba(30,41,59,0.70),rgba(2,6,23,0.65),rgba(226,232,240,0.06))]',
-      'bg-[linear-gradient(135deg,rgba(7,89,133,0.50),rgba(17,24,39,0.55),rgba(255,255,255,0.05))]',
-    ]
-    return options[Math.floor(Math.random() * options.length)]
-  })
+  const [surpriseSwatchClassName, setSurpriseSwatchClassName] = useState<string>(
+    SURPRISE_SWATCH_CLASS_OPTIONS[0]
+  )
   const [shotTypes, setShotTypes] = useState<Set<ShotTypeKey>>(
     // Start with a low-cost baseline selection; users can add more from Results.
     () => new Set(['flatlay_topdown', 'detail_print'])
@@ -234,6 +235,12 @@ export default function GeneratePage() {
   useEffect(() => {
     headingWordIndexRef.current = headingWordIndex
   }, [headingWordIndex])
+
+  useEffect(() => {
+    // Randomize only after mount to avoid SSR/client className mismatches.
+    const idx = Math.floor(Math.random() * SURPRISE_SWATCH_CLASS_OPTIONS.length)
+    setSurpriseSwatchClassName(SURPRISE_SWATCH_CLASS_OPTIONS[idx] ?? SURPRISE_SWATCH_CLASS_OPTIONS[0])
+  }, [])
 
   useEffect(() => {
     if (activeHeadingAnimVariant === 'typing') {
@@ -653,7 +660,7 @@ export default function GeneratePage() {
                 if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click()
               }}
               className={cn(
-                'group rounded-xl border border-white/10 bg-card/40 shadow-sm transition-colors',
+                'group rounded-xl border border-white/15 bg-card/50 shadow-sm transition-colors',
                 isDragging
                   ? 'border-accent/80'
                   : 'hover:border-red-500/50 hover:shadow-[0_0_18px_rgba(239,68,68,0.25)] hover:bg-red-500/10'
@@ -678,7 +685,7 @@ export default function GeneratePage() {
                   <div className="grid place-items-center">
                     {preview ? (
                       <div className="w-full max-w-[360px]">
-                        <div className="relative mx-auto aspect-square w-full overflow-hidden rounded-md bg-secondary/60 border border-white/10">
+                        <div className="relative mx-auto aspect-square w-full overflow-hidden rounded-md bg-secondary/60 border border-white/15">
                           <Image
                             src={preview}
                             alt="Uploaded design preview"
@@ -701,7 +708,7 @@ export default function GeneratePage() {
                     ) : (
                       <div className="w-full max-w-[360px]">
                         <div className="mx-auto grid place-items-center">
-                          <div className="mb-5 grid h-14 w-14 place-items-center rounded-md border border-white/10 text-muted-foreground">
+                          <div className="mb-5 grid h-14 w-14 place-items-center rounded-md border border-white/15 text-muted-foreground">
                             <Upload className="h-6 w-6" />
                           </div>
                           <p className="text-center text-sm font-medium text-foreground">Upload your design</p>
@@ -746,8 +753,8 @@ export default function GeneratePage() {
           </section>
 
           {/* Right: Direction + shot types + CTA */}
-          <aside className="rounded-t-none rounded-b-2xl border border-white/10 border-t-0 bg-card/40 shadow-sm">
-            <div className="border-t border-white/10 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-6">
+          <aside className="rounded-t-none rounded-b-2xl border border-white/15 border-t-0 bg-card/50 shadow-sm">
+            <div className="border-t border-white/15 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-6">
               {isAuthed ? (
                 <div className="mb-6 rounded-lg border border-accent/40 bg-accent/5 px-4 py-3">
                   <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Credits Remaining</p>
@@ -803,7 +810,7 @@ export default function GeneratePage() {
                         !enabled && 'opacity-40 cursor-not-allowed',
                         selected
                           ? 'border-accent/80 bg-accent/10 text-accent'
-                          : 'border-white/10 text-muted-foreground hover:border-white/20 hover:text-foreground hover:bg-accent/5'
+                          : 'border-white/15 text-muted-foreground hover:border-white/25 hover:text-foreground hover:bg-accent/5'
                       )}
                       aria-pressed={selected}
                     >
@@ -814,7 +821,7 @@ export default function GeneratePage() {
                 })}
               </div>
 
-              <div className="my-7 h-px w-full bg-white/10" />
+              <div className="my-7 h-px w-full bg-white/15" />
 
               <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">
                 Visual direction

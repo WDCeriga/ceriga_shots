@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { SheetClose } from '@/components/ui/sheet'
 import { useRole } from '@/hooks/use-role'
 import { useState } from 'react'
+import { useSession } from 'next-auth/react'
 
 export function AppSidebar({
   className,
@@ -16,9 +17,13 @@ export function AppSidebar({
 }) {
   const pathname = usePathname()
   const { role } = useRole()
+  const { data: session, status: sessionStatus } = useSession()
   const isAdmin = role === 'admin'
   const [generateOpen, setGenerateOpen] = useState(() => pathname.startsWith('/dashboard/generate'))
   const [adminOpen, setAdminOpen] = useState(() => pathname.startsWith('/dashboard/admin'))
+
+  const planLabel = role.charAt(0).toUpperCase() + role.slice(1)
+  const userEmail = session?.user?.email ?? (sessionStatus === 'loading' ? 'Loading...' : '')
 
   const links = [
     { href: '/dashboard', label: 'Dashboard' },
@@ -54,7 +59,7 @@ export function AppSidebar({
         </Link>
       </div>
 
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 min-h-0 p-4 space-y-2">
         <MaybeSheetClose>
           <Link
             href="/dashboard"
@@ -173,18 +178,38 @@ export function AppSidebar({
         ) : null}
       </nav>
 
-      <div className="p-4 border-t border-border">
+      <div className="mt-auto p-4 border-t border-border space-y-3">
         <MaybeSheetClose>
           <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             ← Back to website
           </Link>
         </MaybeSheetClose>
+
+        <div className="rounded-lg bg-card/40 p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="inline-flex items-center rounded-full bg-white/5 px-2.5 py-0.5 text-xs font-semibold text-white whitespace-nowrap">
+                {planLabel} plan
+              </div>
+            </div>
+            <MaybeSheetClose>
+              <Link
+                href="/dashboard/pricing"
+                className="inline-flex items-center justify-center rounded-sm border border-white/15 bg-transparent px-4 py-1.5 text-xs font-semibold text-foreground hover:bg-secondary hover:border-white/25 transition-colors"
+              >
+                Upgrade
+              </Link>
+            </MaybeSheetClose>
+          </div>
+
+          <div className="mt-2 text-xs text-muted-foreground truncate">{userEmail}</div>
+        </div>
       </div>
     </>
   )
 
   return (
-    <aside className={cn('w-64 border-r border-border bg-card flex flex-col', className)}>
+    <aside className={cn('w-64 border-r border-border bg-card flex h-full flex-col', className)}>
       {content}
     </aside>
   )

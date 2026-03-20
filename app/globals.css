@@ -16,12 +16,12 @@
   --secondary: oklch(0.16 0 0);            /* dark grey surface */
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.16 0 0);
-  --muted-foreground: oklch(0.56 0 0);     /* soft grey text */
+  --muted-foreground: oklch(0.62 0 0);     /* slightly brighter grey for readability */
   --accent: oklch(0.54 0.21 25);           /* red accent */
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.54 0.21 25);
   --destructive-foreground: oklch(0.985 0 0);
-  --border: oklch(0.22 0 0);
+  --border: oklch(0.28 0 0);             /* slightly stronger borders for sectioning */
   --input: oklch(0.22 0 0);
   --ring: oklch(0.54 0.21 25);
   --radius: 0rem;
