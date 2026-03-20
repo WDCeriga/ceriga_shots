@@ -143,6 +143,7 @@ const BASE_FIDELITY = [
   'PRODUCT FIDELITY (non-negotiable):',
   '- Preserve exact print placement, graphics, logo position, and colorway',
   '- Preserve typography exactly (letter shapes, spacing, kerning, and partial/blurred/unreadable segments). Do NOT replace unreadable text with a “readable” version.',
+  '- If printed text/letterforms are partially visible, occluded, or cut off in the reference image, keep them partially visible/occluded/cut off exactly (do NOT invent missing characters).',
   '- Preserve true garment silhouette and structure',
   '- Preserve realistic fabric weight and natural fold behaviour',
   '- Do NOT reshape, smooth, or make the garment look digitally rendered',
@@ -160,6 +161,7 @@ const BASE_FIDELITY = [
   '- Aspect ratio: 1:1 square; crop centered on the subject',
   '- When the shot type requires full garment visibility, ensure no cropped hems/sleeves/logo edges',
   '- Never crop or cut off printed text/letterforms that are visible in the reference image; keep all visible print boundaries within frame.',
+  '- Shadows must be realistic: grounded, not unnaturally long, and not razor-sharp; avoid shadow streaking/silhouette exaggeration.',
   '- Must read as a real studio photograph, not a render or illustration',
   '- Zero AI artifacts, surreal elements, or uncanny fabric distortion',
   '- No added text, overlays, or watermarks',
@@ -187,6 +189,7 @@ const NEGATIVE_BY_CATEGORY: Record<ShotCategory, string> = {
     '- No perspective tilt for strict top-down shots; no wide-angle distortion.',
     '- No horizon line, no corners/room edges, no “infinite cyclorama curve”; the surface is a single flat plane.',
     '- No warped/bent background plane; no wavy geometry; no texture stretch/smear; avoid repeating patterns.',
+    '- No long harsh shadow streaks; shadows must be short, grounded, and realistic.',
     '- Avoid gritty HDR, over-sharpened “AI noise,” or watercolor-like texture on the surface.',
   ].join('\n'),
   surface: [
@@ -196,12 +199,14 @@ const NEGATIVE_BY_CATEGORY: Record<ShotCategory, string> = {
     '- No bent walls or warped planes; avoid stretched textures and unnatural perspective.',
     '- Avoid heavy vignettes/gradients that imply curved geometry unless explicitly requested.',
     '- No floating/detached garment: no hovering/float gap between the hanger and the clothing.',
+    '- No razor-sharp or unnaturally long shadows; keep shadow softness realistic and grounded.',
   ].join('\n'),
   detail: [
     'NEGATIVE (detail shots specific):',
     '- No hangers/hooks/people/hands/mannequins/props.',
     '- Do NOT turn texture into noise or watercolor; avoid over-smoothing.',
     '- Avoid blown highlights on fabric; preserve weave detail and realistic shading.',
+    '- No heavy shadow bands/silhouette exaggeration behind the subject.',
     '- Background must be minimal and non-distracting; no warped patterns behind the subject.',
   ].join('\n'),
 }
@@ -213,6 +218,7 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
     '- Garment centred and symmetrically composed',
     '- Full garment visible with clean breathing room on all edges',
     '- Ensure the full printed area is fully visible and not cropped (including sleeve-text and logo boundaries that are present in the reference).',
+    '- Fabric MUST lie directly on the surface (no hovering/float gap; no detached fabric sections).',
     '- Perfectly still — no motion blur',
     '- Sleeves naturally relaxed at sides',
     '- The garment should fill ~70–80% of the frame with even margin on all sides',
@@ -235,6 +241,7 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
     '- Architectural, structured composition',
     '- Maximum breathing room around all edges',
     '- Ensure sleeve ends and all visible printed text/letterforms are fully visible and not cropped.',
+    '- Fabric MUST lie directly on the surface (no hovering/float gap).',
   ].join('\n'),
   flatlay_relaxed: [
     'SHOT TYPE: Relaxed / crumpled flat lay',
@@ -244,6 +251,7 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
     '- Not messy, but deliberately unstudied',
     '- Feels candid, not staged',
     '- Keep folds realistic with correct fabric weight (not rubbery, not paper-like)',
+    '- Fabric MUST remain grounded and in contact with the surface (no hovering/float gap).',
   ].join('\n'),
   flatlay_folded: [
     'SHOT TYPE: Folded logo shot',
@@ -254,6 +262,7 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
     '- Fold should feel retail-ready, like a display table',
     '- Ensure the logo/graphic is not distorted by folds; keep proportions correct',
     '- Never crop or cut off visible logo/typography within the reference image.',
+    '- Folded garment MUST be physically grounded on the surface (no hovering/float gap).',
   ].join('\n'),
   surface_draped: [
     'SHOT TYPE: Draped over surface',
@@ -264,11 +273,14 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
     '- Lifestyle feel, less clinical than a flat lay',
     '- Drape should look physically plausible; fabric should not fuse into the surface',
     '- Ensure all visible front-facing printed text/graphics are within frame and not cropped.',
+    '- Fabric MUST be grounded on the surface/edge (no hovering/float gap; no detached fabric sections).',
     '- Keep background minimal and premium (no clutter)',
   ].join('\n'),
   surface_hanging: [
     'SHOT TYPE: Hanging shot',
     '- Garment on a minimal hook or hanger',
+    '- The hanger/support structure must be simple and minimal (single thin hook / single shoulder bar) with NO extra shapes or decorative elements.',
+    '- Ensure the garment has clear physical contact/support from the hanger (no floating/hover gap).',
     '- Wall or surface behind it as background',
     '- Full garment visible, hanging naturally',
     '- Slight natural drape from gravity',
@@ -287,6 +299,7 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
     '- Fabric texture subtly visible beneath the print',
     '- No garment edges visible — pure design focus',
     '- Preserve exact letterforms/linework; no hallucinated strokes or “helpful” sharpening artifacts',
+    '- Do NOT clip the outermost visible edges of the printed letterforms/graphics within the crop; preserve the visible boundaries.',
   ].join('\n'),
   detail_fabric: [
     'SHOT TYPE: Fabric texture macro',
@@ -306,6 +319,7 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
     '- Builds product trust and premium signal',
     '- Camera slightly angled for dimension',
     '- Keep stitches clean and realistic; do not invent extra seam lines',
+    '- Do NOT crop off visible collar/neckline edges or visible stitch boundaries; keep all visible edges inside the frame.',
   ].join('\n'),
 }
 
