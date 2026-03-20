@@ -28,7 +28,7 @@ export function AppSidebar({
   const links = [
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/dashboard/library', label: 'Library' },
-    { href: '/dashboard/pricing', label: 'Pricing' },
+ //   { href: '/dashboard/pricing', label: 'Pricing' },
     { href: '/dashboard/settings', label: 'Settings' },
   ]
   const generateLinks = [
