@@ -13,6 +13,9 @@ export type GenerationJob = {
   preset: Preset
   generation_index: number
   variation_seed: number
+  edit_instructions?: string | null
+  edited_from_id?: string | null
+  editor_brand_name?: string | null
   status: 'queued' | 'processing' | 'done' | 'failed'
   attempts: number
   model_calls: number
@@ -53,6 +56,9 @@ type GenerationJobRow = {
   preset: string
   generation_index: number
   variation_seed: number
+  edit_instructions?: string | null
+  edited_from_id?: string | null
+  editor_brand_name?: string | null
   status: string
   attempts: number
   model_calls: number
@@ -69,6 +75,9 @@ function toJobs(rows: GenerationJobRow[]): GenerationJob[] {
     preset: asPreset(String(row.preset)),
     generation_index: Number(row.generation_index),
     variation_seed: Number(row.variation_seed),
+    edit_instructions: row.edit_instructions ?? null,
+    edited_from_id: row.edited_from_id ?? null,
+    editor_brand_name: row.editor_brand_name ?? null,
     status: row.status as GenerationJob['status'],
     attempts: Number(row.attempts),
     model_calls: Number(row.model_calls ?? 0),
@@ -102,6 +111,9 @@ export async function enqueueGenerationJobs(args: {
   shotTypes: ShotType[]
   preset: Preset
   garmentType?: string
+  editInstructions?: string
+  editedFromId?: string
+  editorBrandName?: string | null
 }) {
   if (!args.shotTypes.length) return
   await ensureSchema()
@@ -153,6 +165,9 @@ export async function enqueueGenerationJobs(args: {
         preset,
         generation_index,
         variation_seed,
+        edit_instructions,
+        edited_from_id,
+        editor_brand_name,
         status,
         attempts,
         max_attempts
@@ -164,6 +179,9 @@ export async function enqueueGenerationJobs(args: {
         ${args.preset},
         ${indexForType},
         ${variationSeed},
+        ${args.editInstructions ?? null},
+        ${args.editedFromId ?? null},
+        ${args.editorBrandName ?? null},
         'queued',
         0,
         3

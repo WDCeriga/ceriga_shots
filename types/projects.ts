@@ -18,6 +18,22 @@ export interface GeneratedImage {
   url: string
   timestamp: number
   prompt?: string
+  meta?: {
+    shotType: GeneratedImage['type']
+    preset: 'raw' | 'editorial' | 'luxury' | 'natural' | 'studio' | 'surprise'
+    generationIndex: number
+    variationSeed: number
+    garmentType?: string
+  }
+  /**
+   * Optional edit attribution + request metadata.
+   * These fields are populated when a user regenerates an existing asset via the Edit flow.
+   */
+  editedFromId?: string
+  editRequest?: string
+  editedByUserId?: string
+  editedByBrandName?: string | null
+  editedAt?: number
 }
 
 export interface GenerationState {

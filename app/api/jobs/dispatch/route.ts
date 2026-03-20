@@ -67,6 +67,9 @@ async function processSingle(baseUrl: string, workerId: string) {
         generationIndex: job.generation_index,
         attempts: 2,
         variationSeed: job.variation_seed,
+        editInstructions: job.edit_instructions ?? null,
+        editedFromId: job.edited_from_id ?? null,
+        editorBrandName: job.editor_brand_name ?? null,
         garmentType: project.generation?.garmentType,
       }),
     })

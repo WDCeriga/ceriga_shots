@@ -10,6 +10,7 @@ import { Check, ChevronLeft, ChevronRight, Pencil, Trash2, X } from 'lucide-reac
 import { ShareDialog } from '@/components/share-dialog'
 import { toast } from '@/hooks/use-toast'
 import { LightboxAsset } from '@/components/lightbox-image'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -47,6 +48,10 @@ export default function ResultsPage() {
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null)
+  const [isEditingAsset, setIsEditingAsset] = useState(false)
+  const [editDraft, setEditDraft] = useState('')
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false)
+  const [pendingEditedFromId, setPendingEditedFromId] = useState<string | null>(null)
   const retentionDays = limits.assetHistoryRetentionDays
 
   const getExpiryLabel = (timestamp: number) => {
@@ -166,6 +171,23 @@ export default function ResultsPage() {
     return () => window.removeEventListener('keydown', onKey)
   }, [lightboxIndex, navigableImages.length])
 
+  useEffect(() => {
+    if (!pendingEditedFromId) return
+
+    const candidates = (project?.generatedImages ?? []).filter(
+      (img) => img.editedFromId === pendingEditedFromId && !!img.url
+    )
+    if (!candidates.length) return
+
+    const newest = candidates.reduce((a, b) => (a.timestamp >= b.timestamp ? a : b))
+    const idx = navigableImages.findIndex((img) => img.id === newest.id)
+    if (idx < 0) return
+
+    setLightboxIndex(idx)
+    setPendingEditedFromId(null)
+    setIsEditingAsset(false)
+  }, [pendingEditedFromId, project?.generatedImages, navigableImages])
+
   if (!project) {
     return (
       <div className="p-8 text-center">
@@ -255,6 +277,59 @@ export default function ResultsPage() {
       })
     } finally {
       setDeletingAssetId(null)
+    }
+  }
+
+  const startEdit = () => {
+    if (!activeLightboxImage) return
+    if (isEditingAsset) return
+    setPendingEditedFromId(null)
+    setEditDraft(activeLightboxImage.editRequest ?? '')
+    setIsEditingAsset(true)
+  }
+
+  const cancelEdit = () => {
+    setIsEditingAsset(false)
+    setEditDraft('')
+  }
+
+  const submitEdit = async () => {
+    if (!activeLightboxImage) return
+    if (isSubmittingEdit) return
+    const next = editDraft.trim()
+    if (!next) return
+
+    setIsSubmittingEdit(true)
+    try {
+      const res = await fetch(`/api/projects/${projectId}/assets/${activeLightboxImage.id}/edit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ changes: next }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { error?: string }
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to submit edit')
+      }
+
+      setPendingEditedFromId(activeLightboxImage.id)
+      setIsEditingAsset(false)
+      setEditDraft('')
+
+      // Ensure the "Generating..." placeholders render right away.
+      await fetchProject(projectId)
+
+      toast({
+        title: 'Edit submitted',
+        description: 'Generating an updated version…',
+      })
+    } catch (e) {
+      toast({
+        title: 'Edit failed',
+        description: e instanceof Error ? e.message : 'Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSubmittingEdit(false)
     }
   }
 
@@ -629,25 +704,84 @@ export default function ResultsPage() {
             </div>
           ) : null}
           {activeLightboxImage ? (
-            <div className="px-4 py-3 border-t border-border text-sm text-muted-foreground flex items-center justify-between">
-              <span>{formatViewTitle(activeLightboxImage.type)}</span>
-              <div className="flex items-center gap-3">
-                <span className="text-xs">
-                  {lightboxIndex != null ? `${lightboxIndex + 1}/${navigableImages.length}` : ''}
-                </span>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  className="h-7 px-2 text-xs text-destructive hover:text-white"
-                  disabled={deletingAssetId != null}
-                  onClick={() => void deleteAsset(activeLightboxImage.id)}
-                >
-                  <Trash2 className="w-3.5 h-3.5 mr-1" />
-                  {deletingAssetId === activeLightboxImage.id ? 'Deleting…' : 'Delete'}
-                </Button>
+            <>
+              {activeLightboxImage.editRequest && !isEditingAsset ? (
+                <div className="px-4 py-3 border-t border-border text-sm text-muted-foreground">
+                  <div className="text-xs text-muted-foreground/80">
+                    Edited by {activeLightboxImage.editedByBrandName ?? 'Editor'}
+                  </div>
+                  <pre className="mt-2 whitespace-pre-wrap break-words rounded-md border border-border bg-secondary/30 p-3 text-xs leading-relaxed">
+                    {activeLightboxImage.editRequest}
+                  </pre>
+                </div>
+              ) : null}
+
+              {isEditingAsset ? (
+                <div className="px-4 py-3 border-t border-border bg-background/60">
+                  <div className="text-sm font-medium">Edit instructions</div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Only safe refinements will be applied; prints/logos/silhouette are preserved.
+                  </div>
+                  <Textarea
+                    value={editDraft}
+                    onChange={(e) => setEditDraft(e.target.value)}
+                    className="mt-3"
+                    rows={4}
+                    placeholder="e.g. Reduce dust and improve lighting; keep the print placement unchanged."
+                    disabled={isSubmittingEdit}
+                    aria-label="Edit instructions"
+                  />
+                  <div className="mt-3 flex items-center justify-end gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={isSubmittingEdit || !editDraft.trim()}
+                      onClick={() => void submitEdit()}
+                    >
+                      {isSubmittingEdit ? 'Applying…' : 'Apply'}
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" disabled={isSubmittingEdit} onClick={cancelEdit}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="px-4 py-3 border-t border-border text-sm text-muted-foreground flex items-center justify-between">
+                <span>{formatViewTitle(activeLightboxImage.type)}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs">
+                    {lightboxIndex != null ? `${lightboxIndex + 1}/${navigableImages.length}` : ''}
+                  </span>
+                  {!isEditingAsset ? (
+                    <>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-xs"
+                        disabled={deletingAssetId != null || isSubmittingEdit}
+                        onClick={() => startEdit()}
+                      >
+                        <Pencil className="w-3.5 h-3.5 mr-1" />
+                        Edit
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-xs text-destructive hover:text-white"
+                        disabled={deletingAssetId != null || isSubmittingEdit}
+                        onClick={() => void deleteAsset(activeLightboxImage.id)}
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-1" />
+                        {deletingAssetId === activeLightboxImage.id ? 'Deleting…' : 'Delete'}
+                      </Button>
+                    </>
+                  ) : null}
+                </div>
               </div>
-            </div>
+            </>
           ) : null}
         </DialogContent>
       </Dialog>

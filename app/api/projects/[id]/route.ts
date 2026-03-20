@@ -32,6 +32,11 @@ const GeneratedImageSchema = z
     url: z.string(),
     timestamp: z.number(),
     prompt: z.string().optional(),
+    editedFromId: z.string().optional(),
+    editRequest: z.string().optional(),
+    editedByUserId: z.string().optional(),
+    editedByBrandName: z.string().nullable().optional(),
+    editedAt: z.number().optional(),
   })
   .strict()
 

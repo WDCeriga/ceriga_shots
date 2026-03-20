@@ -27,6 +27,41 @@ type InteractionsImageMime =
 
 type ShotCategory = 'flatlay' | 'surface' | 'detail'
 
+const VALID_SHOT_TYPES: readonly ShotType[] = [
+  'flatlay_topdown',
+  'flatlay_45deg',
+  'flatlay_sleeves',
+  'flatlay_relaxed',
+  'flatlay_folded',
+  'surface_draped',
+  'surface_hanging',
+  'detail_print',
+  'detail_fabric',
+  'detail_collar',
+]
+
+const LEGACY_SHOT_TYPE_MAP: Record<string, ShotType> = {
+  'flat-lay': 'flatlay_topdown',
+  'product-shot': 'surface_hanging',
+  detail: 'detail_print',
+  lifestyle: 'surface_draped',
+}
+
+function resolveShotTypeFromBody(body: unknown): ShotType | undefined {
+  const requestedShotType = (body as { shotType?: unknown; type?: unknown }).shotType
+  const legacyType = (body as { type?: unknown }).type
+
+  if (typeof requestedShotType === 'string' && VALID_SHOT_TYPES.includes(requestedShotType as ShotType)) {
+    return requestedShotType as ShotType
+  }
+
+  if (typeof legacyType === 'string' && legacyType in LEGACY_SHOT_TYPE_MAP) {
+    return LEGACY_SHOT_TYPE_MAP[legacyType]
+  }
+
+  return undefined
+}
+
 function getApiKey(): string | undefined {
   return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY
 }
@@ -43,6 +78,20 @@ function normalizeGarmentType(input: unknown): GarmentType | undefined {
 
   // Hard limit to reduce token bloat and prompt injection surface.
   return cleaned.length > 50 ? cleaned.slice(0, 50).trim() : cleaned
+}
+
+function normalizeEditInstructions(input: unknown): string | undefined {
+  if (typeof input !== 'string') return undefined
+
+  // Keep it short and prompt-safe:
+  // - remove newlines
+  // - collapse multiple spaces
+  // - trim
+  const cleaned = input.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!cleaned) return undefined
+
+  // Clamp hard to reduce prompt injection surface.
+  return cleaned.length > 800 ? cleaned.slice(0, 800).trim() : cleaned
 }
 
 function parseDataUrl(dataUrl: string): { mimeType: string; base64: string } | null {
@@ -569,12 +618,26 @@ function buildGarmentTypeAnchor(garmentType: GarmentType): string {
   ].join('\n')
 }
 
+function buildEditInstructionsBlock(editInstructions: string): string {
+  return [
+    'USER EDIT INSTRUCTIONS (apply only safe refinements):',
+    `- ${editInstructions}`,
+    '',
+    'IMPORTANT RULES:',
+    '- Do NOT redesign, reinterpret, or alter the garment design, prints, logos, typography, colors, or print placement.',
+    '- Do NOT change the garment silhouette or structure.',
+    '- Only apply allowed refinements that preserve exact product fidelity (e.g., remove dust/lint, improve lighting, clarify fabric texture, match composition/centering requirements for the shot type).',
+    '- If the instructions conflict with the fidelity rules, ignore the conflicting parts.',
+  ].join('\n')
+}
+
 function buildPrompt(args: {
   shotType: ShotType
   preset: Preset
   generationIndex: number
   variationSeed: number
   garmentType?: GarmentType
+  editInstructions?: string
 }) {
   const category = categoryForShotType(args.shotType)
   const baseCore = category === 'detail' ? `${BASE_FIDELITY}\n\n${BASE_DETAIL_CARVEOUT}` : BASE_FIDELITY
@@ -584,14 +647,19 @@ function buildPrompt(args: {
   const negative = [NEGATIVE_GLOBAL, NEGATIVE_BY_CATEGORY[category]].join('\n')
   const preset = [PRESET_BASE[args.preset], PRESET_BY_CATEGORY[args.preset][category]].join('\n')
 
+  const userEditBlock = args.editInstructions ? buildEditInstructionsBlock(args.editInstructions) : ''
+
   return [
     base,
     negative,
     SHOT_PROMPTS[args.shotType],
     preset,
     buildVariationSeed(args.preset, args.shotType, args.generationIndex, args.variationSeed),
+    userEditBlock || undefined,
     FIDELITY_REMINDER,
-  ].join('\n---\n')
+  ]
+    .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+    .join('\n---\n')
 }
 
 function asErrorMessage(e: unknown) {
@@ -655,29 +723,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 })
     }
 
-    const requestedShotType = (body as { shotType?: unknown; type?: unknown }).shotType
-    const legacyType = (body as { type?: unknown }).type
-    const shotType: ShotType | undefined =
-      requestedShotType === 'flatlay_topdown' ||
-      requestedShotType === 'flatlay_45deg' ||
-      requestedShotType === 'flatlay_sleeves' ||
-      requestedShotType === 'flatlay_relaxed' ||
-      requestedShotType === 'flatlay_folded' ||
-      requestedShotType === 'surface_draped' ||
-      requestedShotType === 'surface_hanging' ||
-      requestedShotType === 'detail_print' ||
-      requestedShotType === 'detail_fabric' ||
-      requestedShotType === 'detail_collar'
-        ? requestedShotType
-        : legacyType === 'flat-lay'
-          ? 'flatlay_topdown'
-          : legacyType === 'product-shot'
-            ? 'surface_hanging'
-            : legacyType === 'detail'
-              ? 'detail_print'
-              : legacyType === 'lifestyle'
-                ? 'surface_draped'
-                : undefined
+    const shotType = resolveShotTypeFromBody(body)
 
     const requestedPreset = (body as { preset?: unknown }).preset
     const preset: Preset =
@@ -702,6 +748,14 @@ export async function POST(req: Request) {
 
     const garmentType = normalizeGarmentType((body as { garmentType?: unknown }).garmentType)
 
+    const editInstructions = normalizeEditInstructions((body as { editInstructions?: unknown }).editInstructions)
+    const editedFromIdRaw = (body as { editedFromId?: unknown }).editedFromId
+    const editedFromId =
+      typeof editedFromIdRaw === 'string' && editedFromIdRaw.trim().length > 0 ? editedFromIdRaw.trim() : undefined
+    const editorBrandNameRaw = (body as { editorBrandName?: unknown }).editorBrandName
+    const editorBrandName =
+      typeof editorBrandNameRaw === 'string' && editorBrandNameRaw.trim().length > 0 ? editorBrandNameRaw.trim() : null
+
     if (!shotType) {
       return NextResponse.json(
         {
@@ -712,7 +766,15 @@ export async function POST(req: Request) {
       )
     }
 
-    const prompt = buildPrompt({ shotType, preset, generationIndex, variationSeed, garmentType })
+    const meta = {
+      shotType,
+      preset,
+      generationIndex,
+      variationSeed,
+      garmentType,
+    }
+
+    const prompt = buildPrompt({ shotType, preset, generationIndex, variationSeed, garmentType, editInstructions })
 
     console.warn(`[mockups:${requestId}] Missing API key; returning placeholder for shotType=${shotType}`)
     return NextResponse.json({
@@ -723,7 +785,14 @@ export async function POST(req: Request) {
         url: '',
         timestamp: Date.now(),
         prompt,
+        meta,
+        editedFromId: editInstructions && editedFromId ? editedFromId : undefined,
+        editRequest: editInstructions,
+        editedByUserId: editInstructions ? actorUserId : undefined,
+        editedByBrandName: editInstructions ? editorBrandName : undefined,
+        editedAt: editInstructions ? Date.now() : undefined,
       },
+      meta,
       placeholder: true,
       warning: 'Missing API key. Set GOOGLE_API_KEY (preferred) or GEMINI_API_KEY to enable image generation.',
       promptPreview: prompt.slice(0, 5000),
@@ -761,29 +830,7 @@ export async function POST(req: Request) {
 
   const inputMime = normalizeInteractionsImageMime(parsed.mimeType)
 
-  const requestedShotType = (body as { shotType?: unknown; type?: unknown }).shotType
-  const legacyType = (body as { type?: unknown }).type
-  const shotType: ShotType | undefined =
-    requestedShotType === 'flatlay_topdown' ||
-    requestedShotType === 'flatlay_45deg' ||
-    requestedShotType === 'flatlay_sleeves' ||
-    requestedShotType === 'flatlay_relaxed' ||
-    requestedShotType === 'flatlay_folded' ||
-    requestedShotType === 'surface_draped' ||
-    requestedShotType === 'surface_hanging' ||
-    requestedShotType === 'detail_print' ||
-    requestedShotType === 'detail_fabric' ||
-    requestedShotType === 'detail_collar'
-      ? requestedShotType
-      : legacyType === 'flat-lay'
-        ? 'flatlay_topdown'
-        : legacyType === 'product-shot'
-          ? 'surface_hanging'
-          : legacyType === 'detail'
-            ? 'detail_print'
-            : legacyType === 'lifestyle'
-              ? 'surface_draped'
-              : undefined
+  const shotType = resolveShotTypeFromBody(body)
 
   if (!shotType) {
     console.warn(`[mockups:${requestId}] Missing/invalid type`)
@@ -821,11 +868,27 @@ export async function POST(req: Request) {
 
   const garmentType = normalizeGarmentType((body as { garmentType?: unknown }).garmentType)
 
+  const editInstructions = normalizeEditInstructions((body as { editInstructions?: unknown }).editInstructions)
+  const editedFromIdRaw = (body as { editedFromId?: unknown }).editedFromId
+  const editedFromId =
+    typeof editedFromIdRaw === 'string' && editedFromIdRaw.trim().length > 0 ? editedFromIdRaw.trim() : undefined
+  const editorBrandNameRaw = (body as { editorBrandName?: unknown }).editorBrandName
+  const editorBrandName =
+    typeof editorBrandNameRaw === 'string' && editorBrandNameRaw.trim().length > 0 ? editorBrandNameRaw.trim() : null
+
   const ai = new GoogleGenAI({ apiKey })
+
+  const meta = {
+    shotType,
+    preset,
+    generationIndex,
+    variationSeed,
+    garmentType,
+  }
 
   try {
     const maxAttempts = 2
-    const prompt = buildPrompt({ shotType, preset, generationIndex, variationSeed, garmentType })
+    const prompt = buildPrompt({ shotType, preset, generationIndex, variationSeed, garmentType, editInstructions })
 
     let lastErrorMessage = ''
     let modelCalls = 0
@@ -902,8 +965,15 @@ export async function POST(req: Request) {
               url: finalUrl,
               timestamp: Date.now(),
               prompt,
+              meta,
+              editedFromId: editInstructions && editedFromId ? editedFromId : undefined,
+              editRequest: editInstructions,
+              editedByUserId: editInstructions ? actorUserId : undefined,
+              editedByBrandName: editInstructions ? editorBrandName : undefined,
+              editedAt: editInstructions ? Date.now() : undefined,
             },
             modelCalls,
+            meta,
           })
         }
 

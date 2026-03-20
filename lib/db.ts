@@ -117,6 +117,9 @@ export async function ensureSchema() {
     )
   `
     await db`alter table generation_jobs add column if not exists model_calls integer not null default 0`
+    await db`alter table generation_jobs add column if not exists edit_instructions text`
+    await db`alter table generation_jobs add column if not exists edited_from_id text`
+    await db`alter table generation_jobs add column if not exists editor_brand_name text`
     await db`create index if not exists generation_jobs_status_run_after_idx on generation_jobs(status, run_after, created_at)`
     await db`create index if not exists generation_jobs_project_id_idx on generation_jobs(project_id)`
   })()
