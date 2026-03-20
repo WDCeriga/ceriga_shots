@@ -282,7 +282,7 @@ export default function ResultsPage() {
     }
   }
 
-  const startEdit = () => {
+  const startEdit = (assetId?: string) => {
     if (!canImageEditing) {
       toast({
         title: 'Image editing requires Studio',
@@ -291,10 +291,20 @@ export default function ResultsPage() {
       })
       return
     }
-    if (!activeLightboxImage) return
     if (isEditingAsset) return
+    const targetAsset = assetId
+      ? navigableImages.find((img) => img.id === assetId) ?? null
+      : activeLightboxImage
+    if (!targetAsset) return
+
+    if (assetId) {
+      const idx = navigableImages.findIndex((img) => img.id === assetId)
+      if (idx < 0) return
+      setLightboxIndex(idx)
+    }
+
     setPendingEditedFromId(null)
-    setEditDraft(activeLightboxImage.editRequest ?? '')
+    setEditDraft(targetAsset.editRequest ?? '')
     setIsEditingAsset(true)
   }
 
@@ -640,6 +650,21 @@ export default function ResultsPage() {
                     <p className="text-[11px] text-muted-foreground/80 text-center mt-1">
                       {getExpiryLabel(img.timestamp)}
                     </p>
+                  ) : null}
+                  {img.url && canImageEditing ? (
+                    <div className="mt-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="h-7 w-full text-xs"
+                        disabled={deletingAssetId != null || isSubmittingEdit}
+                        onClick={() => startEdit(img.id)}
+                      >
+                        <Pencil className="w-3.5 h-3.5 mr-1" />
+                        Edit
+                      </Button>
+                    </div>
                   ) : null}
                 </div>
               </div>
