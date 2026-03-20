@@ -164,6 +164,7 @@ export default function GeneratePage() {
   const typingTimeoutRef = useRef<number | null>(null)
   const headingWordIndexRef = useRef(0)
   const isHeadingWordRollingRef = useRef(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     if (!isAuthed) {
@@ -611,7 +612,7 @@ export default function GeneratePage() {
                 value={productType}
                 onValueChange={(v) => setProductType(v as typeof productType)}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full cursor-pointer">
                   <SelectValue placeholder="Auto-detect" />
                 </SelectTrigger>
                 <SelectContent>
@@ -644,9 +645,18 @@ export default function GeneratePage() {
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
+              role="button"
+              tabIndex={0}
+              aria-label="Select design file"
+              onClick={() => fileInputRef.current?.click()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click()
+              }}
               className={cn(
-                'rounded-xl border border-white/10 bg-card/40 shadow-sm transition-colors',
-                isDragging ? 'border-accent/80' : 'hover:border-white/20'
+                'group rounded-xl border border-white/10 bg-card/40 shadow-sm transition-colors',
+                isDragging
+                  ? 'border-accent/80'
+                  : 'hover:border-red-500/50 hover:shadow-[0_0_18px_rgba(239,68,68,0.25)] hover:bg-red-500/10'
               )}
             >
               <input
@@ -655,13 +665,14 @@ export default function GeneratePage() {
                 onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
                 className="hidden"
                 id="file-input"
+                ref={fileInputRef}
               />
 
-              <label htmlFor="file-input" className="block cursor-pointer p-6 sm:p-8">
+              <div className="block cursor-pointer p-6 sm:p-8">
                 <div
                   className={cn(
                     'rounded-lg border border-dashed p-6 sm:p-8',
-                    isDragging ? 'border-accent/80' : 'border-white/15'
+                    isDragging ? 'border-accent/80' : 'border-white/15 group-hover:border-red-500/40 transition-colors'
                   )}
                 >
                   <div className="grid place-items-center">
@@ -676,14 +687,16 @@ export default function GeneratePage() {
                             sizes="(min-width: 1024px) 420px, 100vw"
                           />
                         </div>
-                        <p className="mt-4 text-center text-xs text-muted-foreground">
-                          Click or drop to replace
-                        </p>
+                        <p className="mt-4 text-center text-xs text-muted-foreground">Select Files or drag & drop to replace</p>
                         {file?.name && (
-                          <p className="mt-2 text-center text-xs text-muted-foreground truncate">
-                            {file.name}
-                          </p>
+                          <p className="mt-2 text-center text-xs text-muted-foreground truncate">{file.name}</p>
                         )}
+                        <button
+                          type="button"
+                          className="mt-4 mx-auto block w-auto cursor-pointer rounded-sm border-2 border-red-500 bg-red-500/90 px-5 py-1.5 text-xs font-semibold tracking-wide text-white shadow-[0_0_0_2px_rgba(239,68,68,0.18),0_0_20px_rgba(239,68,68,0.18)] hover:bg-red-500"
+                        >
+                          Select Files
+                        </button>
                       </div>
                     ) : (
                       <div className="w-full max-w-[360px]">
@@ -691,18 +704,22 @@ export default function GeneratePage() {
                           <div className="mb-5 grid h-14 w-14 place-items-center rounded-md border border-white/10 text-muted-foreground">
                             <Upload className="h-6 w-6" />
                           </div>
-                          <p className="text-center text-sm font-medium text-foreground">
-                            Upload your design
-                          </p>
+                          <p className="text-center text-sm font-medium text-foreground">Upload your design</p>
                           <p className="mt-2 text-center text-xs text-muted-foreground">
                             Drag and drop your high-res PNG or TIFF files here to begin the process.
                           </p>
+                          <button
+                            type="button"
+                            className="mt-5 mx-auto block w-auto cursor-pointer rounded-sm border-2 border-red-500 bg-red-500/90 px-5 py-1.5 text-xs font-semibold tracking-wide text-white shadow-[0_0_0_2px_rgba(239,68,68,0.18),0_0_20px_rgba(239,68,68,0.18)] hover:bg-red-500"
+                          >
+                            Select Files
+                          </button>
                         </div>
                       </div>
                     )}
                   </div>
                 </div>
-              </label>
+              </div>
             </div>
 
             <div className="hidden lg:block mt-2">
@@ -711,7 +728,7 @@ export default function GeneratePage() {
                 disabled={!canGenerateNow}
                 className={cn(
                   'w-full rounded-full py-6 text-sm tracking-[0.35em] uppercase cursor-pointer disabled:cursor-not-allowed',
-                  'bg-transparent border border-white/15 hover:border-white/25 hover:bg-accent/5'
+                  'bg-red-500/8 border border-red-500/35 text-foreground shadow-sm hover:bg-red-500/18 hover:border-red-500/70 hover:shadow-[0_0_18px_rgba(239,68,68,0.25)] transition-shadow'
                 )}
                 variant="outline"
               >
@@ -822,7 +839,8 @@ export default function GeneratePage() {
                         !presetEnabled && 'opacity-40 cursor-not-allowed',
                         selected
                           ? 'border-accent/80 ring-1 ring-accent/40'
-                          : 'border-white/10 hover:border-white/20'
+                          : 'border-white/10',
+                        presetEnabled && 'hover:border-red-500/40 hover:bg-red-500/10 hover:shadow-[0_0_16px_rgba(239,68,68,0.18)]'
                       )}
                     >
                       <div className={cn('h-8 w-full rounded-sm', swatchClassName)} />
@@ -846,7 +864,7 @@ export default function GeneratePage() {
                   disabled={!canGenerateNow}
                   className={cn(
                     'w-full rounded-full py-6 text-sm tracking-[0.35em] uppercase cursor-pointer disabled:cursor-not-allowed',
-                    'bg-transparent border border-white/15 hover:border-white/25 hover:bg-accent/5'
+                  'bg-red-500/8 border border-red-500/35 text-foreground shadow-sm hover:bg-red-500/18 hover:border-red-500/70 hover:shadow-[0_0_18px_rgba(239,68,68,0.25)] transition-shadow'
                   )}
                   variant="outline"
                 >
