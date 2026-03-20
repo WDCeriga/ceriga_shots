@@ -138,7 +138,7 @@ const BASE_FIDELITY = [
   '- Discard any solid-colour bars, borders, letterboxing, or padding around the garment.',
   '- Discard any background clutter: messy surfaces, other objects, accessories, hands, mannequins, retail tags, hangers (unless the shot type requires one).',
   '- If the garment occupies only a portion of the input image, mentally crop to just the garment before generating.',
-  '- The output must contain ONLY the garment on the specified surface/background — zero trace of the input image context.',
+  '- The output must contain ONLY the garment plus any minimal required, unbranded support implied by the shot type (e.g. a simple hook/hanger for hanging shots) — zero trace of the input image context.',
   '',
   'PRODUCT FIDELITY (non-negotiable):',
   '- Preserve exact print placement, graphics, logo position, and colorway',
@@ -282,8 +282,9 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
     'SHOT TYPE: Fabric texture macro',
     '- Extreme close-up on the material weave and texture',
     '- Focus is on weave/texture; if any print/graphics are visible inside the crop, preserve them exactly and do not remove/alter them.',
+    '- Do NOT cut off important garment edges or print/letterform boundaries; preserve the full boundaries of whatever is visible inside the crop.',
     '- Communicates fabric quality and weight',
-    '- Slightly off-centre crop for editorial feel',
+    '- Slightly off-centre crop for editorial feel is allowed, but keep all important subject boundaries fully visible within the crop.',
     '- Depth of field can be shallow — edges can softly fall off',
     '- Do NOT invent a different weave; keep texture consistent with the original garment material',
   ].join('\n'),
@@ -444,10 +445,16 @@ function buildVariationSeed(
   // So we restrict allowed composition variants by shotType.
   let compositions: readonly string[]
   switch (shotType) {
-    case 'flatlay_topdown':
-    case 'flatlay_sleeves':
+    case 'flatlay_topdown': {
+      compositions = [centredBreathingRoom]
+      break
+    }
+    case 'flatlay_sleeves': {
+      compositions = [centredBreathingRoom]
+      break
+    }
     case 'flatlay_folded': {
-      compositions = [centredBreathingRoom, centredTight]
+      compositions = [centredTight]
       break
     }
     case 'flatlay_45deg': {
