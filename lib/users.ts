@@ -11,6 +11,8 @@ export type DbUserRow = {
   email_verified: boolean
   email_verification_token: string | null
   email_verification_token_expires: string | null
+  password_reset_token: string | null
+  password_reset_token_expires: string | null
   stripe_customer_id: string | null
   stripe_subscription_id: string | null
   stripe_price_id: string | null
@@ -175,5 +177,50 @@ export async function isEmailVerified(userId: string): Promise<boolean> {
     select email_verified from users where id = ${userId} limit 1
   `) as Array<{ email_verified: boolean }>
   return rows[0]?.email_verified ?? false
+}
+
+export async function setPasswordResetToken(
+  userId: string,
+  token: string,
+  expiresAt: Date
+): Promise<void> {
+  await ensureSchema()
+  await db`
+    update users
+    set password_reset_token = ${token},
+        password_reset_token_expires = ${expiresAt.toISOString()}
+    where id = ${userId}
+  `
+}
+
+export async function verifyPasswordResetToken(token: string): Promise<DbUserRow | null> {
+  await ensureSchema()
+  const rows = (await db`
+    select * from users
+    where password_reset_token = ${token}
+    limit 1
+  `) as DbUserRow[]
+
+  const user = rows[0]
+  if (!user) return null
+
+  if (user.password_reset_token_expires && new Date(user.password_reset_token_expires) < new Date()) {
+    return null
+  }
+
+  return user
+}
+
+export async function updateUserPassword(userId: string, newPassword: string): Promise<void> {
+  await ensureSchema()
+  const hash = await bcrypt.hash(newPassword, 12)
+
+  await db`
+    update users
+    set password_hash = ${hash},
+        password_reset_token = null,
+        password_reset_token_expires = null
+    where id = ${userId}
+  `
 }
 

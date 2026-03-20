@@ -36,6 +36,7 @@ const featureGroups: FeatureGroup[] = [
       { name: 'Flat lay variants', values: ['2', '5', '5', '5'] },
       { name: 'Surface + detail shots', values: [false, false, true, true] },
       { name: 'Advanced presets', values: [false, true, true, true] },
+      { name: 'Image editing', values: [false, false, true, true] },
     ],
   },
   {

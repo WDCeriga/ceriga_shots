@@ -58,3 +58,52 @@ export async function sendVerificationEmail(
 
   return { ok: true }
 }
+
+export async function sendPasswordResetEmail(
+  email: string,
+  token: string
+): Promise<{ ok: boolean; error?: string }> {
+  if (!resend) {
+    console.warn('[email] Resend not configured — skipping password reset email to', email)
+    return { ok: false, error: 'Email service not configured' }
+  }
+
+  const resetUrl = `${APP_URL}/reset-password?token=${encodeURIComponent(token)}`
+
+  const { error } = await resend.emails.send({
+    from: EMAIL_FROM,
+    to: email,
+    subject: 'Reset your password — Ceriga Shots',
+    html: `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
+        <h1 style="font-size: 24px; font-weight: 600; color: #111; margin-bottom: 16px;">
+          Reset your password
+        </h1>
+        <p style="font-size: 15px; line-height: 1.6; color: #444; margin-bottom: 24px;">
+          We received a request to reset the password for your Ceriga Shots account.
+          Click the button below to choose a new password.
+        </p>
+        <a
+          href="${resetUrl}"
+          style="display: inline-block; background: #111; color: #fff; padding: 12px 28px; border-radius: 6px; font-size: 14px; font-weight: 600; text-decoration: none;"
+        >
+          Reset Password
+        </a>
+        <p style="font-size: 13px; line-height: 1.5; color: #888; margin-top: 32px;">
+          If you didn&rsquo;t request a password reset, you can safely ignore this email.
+        </p>
+        <p style="font-size: 12px; color: #aaa; margin-top: 24px;">
+          Or copy and paste this link: <br/>
+          <a href="${resetUrl}" style="color: #888; word-break: break-all;">${resetUrl}</a>
+        </p>
+      </div>
+    `,
+  })
+
+  if (error) {
+    console.error('[email] Failed to send password reset email:', error)
+    return { ok: false, error: error.message }
+  }
+
+  return { ok: true }
+}

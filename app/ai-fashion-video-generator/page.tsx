@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 
 import { Navbar } from '@/components/navbar'
-import { VideoSection } from '@/components/video-section'
+// import { VideoSection } from '@/components/video-section'
 import { HowItWorks } from '@/components/how-it-works'
 import { GallerySection } from '@/components/gallery-section'
 import { PricingSection } from '@/components/pricing-section'
@@ -81,7 +81,7 @@ export default function AiFashionVideoGeneratorPage() {
         </div>
       </section>
 
-      <VideoSection />
+      {/* <VideoSection /> */}
       <HowItWorks />
       <GallerySection />
       <PricingSection />

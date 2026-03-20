@@ -51,7 +51,7 @@ export function Footer() {
             { label: "How it works", href: "#how-it-works" },
             { label: "Flat lays", href: "/ai-flat-lay-generator" },
             { label: "Product shots", href: "/ai-product-shots" },
-            { label: "Video clips", href: "/ai-fashion-video-generator" },
+            // { label: "Video clips", href: "/ai-fashion-video-generator" },
             { label: "Privacy", href: "/privacy" },
             { label: "Contact", href: "#cta" },
           ].map((link) => (

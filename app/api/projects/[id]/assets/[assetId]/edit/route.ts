@@ -7,7 +7,6 @@ import { getProjectForUser } from '@/lib/projects'
 import { enqueueGenerationJobs, type Preset, type ShotType } from '@/lib/generation-queue'
 import {
   checkCreditsForBatch,
-  checkGenerateMore,
   validatePresetForRole,
   validateShotTypesForRole,
   type QuotaError,
@@ -118,9 +117,12 @@ export async function POST(req: NextRequest) {
   const user = await findUserById(session.user.id)
   const role = (user?.role ?? 'free') as UserRole
 
-  const generateMoreErr = checkGenerateMore(role)
-  if (generateMoreErr) {
-    return NextResponse.json({ error: quotaErrorMessage(generateMoreErr), code: generateMoreErr.code }, { status: 403 })
+  const canImageEditing = role === 'studio' || role === 'label' || role === 'admin'
+  if (!canImageEditing) {
+    return NextResponse.json(
+      { error: 'Image editing is only available on Studio and above.', code: 'image_editing_disabled' },
+      { status: 403 }
+    )
   }
 
   const userRate = await applyRateLimit({

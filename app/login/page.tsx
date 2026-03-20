@@ -16,6 +16,7 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const resetStatus = searchParams.get('reset')
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -86,9 +87,21 @@ function LoginForm() {
 
           {error && <p className="text-sm text-destructive">{error}</p>}
 
+          {resetStatus === 'success' ? (
+            <p className="text-sm text-muted-foreground">
+              Your password was updated. You can now sign in.
+            </p>
+          ) : null}
+
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? 'Signing in…' : 'Sign in'}
           </Button>
+
+          <div className="text-sm text-muted-foreground text-center">
+            <Link href="/forgot-password" className="underline underline-offset-2 hover:text-foreground">
+              Forgot password?
+            </Link>
+          </div>
         </form>
 
         <p className="text-sm text-muted-foreground text-center">

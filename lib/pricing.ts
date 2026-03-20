@@ -40,7 +40,7 @@ export const pricingPlans: PricingPlan[] = [
     highlighted: true,
     useCase: 'Best for growing brands',
     description: 'Your main production plan for campaigns, launches, and ad variants.',
-    features: ['All shot categories', 'All visual presets', '4K exports', 'Up to 100 projects'],
+    features: ['All shot categories', 'All visual presets', 'Image editing (AI refinements)', '4K exports', 'Up to 100 projects'],
   },
   {
     name: 'Label',

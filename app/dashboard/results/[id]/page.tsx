@@ -209,6 +209,7 @@ export default function ResultsPage() {
     project.generation.completed < project.generation.total
   const canGenerateMoreFeature = limits.generateMore
   const canGenerateMore = !isActivelyGenerating && canGenerateMoreFeature
+  const canImageEditing = role === 'studio' || role === 'label' || role === 'admin'
 
   const startRename = () => {
     setNameDraft(project.name)
@@ -282,6 +283,14 @@ export default function ResultsPage() {
   }
 
   const startEdit = () => {
+    if (!canImageEditing) {
+      toast({
+        title: 'Image editing requires Studio',
+        description: 'Upgrade to Studio (or above) to apply edit instructions.',
+        variant: 'destructive',
+      })
+      return
+    }
     if (!activeLightboxImage) return
     if (isEditingAsset) return
     setPendingEditedFromId(null)
@@ -295,6 +304,14 @@ export default function ResultsPage() {
   }
 
   const submitEdit = async () => {
+    if (!canImageEditing) {
+      toast({
+        title: 'Image editing requires Studio',
+        description: 'Upgrade to Studio (or above) to apply edit instructions.',
+        variant: 'destructive',
+      })
+      return
+    }
     if (!activeLightboxImage) return
     if (isSubmittingEdit) return
     const next = editDraft.trim()
@@ -758,17 +775,19 @@ export default function ResultsPage() {
                   </span>
                   {!isEditingAsset ? (
                     <>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-7 px-2 text-xs"
-                        disabled={deletingAssetId != null || isSubmittingEdit}
-                        onClick={() => startEdit()}
-                      >
-                        <Pencil className="w-3.5 h-3.5 mr-1" />
-                        Edit
-                      </Button>
+                      {canImageEditing ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-xs"
+                          disabled={deletingAssetId != null || isSubmittingEdit}
+                          onClick={() => startEdit()}
+                        >
+                          <Pencil className="w-3.5 h-3.5 mr-1" />
+                          Edit
+                        </Button>
+                      ) : null}
                       <Button
                         type="button"
                         size="sm"

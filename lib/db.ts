@@ -52,6 +52,9 @@ export async function ensureSchema() {
     await db`alter table users add column if not exists email_verification_token text`
     await db`alter table users add column if not exists email_verification_token_expires timestamptz`
 
+    await db`alter table users add column if not exists password_reset_token text`
+    await db`alter table users add column if not exists password_reset_token_expires timestamptz`
+
     await db`
     create table if not exists projects (
       id uuid primary key default gen_random_uuid(),
