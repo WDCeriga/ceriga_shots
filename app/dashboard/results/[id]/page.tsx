@@ -662,16 +662,16 @@ export default function ResultsPage() {
       </div>
 
       <Dialog open={lightboxIndex != null} onOpenChange={(open) => !open && setLightboxIndex(null)}>
-        <DialogContent className="[&>button]:right-3 [&>button]:top-3 [&>button]:z-50 [&>button]:rounded-md [&>button]:bg-background/90 [&>button]:p-1 [&>button]:text-red-500 [&>button:hover]:text-red-400 max-w-[min(1100px,calc(100vw-2rem))] p-0 overflow-hidden">
+        <DialogContent className="[&>button]:right-3 [&>button]:top-3 [&>button]:z-50 [&>button]:rounded-md [&>button]:bg-background/90 [&>button]:p-1 [&>button]:text-red-500 [&>button:hover]:text-red-400 max-w-[min(1100px,calc(100vw-2rem))] p-0 overflow-hidden max-h-[calc(100vh-2rem)] flex flex-col">
           <DialogTitle className="sr-only">
             {activeLightboxImage ? formatViewTitle(activeLightboxImage.type) : 'Image preview'}
           </DialogTitle>
           {activeLightboxImage ? (
-            <div className="relative bg-black/40">
+            <div className="relative bg-black/40 flex-1 min-h-0 overflow-hidden">
               <img
                 src={activeLightboxImage.url}
                 alt={activeLightboxImage.type}
-                className="block w-full h-auto max-h-[80vh] object-contain"
+                className="block w-full h-full max-h-full object-contain"
               />
               {navigableImages.length > 1 ? (
                 <>
@@ -704,13 +704,14 @@ export default function ResultsPage() {
             </div>
           ) : null}
           {activeLightboxImage ? (
-            <>
+            <div className="flex-shrink-0 overflow-auto">
+              <>
               {activeLightboxImage.editRequest && !isEditingAsset ? (
                 <div className="px-4 py-3 border-t border-border text-sm text-muted-foreground">
                   <div className="text-xs text-muted-foreground/80">
                     Edited by {activeLightboxImage.editedByBrandName ?? 'Editor'}
                   </div>
-                  <pre className="mt-2 whitespace-pre-wrap break-words rounded-md border border-border bg-secondary/30 p-3 text-xs leading-relaxed">
+                  <pre className="mt-2 whitespace-pre-wrap break-words rounded-md border border-border bg-secondary/30 p-3 text-xs leading-relaxed max-h-40 overflow-auto">
                     {activeLightboxImage.editRequest}
                   </pre>
                 </div>
@@ -781,7 +782,8 @@ export default function ResultsPage() {
                   ) : null}
                 </div>
               </div>
-            </>
+              </>
+            </div>
           ) : null}
         </DialogContent>
       </Dialog>
