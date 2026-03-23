@@ -212,6 +212,9 @@ export async function enqueueGenerationJobs(args: {
       nextType: args.shotTypes[0],
       errorMessage: undefined,
       shotTypes: undefined,
+      // Preserve the pipeline selected when the user enqueued the generation.
+      // Otherwise downstream workers fall back to `garment_photo`.
+      pipeline: project.generation?.pipeline,
       garmentType: args.garmentType,
     },
   })
