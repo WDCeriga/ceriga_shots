@@ -65,6 +65,34 @@ const featureGroups: FeatureGroup[] = [
   },
 ]
 
+const productionComparisonRows = [
+  {
+    feature: 'Production Cost',
+    traditionalStudio: '€5,000 - €50,000+',
+    cerigaShotsAi: 'Starting at €19/mo',
+  },
+  {
+    feature: 'Turnaround Time',
+    traditionalStudio: '2 - 4 Weeks',
+    cerigaShotsAi: 'Seconds',
+  },
+  {
+    feature: 'Location Flexibility',
+    traditionalStudio: 'Physical Logistics Only',
+    cerigaShotsAi: 'Infinite Digital Worlds',
+  },
+  {
+    feature: 'Retakes & Edits',
+    traditionalStudio: 'Requires Reshoot',
+    cerigaShotsAi: 'One-Click Regeneration',
+  },
+  {
+    feature: 'Consistency',
+    traditionalStudio: 'Varies by Session',
+    cerigaShotsAi: 'Mathematically Precise',
+  },
+]
+
 function CellValue({ value }: { value: FeatureValue }) {
   if (value === true) return <Check className="h-4 w-4 text-accent" />
   if (value === false) return <span className="text-muted-foreground/40">-</span>
@@ -306,7 +334,39 @@ export function DashboardPricingClient() {
       </div>
 
       <div className="rounded-xl border border-border overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="md:hidden divide-y divide-border/60 bg-card">
+          {featureGroups.map((group) => (
+            <section key={group.label} className="px-4 py-5">
+              <h3 className="mb-3 text-[11px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
+                {group.label}
+              </h3>
+              <div className="space-y-3">
+                {group.rows.map((row) => (
+                  <article key={row.name} className="rounded-lg border border-border/70 bg-background/60 p-3">
+                    <p className="mb-2 text-sm font-medium text-foreground">{row.name}</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {pricingPlans.map((plan, idx) => (
+                        <div
+                          key={`${row.name}-${plan.name}`}
+                          className="rounded-md border border-border/50 bg-secondary/10 px-2.5 py-2"
+                        >
+                          <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                            {plan.name}
+                          </p>
+                          <div className="flex items-center text-sm text-foreground/90">
+                            <CellValue value={row.values[idx]} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
           <table className="w-full min-w-[760px] border-collapse">
             <thead>
               <tr className="border-b border-border bg-secondary/20">
@@ -348,6 +408,65 @@ export function DashboardPricingClient() {
           </table>
         </div>
       </div>
+
+      <section className="mt-14 rounded-xl border border-border bg-[#090b10] overflow-hidden">
+        <div className="px-4 py-10 sm:px-6">
+          <h2 className="text-center text-2xl sm:text-4xl font-bold tracking-tight text-foreground">
+            The New Standard of Production
+          </h2>
+        </div>
+
+        <div className="md:hidden space-y-3 px-4 pb-5">
+          {productionComparisonRows.map((row) => (
+            <article key={row.feature} className="rounded-lg border border-border/60 bg-black/20 p-3">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                {row.feature}
+              </p>
+              <div className="space-y-2">
+                <div className="rounded-md border border-border/50 bg-white/[0.02] px-3 py-2">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    Traditional Studio
+                  </p>
+                  <p className="text-sm text-foreground/85">{row.traditionalStudio}</p>
+                </div>
+                <div className="rounded-md border border-accent/40 bg-accent/[0.08] px-3 py-2">
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-accent/80">
+                    Ceriga Shots AI
+                  </p>
+                  <p className="text-sm font-medium text-accent">{row.cerigaShotsAi}</p>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full border-collapse">
+            <thead>
+              <tr className="border-y border-border/70 bg-white/[0.02]">
+                <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Feature
+                </th>
+                <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Traditional Studio
+                </th>
+                <th className="px-4 py-4 text-left text-xs font-semibold uppercase tracking-[0.18em] text-accent">
+                  Ceriga Shots AI
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {productionComparisonRows.map((row) => (
+                <tr key={row.feature} className="border-b border-border/40">
+                  <td className="px-4 py-4 text-sm font-medium text-foreground">{row.feature}</td>
+                  <td className="px-4 py-4 text-sm text-foreground/75">{row.traditionalStudio}</td>
+                  <td className="px-4 py-4 text-sm font-semibold text-accent">{row.cerigaShotsAi}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
     </div>
   )
