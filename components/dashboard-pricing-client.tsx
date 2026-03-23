@@ -238,7 +238,8 @@ export function DashboardPricingClient() {
           const roleName = plan.name.toLowerCase()
           const isCurrentPlan = roleName === currentRole
           const hasActiveSubscription =
-            Boolean(subscriptionStatus) && ['active', 'trialing', 'past_due'].includes(subscriptionStatus)
+            subscriptionStatus !== null &&
+            ['active', 'trialing', 'past_due'].includes(subscriptionStatus)
           const stripeMonthly =
             roleName === 'starter' || roleName === 'studio' || roleName === 'label'
               ? stripePrices?.[roleName]?.monthly
