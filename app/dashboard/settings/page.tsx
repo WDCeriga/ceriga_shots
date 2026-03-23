@@ -17,7 +17,7 @@ type StatusResponse = {
 }
 
 type ProjectsCountResponse = {
-  projects?: Array<{ id: string }>
+  count?: number
 }
 
 export default function SettingsPage() {
@@ -102,14 +102,14 @@ export default function SettingsPage() {
         setBrandLoading(false)
       })
 
-    fetch('/api/projects', { method: 'GET' })
+    fetch('/api/projects/count', { method: 'GET' })
       .then(async (res) => {
-        if (!res.ok) throw new Error(`projects ${res.status}`)
+        if (!res.ok) throw new Error(`project count ${res.status}`)
         return (await res.json()) as ProjectsCountResponse
       })
       .then((data) => {
         if (cancelled) return
-        setProjectsUsed(Array.isArray(data.projects) ? data.projects.length : 0)
+        setProjectsUsed(typeof data.count === 'number' ? data.count : 0)
       })
       .catch(() => {
         if (cancelled) return

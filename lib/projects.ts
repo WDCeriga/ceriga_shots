@@ -36,6 +36,16 @@ type DbProjectStatusRow = {
   generated_count: number
 }
 
+type DbProjectGenerationContextRow = {
+  id: string
+  generation: unknown | null
+  generated_count: number
+}
+
+type DbProjectAssetTypeRow = {
+  type: string | null
+}
+
 export type ProjectGenerationStatus = {
   status: NonNullable<GenerationState['status']>
   total: number
@@ -101,6 +111,60 @@ export async function getProjectGenerationStatusForUser(
     nextType: generation?.nextType,
     errorMessage: generation?.errorMessage,
   }
+}
+
+export type ProjectGenerationContext = {
+  id: string
+  generation?: GenerationState
+  generatedCount: number
+}
+
+export async function getProjectGenerationContextForUser(
+  ownerId: string,
+  id: string
+): Promise<ProjectGenerationContext | null> {
+  await ensureSchema()
+  const rows = (await db`
+    select id, generation, jsonb_array_length(generated_images)::int as generated_count
+    from projects
+    where owner_id = ${ownerId} and id = ${id}
+    limit 1
+  `) as DbProjectGenerationContextRow[]
+  const row = rows[0]
+  if (!row) return null
+  return {
+    id: row.id,
+    generation: (row.generation as GenerationState | null) ?? undefined,
+    generatedCount: Number(row.generated_count ?? 0),
+  }
+}
+
+export async function getProjectAssetTypeForUser(
+  ownerId: string,
+  projectId: string,
+  assetId: string
+): Promise<string | null> {
+  await ensureSchema()
+  const rows = (await db`
+    select img->>'type' as type
+    from projects p
+    cross join lateral jsonb_array_elements(p.generated_images) as img
+    where p.owner_id = ${ownerId}
+      and p.id = ${projectId}
+      and img->>'id' = ${assetId}
+    limit 1
+  `) as DbProjectAssetTypeRow[]
+  return rows[0]?.type ?? null
+}
+
+export async function getProjectsCountForUser(ownerId: string): Promise<number> {
+  await ensureSchema()
+  const rows = (await db`
+    select count(*)::int as count
+    from projects
+    where owner_id = ${ownerId}
+  `) as Array<{ count: number }>
+  return Number(rows[0]?.count ?? 0)
 }
 
 export async function createProjectForUser(

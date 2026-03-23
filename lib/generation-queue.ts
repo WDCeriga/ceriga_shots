@@ -1,6 +1,6 @@
 import { db, ensureSchema } from '@/lib/db'
 import type { Project } from '@/types/projects'
-import { getProjectForUser, updateProjectForUser } from '@/lib/projects'
+import { getProjectGenerationContextForUser, updateProjectForUser } from '@/lib/projects'
 
 export type ShotType = NonNullable<NonNullable<Project['generation']>['nextType']>
 export type Preset = NonNullable<NonNullable<Project['generation']>['preset']>
@@ -21,10 +21,6 @@ export type GenerationJob = {
   model_calls: number
   max_attempts: number
   run_after: string
-}
-
-type QueueProjectRow = {
-  generated_images: unknown
 }
 
 function asShotType(input: string): ShotType {
@@ -118,35 +114,23 @@ export async function enqueueGenerationJobs(args: {
   if (!args.shotTypes.length) return
   await ensureSchema()
 
-  const existingRows = (await db`
-    select generated_images
-    from projects
-    where owner_id = ${args.ownerId} and id = ${args.projectId}
-    limit 1
-  `) as QueueProjectRow[]
-  const existing = existingRows[0]
-  if (!existing) {
+  const project = await getProjectGenerationContextForUser(args.ownerId, args.projectId)
+  if (!project) {
     throw new Error('Project not found while enqueueing generation jobs')
   }
 
-  const generatedImages = (existing.generated_images as Array<{ type?: string }>) ?? []
   const countByType = new Map<string, number>()
-  for (const img of generatedImages) {
-    const type = typeof img?.type === 'string' ? img.type : ''
-    if (!type) continue
-    countByType.set(type, (countByType.get(type) ?? 0) + 1)
-  }
 
-  const pendingRows = (await db`
+  const existingByTypeRows = (await db`
     select shot_type, count(*)::int as count
     from generation_jobs
     where owner_id = ${args.ownerId}
       and project_id = ${args.projectId}
-      and status in ('queued', 'processing')
+      and status in ('queued', 'processing', 'done')
     group by shot_type
   `) as Array<{ shot_type: string; count: number }>
 
-  for (const row of pendingRows) {
+  for (const row of existingByTypeRows) {
     countByType.set(row.shot_type, (countByType.get(row.shot_type) ?? 0) + Number(row.count))
   }
 
@@ -198,9 +182,7 @@ export async function enqueueGenerationJobs(args: {
   `) as Array<{ count: number }>
   const pendingAfter = Number(pendingAfterRows[0]?.count ?? 0)
 
-  const project = await getProjectForUser(args.ownerId, args.projectId)
-  if (!project) return
-  const completed = project.generatedImages.length
+  const completed = project.generatedCount
   const total = completed + pendingAfter
 
   await updateProjectForUser(args.ownerId, args.projectId, {
@@ -278,10 +260,10 @@ export async function completeGenerationJob(args: {
     limit 1
   `) as Array<{ shot_type: string }>
 
-  const project = await getProjectForUser(args.ownerId, args.projectId)
+  const project = await getProjectGenerationContextForUser(args.ownerId, args.projectId)
   if (!project) return
 
-  const completed = project.generatedImages.length
+  const completed = project.generatedCount
   const total = completed + pending
   const isDone = pending === 0
 
@@ -352,7 +334,7 @@ export async function failGenerationJob(args: {
     `
   }
 
-  const project = await getProjectForUser(args.ownerId, args.projectId)
+  const project = await getProjectGenerationContextForUser(args.ownerId, args.projectId)
   if (!project) return
 
   const pendingRows = (await db`
@@ -364,12 +346,12 @@ export async function failGenerationJob(args: {
   `) as Array<{ count: number }>
   const pending = Number(pendingRows[0]?.count ?? 0)
 
-  const total = project.generatedImages.length + pending
+  const total = project.generatedCount + pending
   await updateProjectForUser(args.ownerId, args.projectId, {
     generation: {
       status: shouldRetry ? 'generating' : 'error',
       total,
-      completed: project.generatedImages.length,
+      completed: project.generatedCount,
       preset: project.generation?.preset,
       nextType: project.generation?.nextType,
       errorMessage: shouldRetry ? undefined : args.errorMessage,

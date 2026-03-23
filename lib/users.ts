@@ -44,7 +44,7 @@ export async function findUserById(id: string): Promise<DbUserRow | null> {
   return rows[0] ?? null
 }
 
-const ROLE_CACHE_TTL_MS = 60_000 // 1 minute
+const ROLE_CACHE_TTL_MS = 5_000 // keep role updates nearly real-time
 const roleCache = new Map<string, { role: UserRole; expiresAt: number }>()
 
 /** Cached role lookup for session — avoids DB hit on every request */

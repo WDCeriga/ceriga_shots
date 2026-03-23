@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { isDatabaseConfigured } from '@/lib/db'
-import { getProjectForUser, updateProjectForUser } from '@/lib/projects'
+import { getProjectGenerationContextForUser, updateProjectForUser } from '@/lib/projects'
 import { mergeGeneration } from '@/lib/merge-generation'
 import type { GenerationPipeline } from '@/types/projects'
 import { enqueueGenerationJobs, type Preset, type ShotType } from '@/lib/generation-queue'
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'preset is invalid' }, { status: 400 })
   }
 
-  const project = await getProjectForUser(session.user.id, id)
+  const project = await getProjectGenerationContextForUser(session.user.id, id)
   if (!project) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }

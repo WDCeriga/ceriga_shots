@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { isDatabaseConfigured } from '@/lib/db'
-import { getProjectForUser } from '@/lib/projects'
+import { getProjectAssetTypeForUser, getProjectGenerationContextForUser } from '@/lib/projects'
 import { enqueueGenerationJobs, type Preset, type ShotType } from '@/lib/generation-queue'
 import {
   checkCreditsForBatch,
@@ -99,17 +99,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'changes must be a non-empty string' }, { status: 400 })
   }
 
-  const project = await getProjectForUser(session.user.id, projectId)
+  const project = await getProjectGenerationContextForUser(session.user.id, projectId)
   if (!project) {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  const target = project.generatedImages.find((img) => img.id === assetId)
-  if (!target) {
+  const assetType = await getProjectAssetTypeForUser(session.user.id, projectId, assetId)
+  if (!assetType) {
     return NextResponse.json({ error: 'Asset not found in this project' }, { status: 404 })
   }
 
-  const shotType = normalizeShotTypeForEdit(target.type)
+  const shotType = normalizeShotTypeForEdit(assetType)
   if (!shotType) {
     return NextResponse.json({ error: 'Unsupported asset type' }, { status: 400 })
   }

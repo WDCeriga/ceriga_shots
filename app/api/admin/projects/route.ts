@@ -10,7 +10,7 @@ type Row = {
   id: string
   owner_email: string | null
   name: string
-  generated_images: unknown
+  generated_count: number
   generation: unknown
   created_at: string
   updated_at: string
@@ -34,7 +34,7 @@ export async function GET() {
       p.id,
       u.email as owner_email,
       p.name,
-      p.generated_images,
+      jsonb_array_length(p.generated_images)::int as generated_count,
       p.generation,
       p.created_at,
       p.updated_at
@@ -46,13 +46,12 @@ export async function GET() {
 
   return NextResponse.json({
     projects: rows.map((r) => {
-      const images = Array.isArray(r.generated_images) ? r.generated_images : []
       const generation = (r.generation ?? null) as { preset?: string } | null
       return {
         id: r.id,
         ownerEmail: r.owner_email ?? 'Unknown',
         name: r.name,
-        generatedCount: images.length,
+        generatedCount: Number(r.generated_count ?? 0),
         visualDirection: generation?.preset ?? '—',
         createdAt: r.created_at,
         updatedAt: r.updated_at,
