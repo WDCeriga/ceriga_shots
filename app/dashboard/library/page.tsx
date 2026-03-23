@@ -220,7 +220,7 @@ export default function LibraryPage() {
                         {getProjectType(project).label}
                       </span>
                       <span className="rounded-full border border-border bg-secondary/30 px-2 py-1 text-[11px] text-muted-foreground">
-                        {project.generatedImages.length} assets
+                        {project.generatedCount ?? project.generatedImages.length} assets
                       </span>
                     </div>
                   </div>

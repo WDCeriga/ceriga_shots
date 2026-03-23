@@ -114,7 +114,11 @@ export default function DashboardHome() {
   }, [])
 
   const assetsGenerated = useMemo(
-    () => projects.reduce((total, project) => total + project.generatedImages.length, 0),
+    () =>
+      projects.reduce(
+        (total, project) => total + (project.generatedCount ?? project.generatedImages.length),
+        0
+      ),
     [projects]
   )
 
@@ -220,7 +224,7 @@ export default function DashboardHome() {
                         <div className="flex items-center gap-4 text-sm text-white/75">
                           <span className="inline-flex items-center gap-1.5">
                             <ImageIcon className="h-3.5 w-3.5" />
-                            {project.generatedImages.length} Assets
+                            {project.generatedCount ?? project.generatedImages.length} Assets
                           </span>
                           <span className="inline-flex items-center gap-1.5">
                             <Clock3 className="h-3.5 w-3.5" />
@@ -229,9 +233,9 @@ export default function DashboardHome() {
                         </div>
                         <div className="mt-4 flex items-center gap-1.5">
                           <span className="h-3 w-3 rounded-full bg-white/20" />
-                          {project.generatedImages.length > 1 ? (
+                          {(project.generatedCount ?? project.generatedImages.length) > 1 ? (
                             <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-medium text-white/85">
-                              +{project.generatedImages.length - 1}
+                              +{(project.generatedCount ?? project.generatedImages.length) - 1}
                             </span>
                           ) : null}
                         </div>

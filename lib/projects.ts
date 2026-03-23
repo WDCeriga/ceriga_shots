@@ -8,6 +8,7 @@ type DbProjectRow = {
   original_image: string
   original_image_name: string
   generated_images: unknown
+  generated_count?: number
   generation: unknown | null
   created_at: string
   updated_at: string
@@ -20,16 +21,43 @@ function mapRow(row: DbProjectRow): Project {
     originalImage: row.original_image,
     originalImageName: row.original_image_name,
     generatedImages: (row.generated_images as GeneratedImage[]) ?? [],
+    generatedCount:
+      row.generated_count != null
+        ? Number(row.generated_count)
+        : ((row.generated_images as GeneratedImage[]) ?? []).length,
     generation: (row.generation as GenerationState | null) ?? undefined,
     createdAt: new Date(row.created_at).getTime(),
     updatedAt: new Date(row.updated_at).getTime(),
   }
 }
 
+type DbProjectStatusRow = {
+  generation: unknown | null
+  generated_count: number
+}
+
+export type ProjectGenerationStatus = {
+  status: NonNullable<GenerationState['status']>
+  total: number
+  completed: number
+  nextType?: GenerationState['nextType']
+  errorMessage?: string
+}
+
 export async function getProjectsForUser(ownerId: string): Promise<Project[]> {
   await ensureSchema()
   const rows = (await db`
-    select *
+    select
+      id,
+      owner_id,
+      name,
+      original_image,
+      original_image_name,
+      '[]'::jsonb as generated_images,
+      jsonb_array_length(generated_images)::int as generated_count,
+      generation,
+      created_at,
+      updated_at
     from projects
     where owner_id = ${ownerId}
     order by created_at desc
@@ -46,6 +74,33 @@ export async function getProjectForUser(ownerId: string, id: string): Promise<Pr
     limit 1
   `) as DbProjectRow[]
   return rows[0] ? mapRow(rows[0]) : null
+}
+
+export async function getProjectGenerationStatusForUser(
+  ownerId: string,
+  id: string
+): Promise<ProjectGenerationStatus | null> {
+  await ensureSchema()
+  const rows = (await db`
+    select generation, jsonb_array_length(generated_images)::int as generated_count
+    from projects
+    where owner_id = ${ownerId} and id = ${id}
+    limit 1
+  `) as DbProjectStatusRow[]
+  const row = rows[0]
+  if (!row) return null
+
+  const generation = (row.generation as GenerationState | null) ?? null
+  const completed = Number(row.generated_count ?? 0)
+  const total = Math.max(completed, Number(generation?.total ?? completed))
+
+  return {
+    status: generation?.status ?? 'idle',
+    total,
+    completed,
+    nextType: generation?.nextType,
+    errorMessage: generation?.errorMessage,
+  }
 }
 
 export async function createProjectForUser(

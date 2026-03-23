@@ -127,6 +127,7 @@ export default function ResultsPage() {
   useEffect(() => {
     if (generationStatus !== 'generating') return
     let stopped = false
+    let tickCount = 0
 
     const tick = async () => {
       try {
@@ -137,7 +138,31 @@ export default function ResultsPage() {
         } catch {
           setQueueNudgeStatus('retrying')
         }
-        await fetchProject(projectId)
+        const statusRes = await fetch(`/api/projects/${projectId}/status`, { method: 'GET' })
+        const statusPayload = (await statusRes.json().catch(() => null)) as
+          | {
+              status?: {
+                status: 'idle' | 'generating' | 'complete' | 'error'
+                total: number
+                completed: number
+                nextType?: string
+                errorMessage?: string
+              }
+            }
+          | null
+        const status = statusPayload?.status
+
+        // Refresh full project only periodically, or when status suggests
+        // we should immediately sync full asset data.
+        tickCount += 1
+        const shouldRefreshFullProject =
+          !statusRes.ok ||
+          tickCount % 3 === 0 ||
+          status == null ||
+          status.status !== 'generating'
+        if (shouldRefreshFullProject) {
+          await fetchProject(projectId)
+        }
       } catch {
         // Polling errors are non-fatal; the next tick retries.
       }
@@ -147,7 +172,7 @@ export default function ResultsPage() {
     const interval = window.setInterval(() => {
       if (stopped) return
       void tick()
-    }, 2500)
+    }, 6000)
 
     return () => {
       stopped = true

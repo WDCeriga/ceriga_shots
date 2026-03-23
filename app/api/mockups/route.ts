@@ -608,6 +608,11 @@ const FIDELITY_REMINDER = [
 ].join('\n')
 
 type GenerationPipeline = 'garment_photo' | 'design_realize'
+const STORED_PROMPT_MAX_CHARS = 1200
+
+function isDevDataUrlStorageAllowed(): boolean {
+  return process.env.NODE_ENV === 'development'
+}
 
 const BASE_DESIGN_REALIZE = [
   'You are generating a professional photoreal product photograph from a 2D design reference.',
@@ -882,6 +887,10 @@ export async function POST(req: Request) {
     })
 
     console.warn(`[mockups:${requestId}] Missing API key; returning placeholder for shotType=${shotType}`)
+    const promptForStorage =
+      prompt.length > STORED_PROMPT_MAX_CHARS
+        ? `${prompt.slice(0, STORED_PROMPT_MAX_CHARS).trimEnd()}...`
+        : prompt
     return NextResponse.json({
       generatedImage: {
         id:
@@ -889,7 +898,7 @@ export async function POST(req: Request) {
         type: shotType,
         url: '',
         timestamp: Date.now(),
-        prompt,
+        prompt: promptForStorage,
         meta,
         editedFromId: editInstructions && editedFromId ? editedFromId : undefined,
         editRequest: editInstructions,
@@ -1047,7 +1056,8 @@ export async function POST(req: Request) {
           )
 
           let finalUrl = `data:${mime};base64,${base64}`
-          if (isR2Configured()) {
+          const r2Enabled = isR2Configured()
+          if (r2Enabled) {
             console.info?.(`[mockups:${requestId}] uploading output image to R2`)
             const bytes = Buffer.from(base64, 'base64')
             const ext =
@@ -1066,9 +1076,25 @@ export async function POST(req: Request) {
             const uploaded = await putObjectToR2({ key, body: bytes, contentType: mime })
             finalUrl = uploaded.url
             console.info?.(`[mockups:${requestId}] uploaded R2 url=${uploaded.url}`)
+          } else if (!isDevDataUrlStorageAllowed()) {
+            console.error(
+              `[mockups:${requestId}] Blocking data URL storage: R2 unavailable in ${process.env.NODE_ENV || 'unknown'} environment`
+            )
+            return NextResponse.json(
+              {
+                error:
+                  'Image storage is not configured. Configure R2 before generating in non-development environments.',
+              },
+              { status: 503 }
+            )
           } else {
-            console.info?.(`[mockups:${requestId}] R2 not configured; storing as data URL`)
+            console.warn(`[mockups:${requestId}] R2 not configured; storing as data URL in development`)
           }
+
+          const promptForStorage =
+            prompt.length > STORED_PROMPT_MAX_CHARS
+              ? `${prompt.slice(0, STORED_PROMPT_MAX_CHARS).trimEnd()}...`
+              : prompt
 
           return NextResponse.json({
             generatedImage: {
@@ -1079,7 +1105,7 @@ export async function POST(req: Request) {
               type: shotType,
               url: finalUrl,
               timestamp: Date.now(),
-              prompt,
+              prompt: promptForStorage,
               meta,
               editedFromId: editInstructions && editedFromId ? editedFromId : undefined,
               editRequest: editInstructions,

@@ -16,7 +16,6 @@ import { findUserById, findUserRoleCached } from '@/lib/users'
 import type { UserRole } from '@/lib/roles'
 import { decrementCredits, incrementCredits, getCreditsForUser } from '@/lib/credits'
 import { applyAssetRetentionToProject } from '@/lib/asset-retention'
-import { updateProjectForUser } from '@/lib/projects'
 
 function quotaErrorMessage(err: QuotaError): string {
   switch (err.code) {
@@ -71,6 +70,10 @@ function extFromMime(mime: string): string {
   }
 }
 
+function isDataUrl(value: string): boolean {
+  return /^data:image\/[^;]+;base64,/.test(value)
+}
+
 export async function GET() {
   const session = await getServerSession(authOptions)
 
@@ -92,20 +95,6 @@ export async function GET() {
     const now = Date.now()
     const results = projects.map((p) => applyAssetRetentionToProject(p, role, now))
     const hydrated = results.map((r) => r.project)
-
-    // Persist retention changes in background — don't block the response
-    const toPersist = results
-      .map((r, i) => (r.changed ? { project: projects[i]!, retained: r } : null))
-      .filter((x): x is NonNullable<typeof x> => x != null)
-    if (toPersist.length > 0) {
-      void Promise.all(
-        toPersist.map(({ project, retained }) =>
-          updateProjectForUser(userId, project.id, {
-            generatedImages: retained.project.generatedImages,
-          })
-        )
-      )
-    }
 
     return NextResponse.json({ projects: hydrated })
   } catch (error) {
@@ -214,6 +203,17 @@ export async function POST(req: Request) {
 
   try {
     let originalImage = input.originalImage
+    const originalIsDataUrl = isDataUrl(input.originalImage)
+    if (originalIsDataUrl && !isR2Configured() && process.env.NODE_ENV !== 'development') {
+      return NextResponse.json(
+        {
+          error:
+            'Image storage is not configured. Configure R2 before creating projects with uploaded images in non-development environments.',
+        },
+        { status: 503 }
+      )
+    }
+
     if (isR2Configured()) {
       const parsed = parseDataUrl(input.originalImage)
       if (parsed) {

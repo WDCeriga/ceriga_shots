@@ -57,6 +57,7 @@ export interface Project {
   originalImage: string
   originalImageName: string
   generatedImages: GeneratedImage[]
+  generatedCount?: number
   generation?: GenerationState
   createdAt: number
   updatedAt: number
