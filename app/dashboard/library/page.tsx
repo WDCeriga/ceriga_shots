@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { toast } from '@/hooks/use-toast'
 import { Input } from '@/components/ui/input'
+import type { Project } from '@/types/projects'
 import {
   Select,
   SelectContent,
@@ -76,6 +77,19 @@ export default function LibraryPage() {
   }
 
   const normalizedQuery = query.trim().toLowerCase()
+
+  const getProjectType = (project: Project) => {
+    const pipeline = project.generation?.pipeline
+    if (pipeline === 'design_realize') {
+      return { label: 'Sketch-to-3D', className: 'border-red-500/35 bg-red-500/10 text-red-400' }
+    }
+    if (pipeline === 'garment_photo') {
+      return { label: 'Product Shots', className: 'border-border bg-secondary/30 text-muted-foreground' }
+    }
+    // If older projects don't have generation info, assume product-shot style.
+    return { label: 'Product Shots', className: 'border-border bg-secondary/30 text-muted-foreground' }
+  }
+
   const filtered = projects
     .filter((p) => {
       if (!normalizedQuery) return true
@@ -196,8 +210,16 @@ export default function LibraryPage() {
                         {project.originalImageName}
                       </p>
                     </div>
-                    <div className="shrink-0 rounded-full border border-border bg-secondary/30 px-2 py-1">
-                      <span className="text-[11px] text-muted-foreground">
+                    <div className="shrink-0 flex items-center gap-2">
+                      <span
+                        className={[
+                          'rounded-full border px-2 py-1 text-[11px]',
+                          getProjectType(project).className,
+                        ].join(' ')}
+                      >
+                        {getProjectType(project).label}
+                      </span>
+                      <span className="rounded-full border border-border bg-secondary/30 px-2 py-1 text-[11px] text-muted-foreground">
                         {project.generatedImages.length} assets
                       </span>
                     </div>
