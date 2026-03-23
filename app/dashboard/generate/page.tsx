@@ -576,7 +576,7 @@ export default function GeneratePage() {
   return (
     <div className="px-6 py-10 sm:px-10">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-10">
+        <div className="mb-10 rounded-xl border border-border/60 bg-[#12141a] p-5 sm:p-6">
           <h1 className="whitespace-nowrap text-3xl sm:text-5xl font-semibold tracking-tight leading-none">
             Creating{' '}
             {activeHeadingAnimVariant === 'typing' ? (
@@ -610,7 +610,7 @@ export default function GeneratePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-8">
           {/* Left: Upload + generation options */}
-          <section className="space-y-6">
+          <section className="space-y-6 rounded-2xl border border-border/60 bg-[#12141a] p-4 sm:p-5">
             <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground ml-4">
               Product image
             </div>
@@ -627,7 +627,7 @@ export default function GeneratePage() {
                 if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click()
               }}
               className={cn(
-                'group rounded-xl border border-white/15 bg-card/50 shadow-sm transition-colors',
+                'group rounded-xl border border-white/15 bg-[#151821] shadow-sm transition-colors',
                 isDragging
                   ? 'border-accent/80'
                   : 'hover:border-red-500/50 hover:shadow-[0_0_18px_rgba(239,68,68,0.25)] hover:bg-red-500/10'
@@ -720,7 +720,7 @@ export default function GeneratePage() {
           </section>
 
           {/* Right: Direction + shot types + CTA */}
-          <aside className="rounded-t-none rounded-b-2xl border border-white/15 border-t-0 bg-card/50 shadow-sm">
+          <aside className="rounded-t-none rounded-b-2xl border border-white/15 border-t-0 bg-[#151821] shadow-sm">
             <div className="border-t border-white/15 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-6">
               {isAuthed ? (
                 <div className="mb-6 rounded-lg border border-accent/40 bg-accent/5 px-4 py-3">

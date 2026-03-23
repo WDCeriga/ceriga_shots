@@ -26,12 +26,13 @@ export default function AdminUsersPage() {
 
   return (
     <div className="p-6 lg:p-8 space-y-4">
-      <div>
+      <div className="rounded-xl border border-border/60 bg-[#12141a] p-4 sm:p-5">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Users</h1>
         <p className="text-sm text-muted-foreground mt-1">Recent registered users and current roles.</p>
       </div>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
+      <div className="rounded-xl border border-border/70 bg-[#151821] p-2 sm:p-3">
       <Table>
         <TableHeader>
           <TableRow>
@@ -57,6 +58,7 @@ export default function AdminUsersPage() {
           ) : null}
         </TableBody>
       </Table>
+      </div>
     </div>
   )
 }

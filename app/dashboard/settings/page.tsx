@@ -7,7 +7,7 @@ import { useSession, signOut } from 'next-auth/react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { AlertTriangle, CheckCircle2, Loader2, LogOut } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Infinity, Loader2, LogOut, Sparkles, User, Wrench } from 'lucide-react'
 import { getRoleLimits, type UserRole } from '@/lib/roles'
 
 type StatusResponse = {
@@ -51,6 +51,7 @@ export default function SettingsPage() {
   const projectLimitLabel = projectLimit < 0 ? 'Unlimited' : `${projectLimit}`
   const retentionDays = getRoleLimits(roleForLimits).assetHistoryRetentionDays
   const retentionLabel = retentionDays < 0 ? 'Unlimited' : `${retentionDays} days`
+  const hasUnsavedChanges = formData.category !== initialData.category || brandName.trim() !== initialBrandName
 
   useEffect(() => {
     const next = {
@@ -218,112 +219,98 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-6 lg:p-8 max-w-4xl">
-      <div className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Settings</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Account, preferences, and system configuration.
-          </p>
-        </div>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="border-b">
-            <CardTitle>Account</CardTitle>
-            <CardDescription>Your signed-in identity and auth controls.</CardDescription>
+    <div className="p-6 lg:p-8 max-w-5xl">
+      <div className="grid gap-4 lg:grid-cols-[1fr_2.2fr]">
+        <Card className="bg-[#1b1d23] border-border/70">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-4 w-4 text-accent" />
+              Account
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="text-sm font-medium">Signed in as</div>
-                {sessionStatus === 'loading' ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Loading…
-                  </div>
-                ) : session?.user?.email ? (
-                  <div className="text-sm text-foreground truncate">{session.user.email}</div>
-                ) : (
-                  <div className="text-sm text-muted-foreground">Not signed in</div>
-                )}
+            <div className="rounded-md border border-border/60 bg-black px-4 py-3">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2">
+                Signed-in identity
               </div>
-
-              <Button
-                variant="outline"
-                className="shrink-0"
-                disabled={!session?.user}
-                onClick={() => signOut({ callbackUrl: '/' })}
-              >
-                <LogOut className="w-4 h-4 mr-2" />
-                Sign out
-              </Button>
+              {sessionStatus === 'loading' ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Loading…
+                </div>
+              ) : session?.user?.email ? (
+                <div className="text-base font-medium text-foreground truncate">{session.user.email}</div>
+              ) : (
+                <div className="text-sm text-muted-foreground">Not signed in</div>
+              )}
             </div>
           </CardContent>
+          <CardFooter>
+            <Button
+              variant="outline"
+              className="w-full bg-transparent border-border/70"
+              disabled={!session?.user}
+              onClick={() => signOut({ callbackUrl: '/' })}
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign out
+            </Button>
+          </CardFooter>
         </Card>
 
-        <Card>
-          <CardHeader className="border-b">
-            <CardTitle>Usage</CardTitle>
-            <CardDescription>Plan and monthly credit usage.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Plan</span>
+        <Card className="bg-[#1b1d23] border-border/70">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-accent" />
+                Usage &amp; Plan
+              </CardTitle>
               <Badge variant="secondary" className="capitalize">
-                {accountPlan}
+                {accountPlan} plan
               </Badge>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Credits used</span>
-              <span className="text-sm font-medium">
-                {credits ? `${credits.used}/${credits.limit < 0 ? 'Unlimited' : credits.limit}` : '...'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Remaining</span>
-              <span className="text-sm font-medium">{credits ? credits.remaining : '...'}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Project limit</span>
-              <span className="text-sm font-medium">
-                {projectsUsed == null ? '.../' : `${projectsUsed}/`}
-                {projectLimitLabel}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Asset history retention</span>
-              <span className="text-sm font-medium">{retentionLabel}</span>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              Reset: {credits?.resetAt ? new Date(credits.resetAt).toLocaleString() : 'Pending'}
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Subscription</span>
-              <span className="text-sm font-medium capitalize">
-                {billing?.subscriptionStatus ?? 'Not active'}
-              </span>
-            </div>
-            {retentionDays >= 0 ? (
-              <div className="text-xs text-muted-foreground">
-                Generated assets older than {retentionDays} days are automatically removed.
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-md border border-border/60 bg-black px-4 py-3">
+                <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Credits used</div>
+                <div className="text-3xl font-bold leading-none">
+                  {credits ? `${credits.used}` : '...'}
+                  <span className="ml-1 text-base font-semibold text-muted-foreground">
+                    / {credits?.limit != null && credits.limit < 0 ? 'Unlimited' : (credits?.limit ?? '...')}
+                  </span>
+                </div>
               </div>
-            ) : (
-              <div className="text-xs text-muted-foreground">
-                Your generated asset history is retained without a time limit.
+              <div className="rounded-md border border-border/60 bg-black px-4 py-3">
+                <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Remaining</div>
+                <div className="text-3xl font-bold leading-none">
+                  {credits ? credits.remaining : '...'}
+                </div>
               </div>
-            )}
-            <div className="pt-2">
+              <div className="rounded-md border border-border/60 bg-black px-4 py-3">
+                <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Project limit</div>
+                <div className="text-3xl font-bold leading-none">
+                  {projectLimit < 0 ? 'Unlimited' : projectLimit}
+                </div>
+              </div>
+              <div className="rounded-md border border-border/60 bg-black px-4 py-3">
+                <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Asset retention</div>
+                <div className="text-3xl font-bold leading-none">
+                  {retentionDays < 0 ? 'Unlimited' : retentionLabel}
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleManageBilling}
                 disabled={!billing?.customerId || billingOpening}
+                className="bg-secondary/30 border-border/60"
               >
                 {billingOpening ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Opening billing…
+                    Opening…
                   </>
                 ) : (
                   'Manage billing'
@@ -332,136 +319,141 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
 
-        {sysStatus ? (
-          <Card>
-            <CardHeader className="border-b">
-              <CardTitle>System status</CardTitle>
-              <CardDescription>Admin-only configuration checks.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {statusLoading ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="w-4 h-4 animate-spin" /> Checking…
-                </div>
+      <Card className="mt-4 bg-[#1b1d23] border-border/70">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2">
+            <Wrench className="h-4 w-4 text-accent" />
+            Preferences
+          </CardTitle>
+          <CardDescription>
+            Brand name is saved to your account. Category is saved locally per device.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-5 lg:grid-cols-2">
+          <div className="space-y-2">
+            <label className="block text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Brand name</label>
+            <Input
+              type="text"
+              value={brandName}
+              onChange={(e) => setBrandName(e.target.value)}
+              placeholder="Your brand name"
+              maxLength={80}
+              disabled={brandLoading || sessionStatus === 'loading' || !session?.user}
+              className="bg-black border-border/60"
+            />
+            <p className="text-xs text-muted-foreground italic">
+              {brandLoading ? 'Loading from your account…' : 'This name appears on exported assets and invoices.'}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="block text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Product category</label>
+            <select
+              name="category"
+              value={formData.category}
+              onChange={handleChange}
+              className="w-full px-3 py-2 border border-border/60 rounded-lg bg-black text-foreground"
+            >
+              <option value="apparel">Apparel & Streetwear</option>
+              <option value="accessories">Accessories</option>
+              <option value="footwear">Footwear</option>
+              <option value="sportswear">Sportswear</option>
+              <option value="luxury">Luxury Fashion</option>
+            </select>
+            <p className="text-xs text-muted-foreground italic">
+              Helps AI optimize generation for your specific niche.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="mt-6 border-t border-border/40 pt-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-xs text-muted-foreground">
+            {hasUnsavedChanges ? 'Unsaved changes will be lost if you leave this page.' : 'All changes saved.'}
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setFormData(initialData)
+                setBrandName(initialBrandName)
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={brandSaving}>
+              {brandSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving…
+                </>
               ) : (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-medium">Database</div>
-                      <div className="text-xs text-muted-foreground">Projects and users are stored in Neon.</div>
-                    </div>
-                    {statusBadge(sysStatus.database.configured, 'Connected', 'Missing DATABASE_URL')}
-                  </div>
-
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-medium">Gemini image generation</div>
-                      <div className="text-xs text-muted-foreground">
-                        If missing, we show placeholder tiles instead of failing.
-                      </div>
-                    </div>
-                    {statusBadge(sysStatus.gemini.configured, 'Enabled', 'Missing API key')}
-                  </div>
-
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-medium">Google sign-in</div>
-                      <div className="text-xs text-muted-foreground">Optional provider for NextAuth.</div>
-                    </div>
-                    {statusBadge(sysStatus.auth.googleConfigured, 'Configured', 'Not configured')}
-                  </div>
-
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-medium">Auth secret</div>
-                      <div className="text-xs text-muted-foreground">
-                        Recommended for stable sessions across restarts.
-                      </div>
-                    </div>
-                    {statusBadge(sysStatus.auth.secretConfigured, 'Set', 'Not set')}
-                  </div>
-                </div>
+                'Save changes'
               )}
-            </CardContent>
-            <CardFooter className="border-t justify-between">
-              <div className="text-xs text-muted-foreground">
-                Status checks never expose your secrets.
-              </div>
-              <Button variant="outline" onClick={() => window.location.reload()}>
-                Refresh
-              </Button>
-            </CardFooter>
-          </Card>
-        ) : null}
+            </Button>
+          </div>
+        </div>
+      </div>
 
-        <Card className="lg:col-span-2">
-          <CardHeader className="border-b">
-            <CardTitle>Preferences</CardTitle>
-            <CardDescription>
-              Brand name is saved to your account. Category is saved locally (per device).
-            </CardDescription>
+      {sysStatus ? (
+        <Card className="mt-6 bg-[#151821] border-border/70">
+          <CardHeader className="border-b border-border/60">
+            <CardTitle>System status</CardTitle>
+            <CardDescription>Admin-only configuration checks.</CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-6 lg:grid-cols-2">
-            <div className="space-y-2">
-              <label className="block text-sm font-medium">Brand name</label>
-              <Input
-                type="text"
-                value={brandName}
-                onChange={(e) => setBrandName(e.target.value)}
-                placeholder="Your brand name"
-                maxLength={80}
-                disabled={brandLoading || sessionStatus === 'loading' || !session?.user}
-              />
-              <p className="text-xs text-muted-foreground">
-                {brandLoading ? 'Loading from your account…' : 'Saved to your account and shared across devices.'}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <label className="block text-sm font-medium">Product category</label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-border rounded-lg bg-background text-foreground"
-              >
-                <option value="apparel">Apparel & Streetwear</option>
-                <option value="accessories">Accessories</option>
-                <option value="footwear">Footwear</option>
-                <option value="sportswear">Sportswear</option>
-                <option value="luxury">Luxury Fashion</option>
-              </select>
-              <p className="text-xs text-muted-foreground">
-                Will be used to tailor prompts and recommended shots.
-              </p>
-            </div>
+          <CardContent className="space-y-4 pt-6">
+            {statusLoading ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="w-4 h-4 animate-spin" /> Checking…
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-medium">Database</div>
+                    <div className="text-xs text-muted-foreground">Projects and users are stored in Neon.</div>
+                  </div>
+                  {statusBadge(sysStatus.database.configured, 'Connected', 'Missing DATABASE_URL')}
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-medium">Gemini image generation</div>
+                    <div className="text-xs text-muted-foreground">
+                      If missing, we show placeholder tiles instead of failing.
+                    </div>
+                  </div>
+                  {statusBadge(sysStatus.gemini.configured, 'Enabled', 'Missing API key')}
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-medium">Google sign-in</div>
+                    <div className="text-xs text-muted-foreground">Optional provider for NextAuth.</div>
+                  </div>
+                  {statusBadge(sysStatus.auth.googleConfigured, 'Configured', 'Not configured')}
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-medium">Auth secret</div>
+                    <div className="text-xs text-muted-foreground">
+                      Recommended for stable sessions across restarts.
+                    </div>
+                  </div>
+                  {statusBadge(sysStatus.auth.secretConfigured, 'Set', 'Not set')}
+                </div>
+              </div>
+            )}
           </CardContent>
-          <CardFooter className="border-t justify-between gap-3 flex-col sm:flex-row sm:items-center">
-            <div className="flex gap-3">
-              <Button onClick={handleSave} disabled={brandSaving}>
-                {brandSaving ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving…
-                  </>
-                ) : (
-                  'Save'
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setFormData(initialData)
-                  setBrandName(initialBrandName)
-                }}
-              >
-                Cancel
-              </Button>
-            </div>
+          <CardFooter className="border-t border-border/60 justify-between">
+            <div className="text-xs text-muted-foreground">Status checks never expose your secrets.</div>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Refresh
+            </Button>
           </CardFooter>
         </Card>
-      </div>
+      ) : null}
     </div>
   )
 }

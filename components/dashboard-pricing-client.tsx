@@ -236,6 +236,9 @@ export function DashboardPricingClient() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-14">
         {pricingPlans.map((plan) => {
           const roleName = plan.name.toLowerCase()
+          const isCurrentPlan = roleName === currentRole
+          const hasActiveSubscription =
+            Boolean(subscriptionStatus) && ['active', 'trialing', 'past_due'].includes(subscriptionStatus)
           const stripeMonthly =
             roleName === 'starter' || roleName === 'studio' || roleName === 'label'
               ? stripePrices?.[roleName]?.monthly
@@ -301,12 +304,11 @@ export function DashboardPricingClient() {
                   type="button"
                   disabled={authStatus !== 'authenticated' || loadingPlan !== null}
                   onClick={() => {
-                    if (
-                      roleName === currentRole &&
-                      subscriptionStatus &&
-                      ['active', 'trialing', 'past_due'].includes(subscriptionStatus)
-                    ) {
+                    if (isCurrentPlan && hasActiveSubscription) {
                       void openCustomerPortal()
+                      return
+                    }
+                    if (isCurrentPlan && !hasActiveSubscription) {
                       return
                     }
                     if (roleName === 'starter' || roleName === 'studio' || roleName === 'label') {
@@ -321,10 +323,10 @@ export function DashboardPricingClient() {
                 >
                   {loadingPlan === plan.name.toLowerCase()
                     ? 'Redirecting...'
-                    : plan.name.toLowerCase() === currentRole &&
-                        subscriptionStatus &&
-                        ['active', 'trialing', 'past_due'].includes(subscriptionStatus)
-                      ? 'Manage subscription'
+                    : isCurrentPlan
+                      ? hasActiveSubscription
+                        ? 'Manage subscription'
+                        : 'Current plan'
                       : plan.dashboardCta}
                 </button>
               )}

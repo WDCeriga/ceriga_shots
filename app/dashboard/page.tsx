@@ -20,6 +20,58 @@ function ProjectCardSkeleton() {
   )
 }
 
+function RecentProjectCard({
+  project,
+}: {
+  project: {
+    id: string
+    name: string
+    originalImage: string
+    updatedAt: number
+    generation?: { status?: string }
+    generatedImages: { id: string }[]
+    generatedCount?: number
+  }
+}) {
+  return (
+    <Link key={project.id} href={`/dashboard/results/${project.id}`}>
+      <div className="group relative overflow-hidden rounded-xl border border-border/70 bg-card hover:border-accent/60 transition-colors cursor-pointer">
+        <div className="aspect-square sm:aspect-[6/8] bg-secondary overflow-hidden">
+          <img
+            src={project.originalImage}
+            alt={project.name}
+            className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+          />
+        </div>
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+
+        <div className="absolute right-2 top-2 sm:right-3 sm:top-3">
+          <span className="inline-flex items-center rounded-sm bg-white/20 px-2 py-0.5 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
+            {project.generation?.status === 'complete' ? 'Ready' : 'Draft'}
+          </span>
+        </div>
+
+        <div className="absolute inset-x-0 bottom-0 p-2.5 sm:p-3">
+          <div className="mb-2 sm:mb-2.5 flex items-start justify-between gap-2">
+            <p className="font-semibold text-sm sm:text-base leading-tight text-white line-clamp-2">{project.name}</p>
+            <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white/70 shrink-0" />
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] sm:text-xs text-white/75">
+            <span className="inline-flex items-center gap-1 sm:gap-1.5">
+              <ImageIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+              {project.generatedCount ?? project.generatedImages.length} Assets
+            </span>
+            <span className="inline-flex items-center gap-1 sm:gap-1.5">
+              <Clock3 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+              {formatRelativeTime(project.updatedAt)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </Link>
+  )
+}
+
 function formatRelativeTime(timestamp: number) {
   const diffMs = Date.now() - timestamp
   const minute = 60 * 1000
@@ -130,10 +182,25 @@ export default function DashboardHome() {
   const resetLabel = usageInfo?.credits?.resetAt
     ? new Date(usageInfo.credits.resetAt).toLocaleDateString()
     : 'No reset date'
+  const projectsLimit = 200
+  const projectsUsedPercent =
+    projectsLimit > 0 ? Math.min(100, Math.round((projects.length / projectsLimit) * 100)) : 0
+  const recentProjectsMobile = projects.slice(0, 2)
+  const recentProjectsDesktop = projects.slice(0, 3)
 
   return (
-    <div className="px-4 py-6 sm:p-8 max-w-6xl mx-auto">
-      <div className="mb-10 sm:mb-12">
+    <div className="relative min-h-screen">
+      {/* Subtle grid background to match the index hero */}
+      <div
+        className="absolute inset-0 opacity-[0.07]"
+        style={{
+          backgroundImage: `linear-gradient(var(--color-foreground) 1px, transparent 1px), linear-gradient(90deg, var(--color-foreground) 1px, transparent 1px)`,
+          backgroundSize: '80px 80px',
+        }}
+      />
+
+      <div className="relative px-4 py-6 sm:p-8 max-w-6xl mx-auto">
+      <div className="mb-10 sm:mb-12 rounded-xl p-4 sm:p-6">
         <h1 className="text-3xl sm:text-4xl font-bold mb-3 text-balance">Welcome to Ceriga Shots</h1>
         <p className="text-base sm:text-lg text-muted-foreground mb-6 sm:mb-8">
           Create AI-generated product content for your designs in seconds.
@@ -143,7 +210,7 @@ export default function DashboardHome() {
           <Link href="/dashboard/generate">
             <Button
               variant="outline"
-              className="w-full min-h-[96px] sm:h-32 flex flex-col items-center justify-center gap-2.5 sm:gap-3 text-center"
+              className="w-full min-h-[96px] sm:h-32 flex flex-col items-center justify-center gap-2.5 sm:gap-3 text-center bg-[#151821] border-border/70 hover:bg-[#1b1f29]"
             >
               <div className="text-2xl sm:text-3xl leading-none">+</div>
               <div>
@@ -153,19 +220,49 @@ export default function DashboardHome() {
             </Button>
           </Link>
 
-          <div className="hidden sm:flex border border-border rounded-lg p-5 sm:p-6 flex-col items-center justify-center gap-2 text-center">
+          <div className="hidden sm:block rounded-lg border border-border/70 bg-gradient-to-b from-[#1a1d24] to-[#151821] p-4 sm:p-5">
             {isLoading ? (
-              <div className="h-8 w-10 bg-secondary rounded animate-pulse" />
+              <div className="animate-pulse space-y-3">
+                <div className="h-4 w-28 rounded bg-secondary" />
+                <div className="h-3 w-24 rounded bg-secondary" />
+                <div className="h-8 w-20 rounded bg-secondary" />
+                <div className="h-1.5 w-full rounded bg-secondary" />
+              </div>
             ) : (
-              <div className="text-2xl font-bold">{projects.length}</div>
+              <>
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-lg font-semibold leading-tight text-foreground">Projects Created</p>
+                  </div>
+                  <div className="flex items-end gap-0.5 pt-1">
+                    <span className="h-2 w-0.5 rounded bg-accent/65" />
+                    <span className="h-3.5 w-0.5 rounded bg-accent/80" />
+                    <span className="h-5 w-0.5 rounded bg-accent" />
+                  </div>
+                </div>
+
+                <div className="mb-2.5 flex items-end justify-between gap-3">
+                  <p className="text-4xl font-black tracking-tight leading-none text-foreground">
+                    {projects.length}
+                    <span className="ml-1 text-lg font-semibold text-muted-foreground">/ {projectsLimit}</span>
+                  </p>
+                  <p className="text-xs font-semibold text-accent">{projectsUsedPercent}% Used</p>
+                </div>
+
+                <div className="h-1.5 w-full rounded-full bg-secondary/80 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-accent transition-all duration-500"
+                    style={{ width: `${projectsUsedPercent}%` }}
+                  />
+                </div>
+              </>
             )}
-            <div className="text-sm text-muted-foreground">Projects Created</div>
           </div>
 
           <Link href="/dashboard/library">
             <Button
               variant="outline"
-              className="w-full min-h-[96px] sm:h-32 flex flex-col items-center justify-center gap-2.5 sm:gap-3 text-center"
+              className="w-full min-h-[96px] sm:h-32 flex flex-col items-center justify-center gap-2.5 sm:gap-3 text-center bg-[#151821] border-border/70 hover:bg-[#1b1f29]"
             >
               <div className="text-2xl sm:text-3xl leading-none">→</div>
               <div>
@@ -183,7 +280,7 @@ export default function DashboardHome() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_19rem] gap-8 items-start">
-        <section>
+        <section className="rounded-xl border border-border/60 bg-[#12141a] p-4 sm:p-5">
           {isLoading ? (
             <div>
               <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Recent Projects</h2>
@@ -196,52 +293,14 @@ export default function DashboardHome() {
           ) : projects.length > 0 ? (
             <div>
               <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Recent Projects</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                {projects.slice(0, 4).map((project) => (
-                  <Link key={project.id} href={`/dashboard/results/${project.id}`}>
-                    <div className="group relative overflow-hidden rounded-xl border border-border/70 bg-card hover:border-accent/60 transition-colors cursor-pointer">
-                      <div className="aspect-square bg-secondary overflow-hidden">
-                        <img
-                          src={project.originalImage}
-                          alt={project.name}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
-                        />
-                      </div>
-                      <div className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-black/35 via-black/10 to-transparent" />
-                      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/65 to-transparent" />
-
-                      <div className="absolute right-3 top-3">
-                        <span className="inline-flex items-center rounded-sm bg-white/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-white">
-                          {project.generation?.status === 'complete' ? 'Ready' : 'Draft'}
-                        </span>
-                      </div>
-
-                      <div className="absolute inset-x-0 bottom-0 p-4">
-                        <div className="mb-3 flex items-start justify-between gap-2">
-                          <p className="font-semibold text-lg text-white truncate">{project.name}</p>
-                          <MoreVertical className="h-4 w-4 text-white/70 shrink-0" />
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-white/75">
-                          <span className="inline-flex items-center gap-1.5">
-                            <ImageIcon className="h-3.5 w-3.5" />
-                            {project.generatedCount ?? project.generatedImages.length} Assets
-                          </span>
-                          <span className="inline-flex items-center gap-1.5">
-                            <Clock3 className="h-3.5 w-3.5" />
-                            {formatRelativeTime(project.updatedAt)}
-                          </span>
-                        </div>
-                        <div className="mt-4 flex items-center gap-1.5">
-                          <span className="h-3 w-3 rounded-full bg-white/20" />
-                          {(project.generatedCount ?? project.generatedImages.length) > 1 ? (
-                            <span className="inline-flex items-center rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-medium text-white/85">
-                              +{(project.generatedCount ?? project.generatedImages.length) - 1}
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
+              <div className="grid grid-cols-2 gap-3 sm:hidden">
+                {recentProjectsMobile.map((project) => (
+                  <RecentProjectCard key={project.id} project={project} />
+                ))}
+              </div>
+              <div className="hidden sm:grid sm:grid-cols-3 gap-3 sm:gap-4">
+                {recentProjectsDesktop.map((project) => (
+                  <RecentProjectCard key={project.id} project={project} />
                 ))}
               </div>
             </div>
@@ -249,7 +308,7 @@ export default function DashboardHome() {
         </section>
 
         <aside className="xl:sticky xl:top-6">
-          <div className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
+          <div className="rounded-xl border border-border/70 bg-[#151821] p-4 sm:p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Usage</h2>
               <Link href="/dashboard/pricing" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
@@ -301,6 +360,7 @@ export default function DashboardHome() {
           </div>
         </aside>
       </div>
+    </div>
     </div>
   )
 }
