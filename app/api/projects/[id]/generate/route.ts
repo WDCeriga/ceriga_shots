@@ -3,7 +3,9 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { isDatabaseConfigured } from '@/lib/db'
-import { getProjectForUser } from '@/lib/projects'
+import { getProjectForUser, updateProjectForUser } from '@/lib/projects'
+import { mergeGeneration } from '@/lib/merge-generation'
+import type { GenerationPipeline } from '@/types/projects'
 import { enqueueGenerationJobs, type Preset, type ShotType } from '@/lib/generation-queue'
 import {
   checkCreditsForBatch,
@@ -64,6 +66,12 @@ function normalizeGarmentType(input: unknown): string | undefined {
   return cleaned.length > 50 ? cleaned.slice(0, 50).trim() : cleaned
 }
 
+function parsePipelineFromBody(input: unknown): GenerationPipeline | undefined {
+  if (input === 'design_realize') return 'design_realize'
+  if (input === 'garment_photo') return 'garment_photo'
+  return undefined
+}
+
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
@@ -92,6 +100,7 @@ export async function POST(req: NextRequest) {
   const modeRaw = (body as { mode?: unknown }).mode
   const mode: 'initial' | 'more' = modeRaw === 'initial' ? 'initial' : 'more'
   const garmentType = normalizeGarmentType((body as { garmentType?: unknown }).garmentType)
+  const pipelineFromBody = parsePipelineFromBody((body as { pipeline?: unknown }).pipeline)
 
   if (!Array.isArray(rawShotTypes) || rawShotTypes.length === 0) {
     return NextResponse.json({ error: 'shotTypes must be a non-empty array' }, { status: 400 })
@@ -199,6 +208,16 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const generationStub = { status: 'idle' as const, total: 0, completed: 0 }
+    const currentGen = project.generation ?? generationStub
+    await updateProjectForUser(session.user.id, id, {
+      generation: mergeGeneration(currentGen, {
+        ...currentGen,
+        ...(pipelineFromBody !== undefined ? { pipeline: pipelineFromBody } : {}),
+        ...(garmentType !== undefined ? { garmentType } : {}),
+      }),
+    })
+
     await enqueueGenerationJobs({
       ownerId: session.user.id,
       projectId: project.id,

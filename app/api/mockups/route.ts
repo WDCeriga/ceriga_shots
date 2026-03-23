@@ -607,6 +607,72 @@ const FIDELITY_REMINDER = [
   '- If you are uncertain about a design element, keep it simple and faithful rather than creative.',
 ].join('\n')
 
+type GenerationPipeline = 'garment_photo' | 'design_realize'
+
+const BASE_DESIGN_REALIZE = [
+  'You are generating a professional photoreal product photograph from a 2D design reference.',
+  'The input may be a hand sketch, line art, digital flat mockup, screen capture of a design, or a simple graphic — it is NOT necessarily a photo of a finished physical product.',
+  '',
+  'YOUR JOB:',
+  '- Interpret the reference as design intent for a single real manufactured garment (or apparel item).',
+  '- Realize it in full 3D form with believable materials, seams, thickness, weight, and natural drape appropriate to the implied product.',
+  '- The result must look like a real e-commerce / catalog photograph of that finished item.',
+  '',
+  'INPUT HANDLING:',
+  '- Focus on the apparel/design artwork. Ignore UI chrome, rulers, canvas grid, watermark, device bezels, browser UI, or photo-of-paper edges if present.',
+  '- If multiple views appear, prioritize the clearest main view of the item.',
+  '- Ignore coloured or busy mockup backgrounds from the reference; the output is always on a clean white studio (see framing rules below).',
+  '',
+  'DESIGN FIDELITY (non-negotiable):',
+  '- Preserve graphics, logos, typography shapes, color relationships, and relative placement as shown — translated onto real fabric with natural curvature and perspective.',
+  '- Do NOT invent new branding, slogans, mascots, or extra text not present in the reference artwork.',
+  '- If lettering in the reference is rough, partial, or ambiguous, keep that character (do NOT substitute “clean” readable type that changes the design).',
+  '- Do NOT drift to a different garment category than implied (e.g. do not turn a hoodie concept into unrelated outerwear).',
+  '',
+  'REALISM (allowed and expected):',
+  '- Infer plausible construction: collar/rib/cuff structure, stitching, fabric texture, and fold behaviour consistent with the design and any garment-type hint.',
+  '- Add only physically reasonable detail; avoid sci-fi materials, impossible seams, or surreal distortion.',
+  '',
+  'STYLE:',
+  '- Photoreal product photo — not an illustration, not a flat CAD trace of the sketch.',
+  '- No added text, overlays, or watermarks beyond what exists as print on the product.',
+].join('\n')
+
+const DESIGN_REALIZE_WHITE_STUDIO_BLOCK = [
+  'FRAMING & SET (fixed — this pipeline):',
+  '- Match the general viewing angle and pose implied by the reference (front, three-quarter, flat lay, etc.) — do not force an unrelated layout.',
+  '- Center the subject; show the full item with comfortable margin; aspect ratio 1:1 square.',
+  '- Environment: pure white seamless studio only — clean white cyclorama or infinite white, evenly lit. No grey drift, no visible floor horizon, no texture on the backdrop.',
+  '- Lighting: soft, even e-commerce studio lighting (large soft key + gentle fill). One subtle natural contact shadow under the subject; no harsh streaks or coloured gels.',
+  '- If the job is a tight crop / detail refinement, keep the same white seamless behind the subject; no lifestyle surfaces.',
+].join('\n')
+
+const NEGATIVE_DESIGN_WHITE_BG = [
+  'BACKGROUND & PROPS (strict):',
+  '- No wood, concrete, marble, fabric surfaces under the product, lifestyle rooms, coloured fills, or gradient backdrops.',
+  '- No hands, pencils, sketch paper, clipboards, tape, rulers, or device/chrome.',
+  '- No hangers, hooks, or mannequins unless the reference clearly shows the item on one and reproducing it is required for fidelity — prefer floating or laid-flat presentation on white when ambiguous.',
+].join('\n')
+
+const NEGATIVE_GLOBAL_DESIGN = [
+  'NEGATIVE (do NOT do any of the following):',
+  '- Output must show ONLY the realized product; no UI, unrelated props, or clutter.',
+  '- No illustration/comic/vector/painterly/CG “concept art” look — it must read as a real photograph of a physical product.',
+  '- Do NOT replace the artwork with a different design, different logo, or different color story.',
+  '- Do NOT add watermarks, borders, letterboxing, device frames, or “before/after” layouts.',
+].join('\n')
+
+const FIDELITY_REMINDER_DESIGN = [
+  'FINAL REMINDER — DESIGN REALIZATION:',
+  '- The output must remain the same product concept as the reference; do not substitute a different garment or different graphics.',
+  '- Where the sketch is ambiguous (exact knit vs weave, minor seam paths), choose plausible defaults — no unrelated embellishments.',
+  '- Preserve the layout and identity of visible graphics; do not “redesign for readability.”',
+].join('\n')
+
+function normalizePipeline(input: unknown): GenerationPipeline {
+  return input === 'design_realize' ? 'design_realize' : 'garment_photo'
+}
+
 function buildGarmentTypeAnchor(garmentType: GarmentType): string {
   if (!garmentType) return ''
 
@@ -631,6 +697,19 @@ function buildEditInstructionsBlock(editInstructions: string): string {
   ].join('\n')
 }
 
+function buildEditInstructionsBlockDesign(editInstructions: string): string {
+  return [
+    'USER EDIT INSTRUCTIONS (refinements only):',
+    `- ${editInstructions}`,
+    '',
+    'IMPORTANT RULES:',
+    '- Do NOT replace the product concept or swap in new artwork, logos, or a different color story.',
+    '- Do NOT change overall garment category or silhouette unless the user explicitly requests it.',
+    '- Allowed: lighting/exposure, contrast, crop/composition on white seamless, subtle material clarity, removing obvious output noise — without inventing new print content.',
+    '- If instructions conflict with preserving design identity, ignore the conflicting parts.',
+  ].join('\n')
+}
+
 function buildPrompt(args: {
   shotType: ShotType
   preset: Preset
@@ -638,10 +717,26 @@ function buildPrompt(args: {
   variationSeed: number
   garmentType?: GarmentType
   editInstructions?: string
+  pipeline: GenerationPipeline
 }) {
   const category = categoryForShotType(args.shotType)
-  const baseCore = category === 'detail' ? `${BASE_FIDELITY}\n\n${BASE_DETAIL_CARVEOUT}` : BASE_FIDELITY
+  const isDesign = args.pipeline === 'design_realize'
+
   const garmentTypeAnchor = buildGarmentTypeAnchor(args.garmentType ?? '')
+
+  if (isDesign) {
+    const baseCore = BASE_DESIGN_REALIZE
+    const base = garmentTypeAnchor ? `${baseCore}\n\n${garmentTypeAnchor}` : baseCore
+    const negative = [NEGATIVE_GLOBAL_DESIGN, NEGATIVE_DESIGN_WHITE_BG].join('\n')
+    const userEditBlock = args.editInstructions
+      ? buildEditInstructionsBlockDesign(args.editInstructions)
+      : ''
+    return [base, negative, DESIGN_REALIZE_WHITE_STUDIO_BLOCK, userEditBlock || undefined, FIDELITY_REMINDER_DESIGN]
+      .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+      .join('\n---\n')
+  }
+
+  const baseCore = category === 'detail' ? `${BASE_FIDELITY}\n\n${BASE_DETAIL_CARVEOUT}` : BASE_FIDELITY
   const base = garmentTypeAnchor ? `${baseCore}\n\n${garmentTypeAnchor}` : baseCore
 
   const negative = [NEGATIVE_GLOBAL, NEGATIVE_BY_CATEGORY[category]].join('\n')
@@ -747,6 +842,7 @@ export async function POST(req: Request) {
     )
 
     const garmentType = normalizeGarmentType((body as { garmentType?: unknown }).garmentType)
+    const pipeline = normalizePipeline((body as { pipeline?: unknown }).pipeline)
 
     const editInstructions = normalizeEditInstructions((body as { editInstructions?: unknown }).editInstructions)
     const editedFromIdRaw = (body as { editedFromId?: unknown }).editedFromId
@@ -772,9 +868,18 @@ export async function POST(req: Request) {
       generationIndex,
       variationSeed,
       garmentType,
+      pipeline,
     }
 
-    const prompt = buildPrompt({ shotType, preset, generationIndex, variationSeed, garmentType, editInstructions })
+    const prompt = buildPrompt({
+      shotType,
+      preset,
+      generationIndex,
+      variationSeed,
+      garmentType,
+      editInstructions,
+      pipeline,
+    })
 
     console.warn(`[mockups:${requestId}] Missing API key; returning placeholder for shotType=${shotType}`)
     return NextResponse.json({
@@ -867,6 +972,7 @@ export async function POST(req: Request) {
   const variationSeed = clampInt(providedVariationSeed, 1, 2_147_483_647, derivedSeed || Date.now())
 
   const garmentType = normalizeGarmentType((body as { garmentType?: unknown }).garmentType)
+  const pipeline = normalizePipeline((body as { pipeline?: unknown }).pipeline)
 
   const editInstructions = normalizeEditInstructions((body as { editInstructions?: unknown }).editInstructions)
   const editedFromIdRaw = (body as { editedFromId?: unknown }).editedFromId
@@ -884,11 +990,20 @@ export async function POST(req: Request) {
     generationIndex,
     variationSeed,
     garmentType,
+    pipeline,
   }
 
   try {
     const maxAttempts = 2
-    const prompt = buildPrompt({ shotType, preset, generationIndex, variationSeed, garmentType, editInstructions })
+    const prompt = buildPrompt({
+      shotType,
+      preset,
+      generationIndex,
+      variationSeed,
+      garmentType,
+      editInstructions,
+      pipeline,
+    })
 
     let lastErrorMessage = ''
     let modelCalls = 0

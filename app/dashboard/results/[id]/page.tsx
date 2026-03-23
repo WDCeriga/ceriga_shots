@@ -9,7 +9,6 @@ import { Input } from '@/components/ui/input'
 import { Check, ChevronLeft, ChevronRight, Pencil, Trash2, X } from 'lucide-react'
 import { ShareDialog } from '@/components/share-dialog'
 import { toast } from '@/hooks/use-toast'
-import { LightboxAsset } from '@/components/lightbox-image'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
@@ -120,8 +119,9 @@ export default function ResultsPage() {
   }, [fetchProject, projectId])
 
   const generationStatus = project?.generation?.status
-  const navigableImages = (project?.generatedImages ?? []).filter((img) => !!img.url)
-  const activeLightboxImage = lightboxIndex == null ? null : navigableImages[lightboxIndex] ?? null
+  /** All generated assets in gallery order (includes placeholder rows with empty `url` when API key is missing). */
+  const lightboxImages = project?.generatedImages ?? []
+  const activeLightboxImage = lightboxIndex == null ? null : lightboxImages[lightboxIndex] ?? null
 
   useEffect(() => {
     if (generationStatus !== 'generating') return
@@ -159,18 +159,18 @@ export default function ResultsPage() {
     if (lightboxIndex == null) return
     const onKey = (e: KeyboardEvent) => {
       if (isEditingAsset) return
-      if (!navigableImages.length) return
+      if (!lightboxImages.length) return
       if (e.key === 'ArrowRight') {
-        setLightboxIndex((prev) => (prev == null ? 0 : (prev + 1) % navigableImages.length))
+        setLightboxIndex((prev) => (prev == null ? 0 : (prev + 1) % lightboxImages.length))
       } else if (e.key === 'ArrowLeft') {
         setLightboxIndex((prev) =>
-          prev == null ? 0 : (prev - 1 + navigableImages.length) % navigableImages.length
+          prev == null ? 0 : (prev - 1 + lightboxImages.length) % lightboxImages.length
         )
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [lightboxIndex, navigableImages.length, isEditingAsset])
+  }, [lightboxIndex, lightboxImages.length, isEditingAsset])
 
   useEffect(() => {
     if (!pendingEditedFromId) return
@@ -181,13 +181,14 @@ export default function ResultsPage() {
     if (!candidates.length) return
 
     const newest = candidates.reduce((a, b) => (a.timestamp >= b.timestamp ? a : b))
-    const idx = navigableImages.findIndex((img) => img.id === newest.id)
+    const imgs = project?.generatedImages ?? []
+    const idx = imgs.findIndex((img) => img.id === newest.id)
     if (idx < 0) return
 
     setLightboxIndex(idx)
     setPendingEditedFromId(null)
     setIsEditingAsset(false)
-  }, [pendingEditedFromId, project?.generatedImages, navigableImages])
+  }, [pendingEditedFromId, project?.generatedImages])
 
   if (!project) {
     return (
@@ -209,6 +210,7 @@ export default function ResultsPage() {
     project.generation.completed < project.generation.total
   const canGenerateMoreFeature = limits.generateMore
   const canGenerateMore = !isActivelyGenerating && canGenerateMoreFeature
+  const isDesignRealizePipeline = project.generation?.pipeline === 'design_realize'
   const canImageEditing = role === 'studio' || role === 'label' || role === 'admin'
 
   const startRename = () => {
@@ -256,13 +258,12 @@ export default function ResultsPage() {
       await updateProject(projectId, { generatedImages: nextImages })
 
       if (lightboxIndex != null) {
-        const nextNavigable = nextImages.filter((img) => !!img.url)
-        if (nextNavigable.length === 0) {
+        if (nextImages.length === 0) {
           setLightboxIndex(null)
         } else {
           setLightboxIndex((prev) => {
             if (prev == null) return null
-            return Math.min(prev, nextNavigable.length - 1)
+            return Math.min(prev, nextImages.length - 1)
           })
         }
       }
@@ -293,12 +294,20 @@ export default function ResultsPage() {
     }
     if (isEditingAsset) return
     const targetAsset = assetId
-      ? navigableImages.find((img) => img.id === assetId) ?? null
+      ? project.generatedImages.find((img) => img.id === assetId) ?? null
       : activeLightboxImage
     if (!targetAsset) return
+    if (!targetAsset.url) {
+      toast({
+        title: 'Nothing to edit yet',
+        description: 'This slot has no image (for example, no Gemini API key). Configure GOOGLE_API_KEY or GEMINI_API_KEY to generate pixels.',
+        variant: 'destructive',
+      })
+      return
+    }
 
     if (assetId) {
-      const idx = navigableImages.findIndex((img) => img.id === assetId)
+      const idx = project.generatedImages.findIndex((img) => img.id === assetId)
       if (idx < 0) return
       setLightboxIndex(idx)
     }
@@ -497,58 +506,31 @@ export default function ResultsPage() {
 
           <div className="rounded-xl border border-border bg-card">
             <div className="p-4 border-b border-border">
-              <h3 className="text-base font-semibold">Generate more</h3>
+              <h3 className="text-base font-semibold">
+                {isDesignRealizePipeline ? 'Another image' : 'Generate more'}
+              </h3>
               <p className="text-xs text-muted-foreground mt-1">
-                Add additional views while keeping the same original.
+                {isDesignRealizePipeline
+                  ? 'Same sketch or mockup — another photoreal version on a white studio background (1 credit).'
+                  : 'Add additional views while keeping the same original.'}
               </p>
             </div>
             <div className="p-4 flex flex-col gap-3">
-              <div className="flex items-center gap-3">
-                <Select
-                  value={moreType}
-                  onValueChange={(v) =>
-                    setMoreType(
-                      v as
-                        | 'flatlay_topdown'
-                        | 'flatlay_45deg'
-                        | 'flatlay_sleeves'
-                        | 'flatlay_relaxed'
-                        | 'flatlay_folded'
-                        | 'surface_draped'
-                        | 'surface_hanging'
-                        | 'detail_print'
-                        | 'detail_fabric'
-                        | 'detail_collar'
-                    )
-                  }
-                >
-                  <SelectTrigger className="w-40">
-                    <SelectValue placeholder="Select" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="flatlay_topdown">Top-down flat lay</SelectItem>
-                    <SelectItem value="flatlay_45deg">45° angled flat lay</SelectItem>
-                    <SelectItem value="flatlay_sleeves">Sleeve spread</SelectItem>
-                    <SelectItem value="flatlay_relaxed">Relaxed flat lay</SelectItem>
-                    <SelectItem value="flatlay_folded">Folded logo</SelectItem>
-                    <SelectItem value="surface_draped">Draped over surface</SelectItem>
-                    <SelectItem value="surface_hanging">Hanging shot</SelectItem>
-                    <SelectItem value="detail_print">Print close-up</SelectItem>
-                    <SelectItem value="detail_fabric">Fabric macro</SelectItem>
-                    <SelectItem value="detail_collar">Collar detail</SelectItem>
-                  </SelectContent>
-                </Select>
-
+              {isDesignRealizePipeline ? (
                 <Button
-                  className="flex-1"
+                  className="w-full"
                   disabled={!canGenerateMore}
                   onClick={async () => {
-                    const preset = project.generation?.preset ?? 'raw'
                     try {
                       const res = await fetch(`/api/projects/${projectId}/generate`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ mode: 'more', shotTypes: [moreType], preset }),
+                        body: JSON.stringify({
+                          mode: 'more',
+                          shotTypes: ['flatlay_topdown'],
+                          preset: 'studio',
+                          pipeline: 'design_realize',
+                        }),
                       })
                       const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string }
                       if (!res.ok) {
@@ -572,18 +554,100 @@ export default function ResultsPage() {
                     }
                   }}
                 >
-                  {isActivelyGenerating ? 'Generating…' : 'Generate more'}
+                  {isActivelyGenerating ? 'Generating…' : 'Generate another (1 credit)'}
                 </Button>
-              </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <Select
+                    value={moreType}
+                    onValueChange={(v) =>
+                      setMoreType(
+                        v as
+                          | 'flatlay_topdown'
+                          | 'flatlay_45deg'
+                          | 'flatlay_sleeves'
+                          | 'flatlay_relaxed'
+                          | 'flatlay_folded'
+                          | 'surface_draped'
+                          | 'surface_hanging'
+                          | 'detail_print'
+                          | 'detail_fabric'
+                          | 'detail_collar'
+                      )
+                    }
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="flatlay_topdown">Top-down flat lay</SelectItem>
+                      <SelectItem value="flatlay_45deg">45° angled flat lay</SelectItem>
+                      <SelectItem value="flatlay_sleeves">Sleeve spread</SelectItem>
+                      <SelectItem value="flatlay_relaxed">Relaxed flat lay</SelectItem>
+                      <SelectItem value="flatlay_folded">Folded logo</SelectItem>
+                      <SelectItem value="surface_draped">Draped over surface</SelectItem>
+                      <SelectItem value="surface_hanging">Hanging shot</SelectItem>
+                      <SelectItem value="detail_print">Print close-up</SelectItem>
+                      <SelectItem value="detail_fabric">Fabric macro</SelectItem>
+                      <SelectItem value="detail_collar">Collar detail</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Button
+                    className="flex-1"
+                    disabled={!canGenerateMore}
+                    onClick={async () => {
+                      const preset = project.generation?.preset ?? 'raw'
+                      try {
+                        const res = await fetch(`/api/projects/${projectId}/generate`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            mode: 'more',
+                            shotTypes: [moreType],
+                            preset,
+                            ...(project.generation?.pipeline
+                              ? { pipeline: project.generation.pipeline }
+                              : {}),
+                          }),
+                        })
+                        const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string }
+                        if (!res.ok) {
+                          if (data.code === 'email_not_verified') {
+                            toast({
+                              title: 'Email not verified',
+                              description: 'Please verify your email before generating content. Check your inbox or use the banner above to resend.',
+                              variant: 'destructive',
+                            })
+                            return
+                          }
+                          throw new Error(data.error || 'Failed to enqueue generation')
+                        }
+                        await fetchProject(projectId)
+                      } catch (e) {
+                        toast({
+                          title: 'Generation failed',
+                          description: e instanceof Error ? e.message : 'Please try again.',
+                          variant: 'destructive',
+                        })
+                      }
+                    }}
+                  >
+                    {isActivelyGenerating ? 'Generating…' : 'Generate more'}
+                  </Button>
+                </div>
+              )}
               {!canGenerateMoreFeature ? (
                 <p className="text-xs text-muted-foreground">
                   Generate more is not available on your current plan.
                 </p>
               ) : null}
 
-              <div className="text-xs text-muted-foreground">
-                Tip: you can generate dozens of assets; the gallery will keep expanding below.
-              </div>
+              {!isDesignRealizePipeline ? (
+                <div className="text-xs text-muted-foreground">
+                  Tip: you can generate dozens of assets; the gallery will keep expanding below.
+                </div>
+              ) : null}
             </div>
           </div>
         </aside>
@@ -616,32 +680,35 @@ export default function ResultsPage() {
                 key={img.id}
                 className="rounded-xl overflow-hidden border border-border bg-card hover:border-accent transition-colors"
               >
-                {img.url ? (
-                  <button
-                    type="button"
-                    className="block w-full text-left"
-                    onClick={() => {
-                      const idx = navigableImages.findIndex((x) => x.id === img.id)
-                      if (idx >= 0) setLightboxIndex(idx)
-                    }}
-                    aria-label={`Open ${formatViewTitle(img.type)}`}
-                  >
+                <button
+                  type="button"
+                  className="block w-full text-left"
+                  onClick={() => {
+                    const idx = project.generatedImages.findIndex((x) => x.id === img.id)
+                    if (idx >= 0) setLightboxIndex(idx)
+                  }}
+                  aria-label={
+                    img.url ? `Open ${formatViewTitle(img.type)}` : `Open ${formatViewTitle(img.type)} — prompt preview`
+                  }
+                >
+                  {img.url ? (
                     <img
                       src={img.url}
                       alt={img.type}
                       className="w-full aspect-square object-cover"
                       loading="lazy"
                     />
-                  </button>
-                ) : (
-                  <LightboxAsset title={formatViewTitle(img.type)} prompt={img.prompt}>
-                    <div className="w-full aspect-square flex items-center justify-center bg-secondary/50">
-                      <p className="text-sm font-medium text-muted-foreground">
+                  ) : (
+                    <div className="w-full aspect-square flex flex-col items-center justify-center gap-2 bg-secondary/50 px-3">
+                      <p className="text-sm font-medium text-muted-foreground text-center">
                         {formatViewTitle(img.type)}
                       </p>
+                      <p className="text-[10px] text-muted-foreground/90 text-center leading-snug">
+                        No image · open for full prompt
+                      </p>
                     </div>
-                  </LightboxAsset>
-                )}
+                  )}
+                </button>
                 <div className="px-3 py-2 border-t border-border">
                   <p className="text-xs text-muted-foreground text-center">
                     {formatViewTitle(img.type)}
@@ -711,18 +778,41 @@ export default function ResultsPage() {
           </DialogTitle>
           {activeLightboxImage ? (
             <div className="relative bg-black/40">
-              <img
-                src={activeLightboxImage.url}
-                alt={activeLightboxImage.type}
-                className="block w-full h-auto max-h-[80vh] object-contain"
-              />
-              {!isEditingAsset && navigableImages.length > 1 ? (
+              {activeLightboxImage.url ? (
+                <img
+                  src={activeLightboxImage.url}
+                  alt={activeLightboxImage.type}
+                  className="block w-full h-auto max-h-[80vh] object-contain"
+                />
+              ) : (
+                <div className="bg-background text-foreground">
+                  <div className="px-4 py-3 border-b border-border">
+                    <p className="text-sm font-medium">No image output</p>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      The image API key is not set, or the model returned no pixels. This is the full generation prompt
+                      that was used (same as with a live key).
+                    </p>
+                  </div>
+                  <div className="max-h-[min(70vh,720px)] overflow-y-auto p-4">
+                    {activeLightboxImage.prompt ? (
+                      <pre className="whitespace-pre-wrap break-words rounded-md border border-border bg-secondary/30 p-3 text-xs leading-relaxed">
+                        {activeLightboxImage.prompt}
+                      </pre>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No prompt was stored for this asset.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+              {!isEditingAsset && project.generatedImages.length > 1 ? (
                 <>
                   <button
                     type="button"
                     onClick={() =>
                       setLightboxIndex((prev) =>
-                        prev == null ? 0 : (prev - 1 + navigableImages.length) % navigableImages.length
+                        prev == null
+                          ? 0
+                          : (prev - 1 + project.generatedImages.length) % project.generatedImages.length
                       )
                     }
                     className="absolute left-2 top-1/2 -translate-y-1/2 rounded-full border border-border bg-background/85 p-2 z-30"
@@ -734,7 +824,7 @@ export default function ResultsPage() {
                     type="button"
                     onClick={() =>
                       setLightboxIndex((prev) =>
-                        prev == null ? 0 : (prev + 1) % navigableImages.length
+                        prev == null ? 0 : (prev + 1) % project.generatedImages.length
                       )
                     }
                     className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full border border-border bg-background/85 p-2 z-30"
@@ -745,7 +835,7 @@ export default function ResultsPage() {
                 </>
               ) : null}
 
-              {activeLightboxImage.editRequest && !isEditingAsset ? (
+              {activeLightboxImage.editRequest && !isEditingAsset && activeLightboxImage.url ? (
                 <div className="absolute left-0 right-0 bottom-0 px-4 pb-3 z-20">
                   <div className="rounded-md border border-border bg-background/80 backdrop-blur px-3 py-2">
                     <div className="text-xs text-muted-foreground/80 mb-1">
@@ -796,11 +886,11 @@ export default function ResultsPage() {
                 <span>{formatViewTitle(activeLightboxImage.type)}</span>
                 <div className="flex items-center gap-3">
                   <span className="text-xs">
-                    {lightboxIndex != null ? `${lightboxIndex + 1}/${navigableImages.length}` : ''}
+                    {lightboxIndex != null ? `${lightboxIndex + 1}/${project.generatedImages.length}` : ''}
                   </span>
                   {!isEditingAsset ? (
                     <>
-                      {canImageEditing ? (
+                      {canImageEditing && activeLightboxImage.url ? (
                         <Button
                           type="button"
                           size="sm"

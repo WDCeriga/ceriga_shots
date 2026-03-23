@@ -1,3 +1,5 @@
+export type GenerationPipeline = 'garment_photo' | 'design_realize'
+
 export interface GeneratedImage {
   id: string
   type:
@@ -24,6 +26,7 @@ export interface GeneratedImage {
     generationIndex: number
     variationSeed: number
     garmentType?: string
+    pipeline?: GenerationPipeline
   }
   /**
    * Optional edit attribution + request metadata.
@@ -44,6 +47,7 @@ export interface GenerationState {
   shotTypes?: GeneratedImage['type'][]
   preset?: 'raw' | 'editorial' | 'luxury' | 'natural' | 'studio' | 'surprise'
   garmentType?: string
+  pipeline?: GenerationPipeline
   errorMessage?: string
 }
 

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { deleteProjectForUser, getProjectForUser, updateProjectForUser } from '@/lib/projects'
+import { mergeGeneration } from '@/lib/merge-generation'
 import type { Project } from '@/hooks/use-projects'
 import { isDatabaseConfigured } from '@/lib/db'
 import { z } from 'zod'
@@ -84,6 +85,8 @@ const GenerationStateSchema = z
       )
       .optional(),
     preset: z.enum(['raw', 'editorial', 'luxury', 'natural', 'studio', 'surprise']).optional(),
+    garmentType: z.string().optional(),
+    pipeline: z.enum(['garment_photo', 'design_realize']).optional(),
     errorMessage: z.string().optional(),
   })
   .strict()
@@ -95,54 +98,6 @@ const ProjectPatchSchema = z
     generation: GenerationStateSchema.optional(),
   })
   .strict()
-
-function mergeGeneration(
-  current: Project['generation'] | undefined,
-  incoming: Project['generation'] | undefined
-): Project['generation'] | undefined {
-  if (!incoming) return current
-  if (!current) return incoming
-
-  // Never allow out-of-order updates to "downgrade" state/progress.
-  const merged: NonNullable<Project['generation']> = {
-    ...current,
-    ...incoming,
-    total: Math.max(current.total ?? 0, incoming.total ?? 0),
-    completed: Math.max(current.completed ?? 0, incoming.completed ?? 0),
-    shotTypes: incoming.shotTypes ?? current.shotTypes,
-    preset: incoming.preset ?? current.preset,
-  }
-
-  const totalIncreased =
-    typeof current.total === 'number' &&
-    typeof incoming.total === 'number' &&
-    incoming.total > current.total
-
-  // If we've already completed and the client isn't asking for more, don't let late
-  // "generating" patches restart it.
-  if (current.status === 'complete' && incoming.status !== 'complete' && !totalIncreased) {
-    merged.status = 'complete'
-    merged.nextType = undefined
-    merged.errorMessage = undefined
-    merged.completed = Math.max(merged.completed, merged.total)
-  }
-
-  // If total is reached, force completion.
-  if (merged.completed >= merged.total && merged.total > 0) {
-    merged.status = 'complete'
-    merged.completed = merged.total
-    merged.nextType = undefined
-    merged.errorMessage = undefined
-  }
-
-  // If transitioning to error, keep errorMessage but preserve progress/metadata.
-  if (incoming.status === 'error') {
-    merged.status = 'error'
-    merged.errorMessage = incoming.errorMessage ?? current.errorMessage
-  }
-
-  return merged
-}
 
 export async function GET(_req: NextRequest): Promise<NextResponse> {
   const url = new URL(_req.url)

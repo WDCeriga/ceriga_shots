@@ -31,11 +31,10 @@ export function AppSidebar({
  //   { href: '/dashboard/pricing', label: 'Pricing' },
     { href: '/dashboard/settings', label: 'Settings' },
   ]
-  const generateLinks = [
+  const generateLinks: { href: string | null; label: string }[] = [
     { href: '/dashboard/generate', label: 'Generate Product Shots' },
-    { href: null, label: 'Coming soon...' },
-    //{ href: null, label: 'Coming soon' },
-  ] as const
+    { href: '/dashboard/generate/from-sketch', label: 'From sketch or mockup' },
+  ]
   const adminLinks = [
     { href: '/dashboard/admin/statistics', label: 'Statistics' },
     { href: '/dashboard/admin/users', label: 'Users' },
