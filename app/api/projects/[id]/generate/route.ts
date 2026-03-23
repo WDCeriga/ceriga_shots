@@ -66,6 +66,18 @@ function normalizeGarmentType(input: unknown): string | undefined {
   return cleaned.length > 50 ? cleaned.slice(0, 50).trim() : cleaned
 }
 
+function normalizeEditInstructions(input: unknown): string | undefined {
+  if (typeof input !== 'string') return undefined
+  // Keep it short and prompt-safe:
+  // - remove newlines
+  // - collapse multiple spaces
+  // - trim
+  const cleaned = input.replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!cleaned) return undefined
+  // Clamp hard to reduce prompt injection surface.
+  return cleaned.length > 800 ? cleaned.slice(0, 800).trim() : cleaned
+}
+
 function parsePipelineFromBody(input: unknown): GenerationPipeline | undefined {
   if (input === 'design_realize') return 'design_realize'
   if (input === 'garment_photo') return 'garment_photo'
@@ -100,6 +112,7 @@ export async function POST(req: NextRequest) {
   const modeRaw = (body as { mode?: unknown }).mode
   const mode: 'initial' | 'more' = modeRaw === 'initial' ? 'initial' : 'more'
   const garmentType = normalizeGarmentType((body as { garmentType?: unknown }).garmentType)
+  const editInstructions = normalizeEditInstructions((body as { editInstructions?: unknown }).editInstructions)
   const pipelineFromBody = parsePipelineFromBody((body as { pipeline?: unknown }).pipeline)
 
   if (!Array.isArray(rawShotTypes) || rawShotTypes.length === 0) {
@@ -224,6 +237,7 @@ export async function POST(req: NextRequest) {
       shotTypes: rawShotTypes,
       preset: rawPreset,
       garmentType,
+      editInstructions,
     })
 
     const baseUrl = `${url.protocol}//${url.host}`

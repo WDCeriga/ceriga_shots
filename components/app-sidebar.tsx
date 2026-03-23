@@ -32,8 +32,8 @@ export function AppSidebar({
     { href: '/dashboard/settings', label: 'Settings' },
   ]
   const generateLinks: { href: string | null; label: string }[] = [
-    { href: '/dashboard/generate', label: 'Generate Product Shots' },
-    { href: '/dashboard/generate/from-sketch', label: 'From sketch or mockup' },
+    { href: '/dashboard/generate/from-sketch', label: 'Sketch-to-3D Mockups' },
+    { href: '/dashboard/generate', label: 'Product Shots' },
   ]
   const adminLinks = [
     { href: '/dashboard/admin/statistics', label: 'Statistics' },
@@ -43,7 +43,14 @@ export function AppSidebar({
     { href: '/dashboard/admin/system', label: 'System Status' },
   ]
 
-  const isActive = (href: string) => (href === '/dashboard' ? pathname === href : pathname.startsWith(href))
+  const isActive = (href: string) => {
+    // For leaf routes we want exact highlighting; otherwise parent groups like
+    // `/dashboard/generate` would remain highlighted on subroutes like
+    // `/dashboard/generate/from-sketch`.
+    if (href === '/dashboard') return pathname === href
+    if (href === '/dashboard/generate') return pathname === href
+    return pathname.startsWith(href)
+  }
 
   function MaybeSheetClose({ children }: { children: React.ReactNode }) {
     if (variant !== 'mobile') return children

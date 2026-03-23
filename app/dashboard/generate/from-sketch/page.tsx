@@ -11,6 +11,7 @@ import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
 import { useRole } from '@/hooks/use-role'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -34,6 +35,8 @@ export default function FromSketchGeneratePage() {
     'auto'
   )
   const [customProductType, setCustomProductType] = useState('')
+  const [designRealizeRefinements, setDesignRealizeRefinements] = useState('')
+  const [materialHint, setMaterialHint] = useState('')
   const { addProject, deleteProject, updateProject } = useProjects()
   const router = useRouter()
   const { status } = useSession()
@@ -196,6 +199,14 @@ export default function FromSketchGeneratePage() {
             ? customProductType.trim() || undefined
             : productType
 
+      const refinementParts = [
+        designRealizeRefinements.trim() || '',
+        materialHint.trim()
+          ? `Material/fabric hint: ${materialHint.trim()}. Keep it subtle and realistic (do not change the print/logos or silhouette).`
+          : '',
+      ].filter(Boolean)
+      const editInstructions = refinementParts.length ? refinementParts.join(' ') : undefined
+
       const project = await addProject({
         name: file.name.replace(/\.[^/.]+$/, ''),
         originalImage: preview,
@@ -219,6 +230,7 @@ export default function FromSketchGeneratePage() {
           shotTypes: [DESIGN_JOB_SHOT],
           preset: DESIGN_JOB_PRESET,
           pipeline: 'design_realize',
+          ...(editInstructions ? { editInstructions } : {}),
           ...(resolvedGarmentType ? { garmentType: resolvedGarmentType } : {}),
         }),
       })
@@ -237,7 +249,9 @@ export default function FromSketchGeneratePage() {
         throw new Error(data.error || 'Failed to enqueue generation')
       }
 
-      await updateProject(project.id, {
+      // Navigate as soon as the generation is enqueued, so the user
+      // sees the results page before the first images start rendering.
+      void updateProject(project.id, {
         generation: {
           status: 'generating',
           total: creditsNeeded,
@@ -275,8 +289,7 @@ export default function FromSketchGeneratePage() {
       <div className="mx-auto max-w-6xl">
         <div className="mb-10">
           <h1 className="text-3xl sm:text-5xl font-semibold tracking-tight leading-tight">
-            From <span className="text-red-500">sketch</span> to{' '}
-            <span className="text-red-500">real product</span>
+            Sketch-to-3D Mockups
           </h1>
           <p className="mt-4 max-w-2xl text-sm sm:text-base text-muted-foreground leading-relaxed">
             Upload a drawing or mockup. You get one photoreal image of the item on a simple white studio background — same
@@ -422,18 +435,7 @@ export default function FromSketchGeneratePage() {
                 </div>
               ) : null}
 
-              <div className="rounded-lg border border-white/10 bg-background/30 px-4 py-3 mb-6">
-                <p className="text-xs font-medium text-foreground">What you get</p>
-                <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-                  One square image: your design turned into a believable real product, centered on a clean white studio
-                  backdrop with soft catalog lighting — no extra shot styles or coloured sets.
-                </p>
-              </div>
-
               <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Product type (optional)</div>
-              <p className="mt-1 text-[11px] text-muted-foreground leading-snug">
-                Helps the model pick silhouette and construction when the sketch is vague.
-              </p>
               <div className="mt-3">
                 <Select value={productType} onValueChange={(v) => setProductType(v as typeof productType)}>
                   <SelectTrigger className="w-full cursor-pointer">
@@ -459,6 +461,30 @@ export default function FromSketchGeneratePage() {
                     />
                   </div>
                 ) : null}
+              </div>
+
+              <div className="mt-6">
+                <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Refinement instructions (optional)</div>
+                <Textarea
+                  value={designRealizeRefinements}
+                  onChange={(e) => setDesignRealizeRefinements(e.target.value)}
+                  className="mt-3"
+                  rows={3}
+                  placeholder="e.g. Match the sketch colorway (e.g. dark navy + off-white print); reduce dust; fix muddy lighting; brighten studio lighting slightly; keep print placement unchanged."
+                  aria-label="Design realize refinement instructions"
+                  disabled={isLoading}
+                />
+              </div>
+
+              <div className="mt-4">
+                <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Material / fabric hint (optional)</div>
+                <Input
+                  value={materialHint}
+                  onChange={(e) => setMaterialHint(e.target.value)}
+                  placeholder="e.g. heavy cotton french terry (dark navy); ribbed cuffs; hoodie pocket; metal zipper"
+                  className="mt-3"
+                  disabled={isLoading}
+                />
               </div>
 
               <div className="mt-10 lg:hidden">

@@ -293,6 +293,9 @@ export async function completeGenerationJob(args: {
       preset: project.generation?.preset ?? 'raw',
       nextType: (nextRows[0]?.shot_type as ShotType | undefined) ?? undefined,
       errorMessage: undefined,
+      // Preserve pipeline so the results page can render
+      // the correct "from sketch" UX (design_realize vs garment_photo).
+      pipeline: project.generation?.pipeline,
       garmentType: project.generation?.garmentType,
     },
   })
@@ -370,6 +373,7 @@ export async function failGenerationJob(args: {
       preset: project.generation?.preset,
       nextType: project.generation?.nextType,
       errorMessage: shouldRetry ? undefined : args.errorMessage,
+      pipeline: project.generation?.pipeline,
       garmentType: project.generation?.garmentType,
     },
   })
