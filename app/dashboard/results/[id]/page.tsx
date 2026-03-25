@@ -69,13 +69,13 @@ export default function ResultsPage() {
       case 'flatlay_topdown':
         return 'Top-down flat lay'
       case 'flatlay_45deg':
-        return '45° angled flat lay'
+        return 'Diagonal overhead flat lay'
       case 'flatlay_sleeves':
         return 'Sleeve spread'
       case 'flatlay_relaxed':
         return 'Relaxed flat lay'
       case 'flatlay_folded':
-        return 'Folded logo'
+        return 'Folded retail shot'
       case 'product-shot':
       case 'surface_hanging':
         return 'Hanging shot'
@@ -608,10 +608,10 @@ export default function ResultsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="flatlay_topdown">Top-down flat lay</SelectItem>
-                      <SelectItem value="flatlay_45deg">45° angled flat lay</SelectItem>
+                      <SelectItem value="flatlay_45deg">Diagonal overhead flat lay</SelectItem>
                       <SelectItem value="flatlay_sleeves">Sleeve spread</SelectItem>
                       <SelectItem value="flatlay_relaxed">Relaxed flat lay</SelectItem>
-                      <SelectItem value="flatlay_folded">Folded logo</SelectItem>
+                      <SelectItem value="flatlay_folded">Folded retail shot</SelectItem>
                       <SelectItem value="surface_draped">Draped over surface</SelectItem>
                       <SelectItem value="surface_hanging">Hanging shot</SelectItem>
                       <SelectItem value="detail_print">Print close-up</SelectItem>

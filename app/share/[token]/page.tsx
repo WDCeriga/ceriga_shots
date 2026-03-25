@@ -16,13 +16,13 @@ export default async function SharePage({
       case 'flatlay_topdown':
         return 'Top-down flat lay'
       case 'flatlay_45deg':
-        return '45° angled flat lay'
+        return 'Steep diagonal overhead flat lay'
       case 'flatlay_sleeves':
         return 'Sleeve spread'
       case 'flatlay_relaxed':
         return 'Relaxed flat lay'
       case 'flatlay_folded':
-        return 'Folded logo'
+        return 'Folded retail rectangle shot'
       case 'product-shot':
       case 'surface_hanging':
         return 'Hanging shot'

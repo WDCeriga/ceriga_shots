@@ -29,8 +29,8 @@ const VISUAL_DIRECTIONS: Array<{
 }> = [
   {
     key: 'raw',
-    title: 'Raw',
-    subtitle: 'Dark concrete, hard light',
+    title: 'Urban concrete',
+    subtitle: 'Aged urban concrete, overcast daylight',
     swatchClassName:
       'bg-[linear-gradient(135deg,rgba(9,9,11,0.92),rgba(39,39,42,0.65),rgba(244,244,245,0.08))]',
   },
@@ -79,10 +79,10 @@ type ShotTypeKey =
 
 const SHOT_TYPES: Array<{ key: ShotTypeKey; label: string }> = [
   { key: 'flatlay_topdown', label: 'Top-down flat lay' },
-  { key: 'flatlay_45deg', label: '45° angled flat lay' },
+  { key: 'flatlay_45deg', label: 'Diagonal overhead flat lay' },
   { key: 'flatlay_sleeves', label: 'Symmetrical sleeve spread' },
   { key: 'flatlay_relaxed', label: 'Relaxed / crumpled flat lay' },
-  { key: 'flatlay_folded', label: 'Folded logo shot' },
+  { key: 'flatlay_folded', label: 'Folded retail shot' },
   { key: 'surface_draped', label: 'Draped over surface' },
   { key: 'surface_hanging', label: 'Hanging shot' },
   { key: 'detail_print', label: 'Print close-up' },

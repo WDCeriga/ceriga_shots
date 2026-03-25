@@ -187,7 +187,7 @@ const BASE_FIDELITY = [
   '- Discard any solid-colour bars, borders, letterboxing, or padding around the garment.',
   '- Discard any background clutter: messy surfaces, other objects, accessories, hands, mannequins, retail tags, hangers (unless the shot type requires one).',
   '- If the garment occupies only a portion of the input image, mentally crop to just the garment before generating.',
-  '- The output must contain ONLY the garment plus any minimal required, unbranded support implied by the shot type (e.g. a simple hook/hanger for hanging shots) — zero trace of the input image context.',
+  '- The output must contain ONLY the garment plus any minimal required, unbranded support implied by the shot type (e.g. a simple hook/hanger for hanging shots) AND the required unbranded background surface implied by the preset/shot type — zero trace of the input image context.',
   '',
   'PRODUCT FIDELITY (non-negotiable):',
   '- Preserve exact print placement, graphics, logo position, and colorway',
@@ -207,7 +207,7 @@ const BASE_FIDELITY = [
   '- Do NOT sharpen, deblur, upscale, or reconstruct printed typography/letterforms; keep printed text exactly as it appears in the reference image.',
   '',
   'OUTPUT:',
-  '- Aspect ratio: 1:1 square; crop centered on the subject',
+  '- Aspect ratio: 1:1 square; crop centered on the main subject for this shot type',
   '- When the shot type requires full garment visibility, ensure no cropped hems/sleeves/logo edges',
   '- Never crop or cut off printed text/letterforms that are visible in the reference image; keep all visible print boundaries within frame.',
   '- Shadows must be realistic: grounded, not unnaturally long, and not razor-sharp; avoid shadow streaking/silhouette exaggeration.',
@@ -225,7 +225,7 @@ const BASE_DETAIL_CARVEOUT = [
 
 const NEGATIVE_GLOBAL = [
   'NEGATIVE (do NOT do any of the following):',
-  '- Output MUST depict ONLY the garment and any minimal required, unbranded support (e.g., a simple hook/hanger for hanging shots); no UI, no device frames, no other surrounding objects.',
+  '- Output MUST depict ONLY the garment and any minimal required, unbranded support (e.g., a simple hook/hanger for hanging shots) AND the required unbranded background surface implied by the preset/shot type; no UI, no device frames, and no other surrounding objects.',
   '- Photoreal only: no CGI/illustration/painterly styles and no “AI texture”.',
   '- Do NOT alter the garment design: prints/logos/colors/seams/pockets/zippers/buttons must match the reference exactly.',
   '- Do NOT add or reproduce watermarks, any text overlays, borders, padding, or letterboxing.',
@@ -260,79 +260,150 @@ const NEGATIVE_BY_CATEGORY: Record<ShotCategory, string> = {
   ].join('\n'),
 }
 
+const NEGATIVE_BY_PRESET: Record<Preset, string> = {
+  raw: [
+    'NEGATIVE (urban concrete / raw preset anti-fail):',
+    '- No fresh poured concrete (avoid new-smooth “perfect slab” look); keep subtle age/wear and dusting.',
+    '- No direct sun, no studio hotspots, no artificial lighting character; overcast-only behavior.',
+    '- No glossy/wet reflections; concrete must remain fully matte.',
+    '- No tiled/repeating “texture map” concrete look; keep physically tactile, non-repeating surface detail.',
+    '- Avoid heavy vignettes/overdramatic gradients that imply curved or non-flat geometry.',
+  ].join('\n'),
+  editorial: [
+    'NEGATIVE (editorial preset anti-fail):',
+    '- No charcoal surface grain, mottling, banding, or paper texture; keep the background uniformly seamless.',
+    '- No gritty HDR / over-sharpened “AI noise” on fabric or surface.',
+    '- No blown highlights on fabric/ink; keep tonal range controlled and premium.',
+    '- Avoid harsh shadow cut-offs; shadows should be gentle and grounded.',
+  ].join('\n'),
+  luxury: [
+    'NEGATIVE (luxury preset anti-fail):',
+    '- Avoid mirrored sheen or obvious specular reflections; keep marble low-sheen/matte-feeling.',
+    '- No repeated/identical vein patterns; veins must be subtle and non-repeating.',
+    '- Avoid over-contrast / plastic look; lighting should wrap softly and stay realistic.',
+    '- No specular clipping on fabric; preserve natural shading.',
+  ].join('\n'),
+  natural: [
+    'NEGATIVE (natural preset anti-fail):',
+    '- No warped/repeating wood plank patterns; grain should feel consistent and non-artificial.',
+    '- Avoid warm orange/yellow cast; natural window light must remain believable.',
+    '- No heavy vignettes or curved-table gradients.',
+    '- Avoid overprocessed smoothing of fabric texture; keep realism.',
+  ].join('\n'),
+  studio: [
+    'NEGATIVE (studio preset anti-fail):',
+    '- No background texture/grain; white seamless must be pure and even (no grey drift, no seams/creases).',
+    '- No vignette/film simulation; keep clean digital capture feel.',
+    '- Avoid long streaky shadows; keep shadows soft, minimal, and grounded.',
+  ].join('\n'),
+  surprise: [
+    'NEGATIVE (surprise preset anti-fail):',
+    '- Do not mix incompatible material + lighting physics (keep surface/lighting consistent with the provided variation instructions).',
+    '- No studio character unless implied by the chosen variation.',
+    '- No glossy reflections unless explicitly implied by the chosen surface feel.',
+    '- Avoid gritty HDR, film grain, and over-sharpening.',
+  ].join('\n'),
+}
+
 const SHOT_PROMPTS: Record<ShotType, string> = {
   flatlay_topdown: [
     'SHOT TYPE: Top-down flat lay',
-    '- Camera perfectly overhead at 90°, no perspective distortion',
-    '- Garment centred and symmetrically composed',
-    '- Full garment visible with clean breathing room on all edges',
-    '- Ensure the full printed area is fully visible and not cropped (including sleeve-text and logo boundaries that are present in the reference).',
+    '- Camera setup: perfectly overhead at 90 degrees, no perspective distortion',
+    '- Height: approximately 1.5m above the floor',
+    '- Optics: ~50mm equivalent lens (natural perspective, minimal distortion)',
+    '- Depth of field: deep (f/8 to f/11 equivalent); entire garment sharp and surface realism sharp across the full frame',
+    '- Garment placement: laid flat, front face up, centered, aligned to frame vertical axis (allow at most +/- 5 degrees rotation)',
+    '- Scale & framing: garment fills ~72-78% of the frame with clean breathing room on all edges',
+    '- Full garment visible with no cropped hems/sleeves and no cut-off printed edges',
     '- Fabric MUST lie directly on the surface (no hovering/float gap; no detached fabric sections).',
-    '- Perfectly still — no motion blur',
+    '- Perfectly still (no motion blur)',
     '- Sleeves naturally relaxed at sides',
-    '- The garment should fill ~70–80% of the frame with even margin on all sides',
-    '- Keep edges straight; avoid any “melted” or warped fabric',
+    '- Keep edges straight; avoid any melted/warped fabric',
   ].join('\n'),
   flatlay_45deg: [
-    'SHOT TYPE: 45° angled flat lay',
-    '- Camera positioned at approximately 45° angle to the surface',
-    '- Garment laid flat but shot from a diagonal viewpoint',
-    '- Creates depth and dimension while maintaining flat lay feel',
-    '- Slight dynamic tension in the composition',
-    '- Full garment visible',
-    '- Use a natural perspective (avoid wide-angle); keep logo/print proportions identical',
+    'SHOT TYPE: Steep diagonal overhead flat lay',
+    '- Camera setup: approximately 60–65 degrees above horizontal (steep diagonal overhead), height ~1.5m above the floor',
+    '- Optics: ~50mm equivalent lens; minimal/no perspective distortion (avoid wide-angle)',
+    '- Depth of field: deep (f/8–f/11 equivalent); entire garment sharp from nearest sleeve tip to furthest collar; surface realism sharp across the full frame',
+    '- Garment placement: laid flat, front face up, rotated ~20–25 degrees clockwise from the vertical axis; casually placed (not meticulously posed)',
+    '- Scale & framing: garment fills ~72–78% of the square frame; full garment visible with no cropped hems/sleeves/printed edges',
+    '- Fabric contact: direct physical contact with the surface everywhere (zero hover gap)',
+    '- Sleeves naturally relaxed at sides; weight/grounding/compression at contact points',
   ].join('\n'),
   flatlay_sleeves: [
     'SHOT TYPE: Symmetrical sleeve spread',
-    '- Camera perfectly overhead at 90°',
-    '- Both sleeves extended fully outward in a symmetrical wing shape',
-    '- Body of garment centred, sleeves spread left and right',
-    '- Architectural, structured composition',
-    '- Maximum breathing room around all edges',
-    '- Ensure sleeve ends and all visible printed text/letterforms are fully visible and not cropped.',
+    '- Camera setup: perfectly overhead at 90 degrees',
+    '- Height: approximately 1.5m above the floor',
+    '- Optics: ~50mm equivalent lens; minimal distortion (avoid wide-angle)',
+    '- Depth of field: deep (f/8 to f/11 equivalent) so sleeves and surface realism are sharp',
+    '- Garment placement: laid flat, centered, front face up',
+    '- Composition: both sleeves extended fully outward in a symmetrical wing shape (left/right equal spread); body remains centered',
+    '- Scale & framing: garment fills ~70-80% of frame while ensuring sleeve ends and all visible print/letterforms remain fully inside frame',
+    '- Fabric contact: direct physical contact with the surface everywhere (zero hover gap)',
+    '- Sleeves: naturally relaxed at the ends (not twisted), no hovering',
     '- Fabric MUST lie directly on the surface (no hovering/float gap).',
   ].join('\n'),
   flatlay_relaxed: [
     'SHOT TYPE: Relaxed / crumpled flat lay',
-    '- Camera overhead, slight off-centre angle acceptable',
-    '- Garment casually placed — intentional relaxed energy',
+    '- Camera setup: overhead at ~90 degrees (minor tilt acceptable, but keep perspective minimal)',
+    '- Height: approximately 1.5m above the floor',
+    '- Optics: ~50mm equivalent lens (avoid wide-angle distortion)',
+    '- Depth of field: deep to moderate-deep (f/7 to f/11); garment sharp, surface realism sharp enough to read as real',
+    '- Garment placement: laid flat, front face up, intentionally casual',
+    '- Rotation: allow a small natural rotation range (~5 to 15 degrees) rather than perfect alignment',
+    '- Off-centre translation: subtle shift (about 5-12% of frame) to feel candid but still premium',
+    '- Scale & framing: garment fills ~72-78% of the frame',
+    '- Garment is placed, not arranged; keep folds realistic (not rubbery, not paper-like)',
     '- Natural folds and creases visible and celebrated',
     '- Not messy, but deliberately unstudied',
     '- Feels candid, not staged',
-    '- Keep folds realistic with correct fabric weight (not rubbery, not paper-like)',
     '- Fabric MUST remain grounded and in contact with the surface (no hovering/float gap).',
   ].join('\n'),
   flatlay_folded: [
-    'SHOT TYPE: Folded logo shot',
-    '- Garment neatly folded so the primary print or logo is centred and fully visible',
-    '- Fold lines clean and intentional',
-    '- Camera overhead at 90°',
-    '- Compact, square composition',
-    '- Fold should feel retail-ready, like a display table',
-    '- Ensure the logo/graphic is not distorted by folds; keep proportions correct',
-    '- Never crop or cut off visible logo/typography within the reference image.',
+    'SHOT TYPE: Folded retail rectangle shot',
+    '- Camera setup: perfectly overhead at 90 degrees; minimal/no perspective distortion',
+    '- Height: approximately 1.5m above the floor',
+    '- Optics: ~50mm equivalent lens',
+    '- Depth of field: deep (f/8 to f/11 equivalent) so fold edges and garment details are crisp',
+    '- Fold recipe (deterministic retail rectangle): final silhouette must be a compact rectangle/square with straight edges and symmetric alignment about the garment centerline',
+    '- Garment placement: folded front-facing panel up; preserve garment fidelity (do NOT redesign prints/logos/text) while folding into the rectangle',
+    '- Anchor rule (logo optional): if visible artwork/text exists, keep it centered within the front panel; if no artwork exists, center the garment’s front centerline using neckline/placket seams/collar position/waistband centerline (as applicable)',
+    '- Hood/collar rule: if the garment has a hood, tuck the hood flat so the hood opening and hood corners do not stick up above the top edge; if no hood, flatten the collar/neckline region so there is no standing collar',
+    '- Sleeve rule: if the garment has sleeves, fold both sleeves inward symmetrically; sleeve outer edges must align with (or sit just inside) the rectangle side edges with no sleeve protrusion beyond the folded rectangle',
+    '- Leg rule (pants/shorts): if the garment has legs, fold both legs inward symmetrically; pant hems must align with (or sit just inside) the rectangle side edges with no leg protrusion beyond the folded rectangle; keep waistband flat as the top edge',
+    '- Pocket/drawstring/cuff rule: any visible hems/drawstrings/cuffs must remain contained within the folded rectangle (no stretched or floating parts outside the rectangle edges)',
+    '- Fold lines: clean, intentional, and symmetric; no extra flaps/corners beyond the rectangle',
+    '- Scale & framing: compact square composition; folded garment fills ~82-86% of frame; full folded edges must be inside frame (no cropped folded edges)',
+    '- Rotation: align to frame with at most +/- 5 degrees',
+    '- Do NOT crop or cut off any visible print/letterforms/important garment features that are present in the reference within the framed crop',
     '- Folded garment MUST be physically grounded on the surface (no hovering/float gap).',
   ].join('\n'),
   surface_draped: [
     'SHOT TYPE: Draped over surface',
-    '- Garment loosely draped over the edge of a surface or object',
-    '- Half-hanging, half-resting — natural gravity in the fabric',
-    '- Not a flat lay — the garment has dimension and movement',
-    '- Front face visible and dominant',
-    '- Lifestyle feel, less clinical than a flat lay',
-    '- Drape should look physically plausible; fabric should not fuse into the surface',
-    '- Ensure all visible front-facing printed text/graphics are within frame and not cropped.',
+    '- Camera setup: straight-on or slightly elevated view (about 30 to 45 degrees above horizontal); keep perspective natural (avoid wide-angle)',
+    '- Height: approximately 1.3 to 1.6m above the ground',
+    '- Optics: ~50mm equivalent lens; minimal distortion',
+    '- Depth of field: moderate (f/5.6 to f/8); garment mostly sharp while background remains calm',
+    '- Garment placement: loosely draped over a surface edge; half resting, half hanging',
+    '- Front face visible and dominant; drape should look physically plausible with realistic gravity',
+    '- Scale & framing: garment fills ~72-85% of frame with comfortable margin (no cropped hems or printed edges)',
+    '- Fabric contact: grounded on the surface/edge everywhere it touches (no hover gap, no floating sections)',
+    '- Keep composition premium and minimal; no clutter background',
     '- Fabric MUST be grounded on the surface/edge (no hovering/float gap; no detached fabric sections).',
     '- Keep background minimal and premium (no clutter)',
   ].join('\n'),
   surface_hanging: [
     'SHOT TYPE: Hanging shot',
-    '- Garment on a minimal hook or hanger',
-    '- The hanger/support structure must be simple and minimal (single thin hook / single shoulder bar) with NO extra shapes or decorative elements.',
+    '- Camera setup: straight-on, not angled; keep perspective natural (avoid wide-angle)',
+    '- Height: approximately 1.5 to 1.7m above the ground',
+    '- Optics: ~50mm equivalent lens; minimal distortion',
+    '- Depth of field: moderate (f/5.6 to f/8); garment sharp and readable, background calm',
+    '- Garment placement: hanging naturally from a minimal hook/hanger',
+    '- Hanger/support: single thin hook or single shoulder bar only; no extra shapes, decorations, or logos',
     '- Ensure the garment has clear physical contact/support from the hanger (no floating/hover gap).',
-    '- Wall or surface behind it as background',
-    '- Full garment visible, hanging naturally',
-    '- Slight natural drape from gravity',
+    '- Full garment visible, hanging naturally with realistic drape from gravity',
+    '- Scale & framing: garment fills ~72-85% of frame with all visible hems/sleeves within frame',
+    '- Rotation: align garment/hanger to be centered; allow only minimal natural tilt (about +/- 5 degrees)',
     '- The garment MUST be physically supported by the hanger/hook with visible contact (no hovering/float gap).',
     '- Use simple unbranded shoulder support/clip points so the garment is clearly held in place.',
     '- Camera straight-on, not angled',
@@ -342,31 +413,40 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
   ].join('\n'),
   detail_print: [
     'SHOT TYPE: Print close-up',
-    '- Extreme tight crop on the primary graphic or print',
-    '- Fill the entire frame with the design',
-    '- Razor sharp focus on the artwork',
-    '- Fabric texture subtly visible beneath the print',
-    '- No garment edges visible — pure design focus',
+    '- Camera setup: close crop with macro-like framing; focus is on the print only',
+    '- Optics: ~85mm equivalent lens to reduce perspective distortion',
+    '- Depth of field: shallow (f/2.8 to f/4); print edges razor sharp, background falls off softly',
+    '- Crop & framing: design fills ~95-100% of the frame (minimal margins) but do not clip the outermost visible letterform/graphic boundaries',
+    '- Detail selection (crop-lock): identify ONE most informative print/graphic region in the reference image; that chosen region defines the crop boundaries',
+    '- Apply ONLY a tight crop/zoom to the same chosen region; do NOT drift to a different portion of the garment or re-select a different detail region',
+    '- Center the chosen crop region in the output frame, but preserve the chosen region’s internal placement/occlusions exactly as seen in the reference (no re-framing/re-centering that changes what parts of the print are included)',
     '- Preserve exact letterforms/linework; no hallucinated strokes or “helpful” sharpening artifacts',
+    '- Fabric texture: subtly visible beneath the print only where present in the reference',
+    '- No garment edges visible — pure design focus',
     '- Do NOT clip the outermost visible edges of the printed letterforms/graphics within the crop; preserve the visible boundaries.',
   ].join('\n'),
   detail_fabric: [
     'SHOT TYPE: Fabric texture macro',
-    '- Extreme close-up on the material weave and texture',
-    '- Focus is on weave/texture; if any print/graphics are visible inside the crop, preserve them exactly and do not remove/alter them.',
+    '- Camera setup: extreme close-up focused on weave/texture',
+    '- Optics: ~85mm equivalent lens to reduce distortion',
+    '- Depth of field: shallow (f/2.8 to f/4); texture sharp where important, edges can softly fall off',
+    '- Crop-lock: ensure the crop keeps the important texture boundaries that appear in the reference; do NOT change which weave/texture regions are included',
+    '- You may center the chosen texture region in the output frame, but do NOT translate the crop window to a different portion of the garment/texture',
+    '- If print/graphics appear inside the crop, preserve them exactly (no removal/alteration)',
     '- Do NOT cut off important garment edges or print/letterform boundaries; preserve the full boundaries of whatever is visible inside the crop.',
     '- Communicates fabric quality and weight',
-    '- Slightly off-centre crop for editorial feel is allowed, but keep all important subject boundaries fully visible within the crop.',
-    '- Depth of field can be shallow — edges can softly fall off',
     '- Do NOT invent a different weave; keep texture consistent with the original garment material',
   ].join('\n'),
   detail_collar: [
     'SHOT TYPE: Collar / neckline detail',
-    '- Tight crop focused on the neckline, collar rib, or hood opening',
-    '- Garment folded or positioned so neckline is the clear subject',
-    '- Stitching and finish quality visible',
+    '- Camera setup: tight close-up with slight angle for depth',
+    '- Optics: ~85mm equivalent lens',
+    '- Camera angle: slight oblique angle (about 10 to 20 degrees) so collar rib/stitch depth reads naturally',
+    '- Depth of field: moderate-shallow (f/4 to f/7); collar edges and stitches sharp',
+    '- Crop & framing: neckline subject fills ~90-100% of frame; do not clip stitch boundaries or visible collar edges',
+    '- Garment placement: folded/positioned so neckline is the clear subject',
+    '- Stitching/finish quality visible and preserved exactly as in the reference',
     '- Builds product trust and premium signal',
-    '- Camera slightly angled for dimension',
     '- Keep stitches clean and realistic; do not invent extra seam lines',
     '- Do NOT crop off visible collar/neckline edges or visible stitch boundaries; keep all visible edges inside the frame.',
   ].join('\n'),
@@ -374,12 +454,15 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
 
 const PRESET_BASE: Record<Preset, string> = {
   raw: [
-    'VISUAL DIRECTION: Raw',
-    '- Surface: poured concrete slab, cold grey; fine micro-texture only (subtle aggregate), uniform scale (no chunky pits)',
-    '- Lighting: hard directional studio light, strong contrast, defined shadows',
-    '- Mood: unpolished, confrontational, streetwear energy',
-    '- Colour temperature: cool to neutral — no warmth',
-    "- Feel: a brand that doesn't ask for permission",
+    'VISUAL DIRECTION: Urban concrete',
+    '- Surface: aged urban concrete floor, fully matte (zero sheen/reflectivity); physically tactile with visible aggregate',
+    '- Weathering: 15–25 years walked-on / semi-outdoor exposure feel; subtle dust pooling in low points; faint natural hairline stress cracks (do not place them, just preserve natural realism)',
+    '- Concrete color: #3a3a38 medium-dark cool grey with slight warm dust undertone (no orange/yellow cast); not perfectly uniform',
+    '- Texture: fine-to-medium aggregate with visible stones ~2–5mm; micro-shadows on each stone from raking light; avoid “texture map” tiling/repetition',
+    '- Lighting: soft natural overcast daylight only (5600K), indirect/diffused; single source from upper-left (~10 o’clock) at a shallow raking angle',
+    '- Falloff: gentle; right side of frame ~20% darker than left, subtle not dramatic',
+    '- Shadows: short, grounded, realistic softness; no studio/artificial character; contact shadow perimeter slightly irregular (~1–2mm)',
+    '- Mood: urban streetwear product photography on real pavement (not a studio set)',
   ].join('\n'),
   editorial: [
     'VISUAL DIRECTION: Editorial',
@@ -427,15 +510,27 @@ const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
   raw: {
     flatlay: [
       'CONTEXT (flat lay):',
-      '- The concrete is a SINGLE flat planar surface filling the entire frame (no corners, no horizon, no curvature).',
-      '- Concrete texture is subtle and uniform-scale; do not stretch/smear/repeat texture.',
-      '- Shadows are crisp but controlled; do not create big gradients that imply a curved surface.',
-      '- Keep edges crisp and proportions true; do not obscure the primary graphic with shadow.',
+      '- The concrete is a SINGLE flat infinite plane filling the entire frame (no corners, no horizon line, no room geometry).',
+      '- Concrete is aged/used: matte, slightly rough, visible aggregate (~2–5mm stones), subtle dust pooling, and very faint hairline stress cracks (preserve natural realism; do not “place” cracks).',
+      '- Lighting is overcast daylight only: diffused indirect light with gentle asymmetry (upper-left ~10 o’clock), raking micro-shadows that reveal tactile depth across the full frame.',
+      '- Keep edges crisp and proportions true; do not obscure printed graphics; maintain garment fully within frame with realistic grounding.',
     ].join('\n'),
-    surface:
+    surface: [
       'CONTEXT (surface): maintain realistic gravity folds and clean separation from background; keep background premium and not cluttered.',
-    detail:
+      '- Environment lighting: overcast daylight only (diffused, no direct sun, no studio/artificial light character); neutral cool 5600K feel.',
+      '- Environment material (if visible): aged urban concrete matte surface only (fully matte; zero sheen/reflective wet look).',
+      '- Shadows: grounded and short; keep shadow edges realistic (not razor-sharp, not long dramatic streaks).',
+      '- Contact shadow: a slightly irregular dark perimeter where fabric meets the concrete/hanging support; subtle and natural.',
+      '- Surface realism: avoid tiled/CG-like repeating concrete patterns; keep aggregate and dust behavior physically believable.',
+      '- Background geometry: single coherent surface behind/under the garment; no warped/bent planes.',
+    ].join('\n'),
+    detail: [
       'CONTEXT (detail): avoid crushed blacks or blown highlights; preserve micro texture and true print edges.',
+      '- Lighting: overcast daylight only (diffused); no harsh studio hot spots on fabric/ink.',
+      '- Color/grade: neutral cool 5600K with subtle dust/age warmth in the concrete ambient (no orange/yellow cast).',
+      '- If any background surface is visible inside the crop: keep it as aged urban concrete matte with minimal texture distraction (do not draw attention away from the subject).',
+      '- Anti-fail: do NOT invent new print strokes or “helpful” sharpened typography; preserve ambiguity faithfully (blurred/partially visible stays blurred).',
+    ].join('\n'),
   },
   editorial: {
     flatlay: [
@@ -444,10 +539,20 @@ const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
       '- Keep styling minimal and precise; even exposure; avoid harsh shadow cut-offs.',
       '- Surface must be completely uniform — no grain, streaks, banding, mottling, or warped patterns.',
     ].join('\n'),
-    surface:
+    surface: [
       'CONTEXT (surface): keep environment understated; the garment is hero; no busy scene elements.',
-    detail:
-      'CONTEXT (detail): crisp but natural; no “overprocessed” sharpening; preserve ink/fiber boundaries.',
+      '- Surface: matte charcoal seamless paper; uniformly dark grey; no grain, mottling, banding, or visible paper texture.',
+      '- Lighting: soft diffused overhead / even exposure; gentle grounded shadows (no harsh streaking).',
+      '- Background geometry: single coherent seamless plane; no corners/horizon/room edges; no warped/bent planes.',
+      '- Avoid heavy vignettes/gradients that imply curved geometry.'
+    ].join('\n'),
+    detail: [
+      'CONTEXT (detail): crisp but natural; preserve ink/fiber boundaries.',
+      '- Do NOT overprocess sharpening: keep clarity subtle and photoreal.',
+      '- Avoid turning texture into noise or watercolor; avoid over-smoothing.',
+      '- Avoid blown highlights on fabric/ink; keep tonal range controlled.',
+      '- If background is visible in the crop, keep it minimal and non-distracting (smooth charcoal seamless only).',
+    ].join('\n'),
   },
   luxury: {
     flatlay: [
@@ -456,10 +561,20 @@ const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
       '- Premium softness; no gritty noise; keep highlights gentle and controlled.',
       '- Avoid strong reflections or mirrored sheen; keep a low-sheen, upscale finish.',
     ].join('\n'),
-    surface:
+    surface: [
       'CONTEXT (surface): quiet luxury; minimal scene; ensure hanger/hook is subtle and unbranded.',
-    detail:
-      'CONTEXT (detail): micro-contrast is subtle; avoid specular clipping; texture reads premium, not gritty.',
+      '- Surface: dark veined marble; low-sheen matte-feeling (no mirror reflections); veins subtle, realistic, and non-repeating.',
+      '- Lighting: soft overhead with gentle wrap; minimal shadow drama; no artificial studio character.',
+      '- Background geometry: single coherent marble plane behind/under the garment; avoid warped/bent walls/planes.',
+      '- Shadows/contact: grounded and short; keep contact shadow subtle and realistic.',
+      '- Avoid harsh specular reflections and specular clipping on any surfaces.'
+    ].join('\n'),
+    detail: [
+      'CONTEXT (detail): micro-contrast is subtle; avoid specular clipping; preserve true shading.',
+      '- Keep texture and shading premium and natural; do NOT turn texture into gritty noise.',
+      '- Avoid blown highlights and specular clipping on fabric/ink; preserve ink/fiber boundaries.',
+      '- Background must be minimal and non-distracting; if marble veins appear, keep them subtle and not repeated.',
+    ].join('\n'),
   },
   natural: {
     flatlay: [
@@ -468,10 +583,20 @@ const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
       '- Light feels natural; shadows soft; no dramatic studio hard edges.',
       '- Avoid heavy vignettes or “curved table” gradients.',
     ].join('\n'),
-    surface:
+    surface: [
       'CONTEXT (surface): believable window-light falloff; keep background calm and coherent.',
-    detail:
-      'CONTEXT (detail): warm but accurate color; texture should remain realistic, not “softened away.”',
+      '- Surface: aged wood (dark walnut / weathered oak); visible grain but not exaggerated; no repeating plank seams.',
+      '- Lighting: soft natural window light from one side; gentle falloff; no harsh studio hard edges.',
+      '- Shadows: soft and grounded; not heavy or dramatic.',
+      '- Background geometry: keep the scene calm; avoid warped planes and curved-table gradients.',
+    ].join('\n'),
+    detail: [
+      'CONTEXT (detail): warm but accurate color; preserve weave texture and fiber reality.',
+      '- Do NOT soften away texture; avoid over-smoothing.',
+      '- Avoid warm orange/yellow cast beyond natural daylight.',
+      '- Avoid blown highlights on fabric/ink; keep tonal range realistic.',
+      '- Background must remain minimal and non-distracting (wood only, subtle grain if visible).',
+    ].join('\n'),
   },
   studio: {
     flatlay: [
@@ -481,10 +606,20 @@ const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
       '- Lighting is even and wrap-around; shadows are minimal and soft — just enough to ground the garment.',
       '- The garment should "pop" against the white with clean edges and natural color reproduction.',
     ].join('\n'),
-    surface:
+    surface: [
       'CONTEXT (surface): white background extends cleanly behind the garment; soft edge lighting for separation; no grey zones or uneven falloff.',
-    detail:
-      'CONTEXT (detail): neutral white surround; even illumination reveals true fabric color and texture without color cast; keep highlights controlled to avoid blown-out fabric edges.',
+      '- Surface: pure white seamless studio only; zero texture/zero grain; no visible paper seams or floor horizon.',
+      '- Lighting: professional soft even studio lighting (large soft key + gentle fill); neutral white; minimal shadow drama.',
+      '- Shadows: soft minimal grounded; contact shadow subtle (no harsh streaking).',
+      '- Background geometry: single clean plane; no warped edges; no grey drift.'
+    ].join('\n'),
+    detail: [
+      'CONTEXT (detail): neutral white surround; even illumination reveals true fabric color and texture without color cast.',
+      '- Avoid film grain/vignette; keep clean digital capture look.',
+      '- Keep highlights controlled; avoid blown highlights on fabric/ink.',
+      '- Preserve fabric weave and ink boundaries; avoid turning texture into noise.',
+      '- Background must stay minimal and even (pure white only if visible).',
+    ].join('\n'),
   },
   surprise: {
     flatlay: [
@@ -492,10 +627,17 @@ const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
       '- Surprise comes from surface + lighting choices, but the surface must still be a single flat plane (no corners/horizon).',
       '- Keep it clean and symmetric when required; do not introduce warped patterns or curved geometry.',
     ].join('\n'),
-    surface:
+    surface: [
       'CONTEXT (surface): surprise comes from surface/lighting choices, not clutter or extra props.',
-    detail:
+      '- Keep it photoreal and consistent with the chosen variation instructions (surface + lighting only).',
+      '- Avoid adding extra scene elements, props, hands, or UI-like artifacts.',
+      '- Maintain grounding: no hovering/float gap; no warped planes.',
+    ].join('\n'),
+    detail: [
       'CONTEXT (detail): surprise via lighting/surface feel only; do not change texture/weave or invent detail.',
+      '- Preserve ink/fiber boundaries; avoid over-smoothing and over-sharpening.',
+      '- Keep background minimal and non-distracting.',
+    ].join('\n'),
   },
 }
 
@@ -508,9 +650,15 @@ function buildVariationSeed(
   const rand = mulberry32(variationSeed)
 
   const centredBreathingRoom = 'centred with generous breathing room' as const
-  const slightlyOffLeft = 'slightly off-centre to the left' as const
-  const slightlyOffRight = 'slightly off-centre to the right' as const
+  const slightlyOffLeft = 'slightly off-centre to the left (about 5-12% shift)' as const
+  const slightlyOffRight = 'slightly off-centre to the right (about 5-12% shift)' as const
   const centredTight = 'centred tight — garment fills 80% of frame' as const
+  const centredUrbanConcrete = 'centred with safe framing — garment fills ~72-78% of frame' as const
+  const centredTopdown = 'centred with balanced margins — garment fills ~72-78% of frame' as const
+  const centredSleeves = 'centred with sleeve-safe margins — sleeves fully visible; garment fills ~70-80% of frame' as const
+  const centredFolded = 'centred tight — folded garment fills ~82-86% of frame' as const
+  const centredSurface = 'centred with comfortable margin — garment fills ~72-85% of frame' as const
+  const centredDetail = 'centred tight — chosen detail region fills ~95-100% of frame' as const
   const asymmetricNegativeSpace = 'centred with asymmetric negative space' as const
 
   // Shot prompts often imply strict symmetry/centering (especially top-down/sleeves/folded).
@@ -519,45 +667,46 @@ function buildVariationSeed(
   let compositions: readonly string[]
   switch (shotType) {
     case 'flatlay_topdown': {
-      compositions = [centredBreathingRoom]
+      compositions = [centredTopdown]
       break
     }
     case 'flatlay_sleeves': {
-      compositions = [centredBreathingRoom]
+      compositions = [centredSleeves]
       break
     }
     case 'flatlay_folded': {
-      compositions = [centredTight]
+      compositions = [centredFolded]
       break
     }
     case 'flatlay_45deg': {
-      compositions = [centredBreathingRoom, slightlyOffLeft, slightlyOffRight, centredTight]
+      // Steep diagonal overhead looks best when framing stays stable.
+      compositions = [centredUrbanConcrete]
       break
     }
     case 'flatlay_relaxed': {
       // Keep it candid/off-centre, but avoid “asymmetric negative space” which tends to break the garment layout.
-      compositions = [centredBreathingRoom, slightlyOffLeft, slightlyOffRight, centredTight]
+      compositions = [centredTopdown, slightlyOffLeft, slightlyOffRight]
       break
     }
     case 'surface_draped':
     case 'surface_hanging': {
-      compositions = [centredBreathingRoom, slightlyOffLeft, slightlyOffRight, centredTight]
+      compositions = [centredSurface]
       break
     }
     case 'detail_print':
     case 'detail_collar': {
-      compositions = [centredTight]
+      compositions = [centredDetail]
       break
     }
     case 'detail_fabric': {
       // Your shot prompt explicitly allows a slightly off-centre crop for editorial feel.
-      compositions = [centredTight, slightlyOffLeft, slightlyOffRight]
+      compositions = [centredDetail, slightlyOffLeft, slightlyOffRight]
       break
     }
   }
 
   const surfaces = [
-    'raw concrete',
+    'urban concrete',
     'matte charcoal seamless paper',
     'dark marble',
     'aged wood',
@@ -744,7 +893,7 @@ function buildPrompt(args: {
   const baseCore = category === 'detail' ? `${BASE_FIDELITY}\n\n${BASE_DETAIL_CARVEOUT}` : BASE_FIDELITY
   const base = garmentTypeAnchor ? `${baseCore}\n\n${garmentTypeAnchor}` : baseCore
 
-  const negative = [NEGATIVE_GLOBAL, NEGATIVE_BY_CATEGORY[category]].join('\n')
+  const negative = [NEGATIVE_GLOBAL, NEGATIVE_BY_PRESET[args.preset], NEGATIVE_BY_CATEGORY[category]].join('\n')
   const preset = [PRESET_BASE[args.preset], PRESET_BY_CATEGORY[args.preset][category]].join('\n')
 
   const userEditBlock = args.editInstructions ? buildEditInstructionsBlock(args.editInstructions) : ''
@@ -887,10 +1036,8 @@ export async function POST(req: Request) {
     })
 
     console.warn(`[mockups:${requestId}] Missing API key; returning placeholder for shotType=${shotType}`)
-    const promptForStorage =
-      prompt.length > STORED_PROMPT_MAX_CHARS
-        ? `${prompt.slice(0, STORED_PROMPT_MAX_CHARS).trimEnd()}...`
-        : prompt
+    // Store the full prompt for debugging (UI shows asset.prompt even when url is empty).
+    const promptForStorage = prompt
     return NextResponse.json({
       generatedImage: {
         id:
@@ -909,7 +1056,8 @@ export async function POST(req: Request) {
       meta,
       placeholder: true,
       warning: 'Missing API key. Set GOOGLE_API_KEY (preferred) or GEMINI_API_KEY to enable image generation.',
-      promptPreview: prompt.slice(0, 5000),
+      // When generation cannot run, the UI needs the complete prompt for debugging.
+      promptPreview: prompt,
     })
   }
 
@@ -1091,10 +1239,8 @@ export async function POST(req: Request) {
             console.warn(`[mockups:${requestId}] R2 not configured; storing as data URL in development`)
           }
 
-          const promptForStorage =
-            prompt.length > STORED_PROMPT_MAX_CHARS
-              ? `${prompt.slice(0, STORED_PROMPT_MAX_CHARS).trimEnd()}...`
-              : prompt
+          // Store the full prompt (UI needs full prompt for debugging).
+          const promptForStorage = prompt
 
           return NextResponse.json({
             generatedImage: {
@@ -1136,6 +1282,9 @@ export async function POST(req: Request) {
       {
         error: `Image generation failed after ${maxAttempts} attempt(s). Last error: ${lastErrorMessage}`,
         modelCalls,
+        meta,
+        // When no image is generated, return the full prompt so the client can display it.
+        promptPreview: prompt,
       },
       { status: 502 }
     )
