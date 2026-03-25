@@ -253,7 +253,7 @@ export default function BackgroundRemovePage() {
                 )}
               </div>
               <p className="text-[11px] leading-relaxed text-muted-foreground">
-                First run may download models (~80MB). Runs faster afterward. For huge images, try resizing before upload.
+                First run may download models. Runs faster afterward. For huge images, try resizing before upload.
               </p>
             </div>
           </section>

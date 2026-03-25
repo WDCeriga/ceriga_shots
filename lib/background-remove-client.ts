@@ -74,11 +74,11 @@ export type BackgroundRemoveOutputMode = 'transparent' | 'white'
 
 /**
  * Shared @imgly/background-removal options: WebGPU when available, worker thread.
- * `isnet` = full-precision ISNet (larger download than `isnet_fp16`, often cleaner edges / hair).
- * For speed + smaller first fetch use `isnet_fp16` (~80MB class) or `isnet_quint8` (~40MB, more artifacts).
+ * `isnet_fp16` = medium model (~80MB class), good speed/quality balance.
+ * Use `isnet` for heavier quality or `isnet_quint8` (~40MB) for speed (more artifacts).
  */
 export const backgroundRemovalInferenceConfig = {
-  model: 'isnet' as const,
+  model: 'isnet_fp16' as const,
   device: 'gpu' as const,
   proxyToWorker: true,
   output: { format: 'image/png' as const, quality: 0.92 },
