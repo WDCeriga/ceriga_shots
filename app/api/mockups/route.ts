@@ -416,13 +416,13 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
     '- Camera setup: close crop with macro-like framing; focus is on the print only',
     '- Optics: ~85mm equivalent lens to reduce perspective distortion',
     '- Depth of field: shallow (f/2.8 to f/4); print edges razor sharp, background falls off softly',
-    '- Crop & framing: design fills ~95-100% of the frame (minimal margins) but do not clip the outermost visible letterform/graphic boundaries',
+    '- Crop & framing: design fills ~80% of the frame; keep a small margin and do not introduce extra background padding beyond the reference crop boundaries',
     '- Detail selection (crop-lock): identify ONE most informative print/graphic region in the reference image; that chosen region defines the crop boundaries',
     '- Apply ONLY a tight crop/zoom to the same chosen region; do NOT drift to a different portion of the garment or re-select a different detail region',
     '- Center the chosen crop region in the output frame, but preserve the chosen region’s internal placement/occlusions exactly as seen in the reference (no re-framing/re-centering that changes what parts of the print are included)',
     '- Preserve exact letterforms/linework; no hallucinated strokes or “helpful” sharpening artifacts',
     '- Fabric texture: subtly visible beneath the print only where present in the reference',
-    '- No garment edges visible — pure design focus',
+    '- Garment boundary rule (important for crop-lock): preserve any surrounding fabric/garment boundaries that are visible in the reference within the chosen crop (do NOT remove them / do NOT invent extra clearance).',
     '- Do NOT clip the outermost visible edges of the printed letterforms/graphics within the crop; preserve the visible boundaries.',
   ].join('\n'),
   detail_fabric: [
@@ -443,7 +443,7 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
     '- Optics: ~85mm equivalent lens',
     '- Camera angle: slight oblique angle (about 10 to 20 degrees) so collar rib/stitch depth reads naturally',
     '- Depth of field: moderate-shallow (f/4 to f/7); collar edges and stitches sharp',
-    '- Crop & framing: neckline subject fills ~90-100% of frame; do not clip stitch boundaries or visible collar edges',
+    '- Crop & framing: neckline subject fills ~80% of frame; do not clip stitch boundaries or visible collar edges; keep a small margin',
     '- Garment placement: folded/positioned so neckline is the clear subject',
     '- Stitching/finish quality visible and preserved exactly as in the reference',
     '- Builds product trust and premium signal',
@@ -658,7 +658,7 @@ function buildVariationSeed(
   const centredSleeves = 'centred with sleeve-safe margins — sleeves fully visible; garment fills ~70-80% of frame' as const
   const centredFolded = 'centred tight — folded garment fills ~82-86% of frame' as const
   const centredSurface = 'centred with comfortable margin — garment fills ~72-85% of frame' as const
-  const centredDetail = 'centred tight — chosen detail region fills ~95-100% of frame' as const
+  const centredDetail = 'centred tight — chosen detail region fills ~80% of frame' as const
   const asymmetricNegativeSpace = 'centred with asymmetric negative space' as const
 
   // Shot prompts often imply strict symmetry/centering (especially top-down/sleeves/folded).
