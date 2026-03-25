@@ -118,26 +118,14 @@ export default function BackgroundRemovePage() {
     <div className="px-4 py-8 sm:px-8 sm:py-10">
       <div className="mx-auto max-w-6xl space-y-8">
         {/* Header */}
-        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#14161c] via-[#101218] to-[#0c0e12] px-6 py-8 sm:px-10 sm:py-10">
-          <div
-            className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-red-500/15 blur-3xl"
-            aria-hidden
-          />
-          <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div className="max-w-2xl space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-red-500/25 bg-red-500/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.2em] text-red-400/95">
-                <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                In your browser
-              </div>
-              <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl">
-                Background remover
-              </h1>
-              <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Drop a product photo, pick transparent or white output, and get a PNG instantly. Processing stays on your
-                device — nothing is sent to our servers until you use other tools.
-              </p>
-            </div>
-          </div>
+        <div className="max-w-2xl space-y-3">
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl">
+            Background remover
+          </h1>
+          <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
+            Drop a product photo, pick transparent or white output, and get a PNG instantly. Processing stays on your
+            device — nothing is sent to our servers until you use other tools.
+          </p>
         </div>
 
         {/* Main grid: source | result */}
@@ -145,15 +133,8 @@ export default function BackgroundRemovePage() {
           {/* Source + controls */}
           <section className="flex flex-col rounded-2xl border border-white/10 bg-card/40 shadow-sm backdrop-blur-sm">
             <div className="border-b border-white/10 px-5 py-4 sm:px-6">
-              <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500/15 text-xs font-bold text-red-400">
-                  1
-                </span>
-                <div>
-                  <h2 className="text-sm font-semibold tracking-tight">Source image</h2>
-                  <p className="text-xs text-muted-foreground">Clear subject edges work best.</p>
-                </div>
-              </div>
+              <h2 className="text-sm font-semibold tracking-tight">Source image</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">Clear subject edges work best.</p>
             </div>
 
             <div className="flex flex-1 flex-col gap-6 p-5 sm:p-6">
@@ -211,44 +192,33 @@ export default function BackgroundRemovePage() {
                 </div>
               </div>
 
-              <div>
-                <div className="mb-3 flex items-center gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500/15 text-xs font-bold text-red-400">
-                    2
-                  </span>
-                  <div>
-                    <h2 className="text-sm font-semibold tracking-tight">Output</h2>
-                    <p className="text-xs text-muted-foreground">PNG download either way.</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={() => setBgRemoveOutput('transparent')}
-                    className={cn(
-                      'rounded-xl border px-4 py-3.5 text-left transition-all',
-                      bgRemoveOutput === 'transparent'
-                        ? 'border-red-500/50 bg-red-500/10 ring-1 ring-red-500/30'
-                        : 'border-white/10 hover:border-white/20 hover:bg-white/[0.03]'
-                    )}
-                  >
-                    <div className="text-sm font-medium">Transparent</div>
-                    <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">Alpha channel for overlays</div>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setBgRemoveOutput('white')}
-                    className={cn(
-                      'rounded-xl border px-4 py-3.5 text-left transition-all',
-                      bgRemoveOutput === 'white'
-                        ? 'border-red-500/50 bg-red-500/10 ring-1 ring-red-500/30'
-                        : 'border-white/10 hover:border-white/20 hover:bg-white/[0.03]'
-                    )}
-                  >
-                    <div className="text-sm font-medium">White backdrop</div>
-                    <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">Catalog-style solid white</div>
-                  </button>
-                </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setBgRemoveOutput('transparent')}
+                  className={cn(
+                    'rounded-xl border px-4 py-3.5 text-left transition-all',
+                    bgRemoveOutput === 'transparent'
+                      ? 'border-red-500/50 bg-red-500/10 ring-1 ring-red-500/30'
+                      : 'border-white/10 hover:border-white/20 hover:bg-white/[0.03]'
+                  )}
+                >
+                  <div className="text-sm font-medium">Transparent</div>
+                  <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">Alpha channel for overlays</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBgRemoveOutput('white')}
+                  className={cn(
+                    'rounded-xl border px-4 py-3.5 text-left transition-all',
+                    bgRemoveOutput === 'white'
+                      ? 'border-red-500/50 bg-red-500/10 ring-1 ring-red-500/30'
+                      : 'border-white/10 hover:border-white/20 hover:bg-white/[0.03]'
+                  )}
+                >
+                  <div className="text-sm font-medium">White backdrop</div>
+                  <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">Catalog-style solid white</div>
+                </button>
               </div>
 
               <div className="mt-auto flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -291,14 +261,9 @@ export default function BackgroundRemovePage() {
           {/* Result */}
           <section className="flex min-h-[min(520px,70vh)] flex-col rounded-2xl border border-white/10 bg-card/40 shadow-sm backdrop-blur-sm lg:min-h-[560px]">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4 sm:px-6">
-              <div className="flex items-center gap-3">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-xs font-bold text-emerald-400">
-                  3
-                </span>
-                <div>
-                  <h2 className="text-sm font-semibold tracking-tight">Result</h2>
-                  <p className="text-xs text-muted-foreground">Preview updates here — no project created.</p>
-                </div>
+              <div>
+                <h2 className="text-sm font-semibold tracking-tight">Result</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">Preview updates here — no project created.</p>
               </div>
               <Button
                 type="button"
