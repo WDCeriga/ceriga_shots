@@ -81,6 +81,7 @@ function normalizeEditInstructions(input: unknown): string | undefined {
 function parsePipelineFromBody(input: unknown): GenerationPipeline | undefined {
   if (input === 'design_realize') return 'design_realize'
   if (input === 'garment_photo') return 'garment_photo'
+  if (input === 'background_remove') return 'background_remove'
   return undefined
 }
 

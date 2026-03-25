@@ -1,4 +1,4 @@
-export type GenerationPipeline = 'garment_photo' | 'design_realize'
+export type GenerationPipeline = 'garment_photo' | 'design_realize' | 'background_remove'
 
 export interface GeneratedImage {
   id: string
@@ -7,6 +7,7 @@ export interface GeneratedImage {
     | 'product-shot'
     | 'lifestyle'
     | 'detail'
+    | 'background_remove'
     | 'flatlay_topdown'
     | 'flatlay_45deg'
     | 'flatlay_sleeves'

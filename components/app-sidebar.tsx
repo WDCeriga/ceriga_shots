@@ -32,6 +32,7 @@ export function AppSidebar({
     { href: '/dashboard/settings', label: 'Settings' },
   ]
   const generateLinks: { href: string | null; label: string }[] = [
+    { href: '/dashboard/generate/background-remove', label: 'Background remover' },
     { href: '/dashboard/generate/from-sketch', label: 'Sketch-to-3D Mockups' },
     { href: '/dashboard/generate', label: 'Product Shots' },
   ]

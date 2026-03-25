@@ -19,6 +19,7 @@ const GeneratedImageSchema = z
       'product-shot',
       'lifestyle',
       'detail',
+      'background_remove',
       'flatlay_topdown',
       'flatlay_45deg',
       'flatlay_sleeves',
@@ -52,6 +53,7 @@ const GenerationStateSchema = z
         'product-shot',
         'lifestyle',
         'detail',
+        'background_remove',
         'flatlay_topdown',
         'flatlay_45deg',
         'flatlay_sleeves',
@@ -71,6 +73,7 @@ const GenerationStateSchema = z
           'product-shot',
           'lifestyle',
           'detail',
+          'background_remove',
           'flatlay_topdown',
           'flatlay_45deg',
           'flatlay_sleeves',
@@ -86,7 +89,7 @@ const GenerationStateSchema = z
       .optional(),
     preset: z.enum(['raw', 'editorial', 'luxury', 'natural', 'studio', 'surprise']).optional(),
     garmentType: z.string().optional(),
-    pipeline: z.enum(['garment_photo', 'design_realize']).optional(),
+    pipeline: z.enum(['garment_photo', 'design_realize', 'background_remove']).optional(),
     errorMessage: z.string().optional(),
   })
   .strict()

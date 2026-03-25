@@ -86,6 +86,9 @@ export default function LibraryPage() {
     if (pipeline === 'garment_photo') {
       return { label: 'Product Shots', className: 'border-border bg-secondary/30 text-muted-foreground' }
     }
+    if (pipeline === 'background_remove') {
+      return { label: 'Background removal', className: 'border-emerald-500/35 bg-emerald-500/10 text-emerald-400' }
+    }
     // If older projects don't have generation info, assume product-shot style.
     return { label: 'Product Shots', className: 'border-border bg-secondary/30 text-muted-foreground' }
   }

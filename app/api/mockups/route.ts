@@ -1026,6 +1026,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 })
     }
 
+    if ((body as { pipeline?: unknown }).pipeline === 'background_remove') {
+      return NextResponse.json(
+        {
+          error:
+            'Background removal runs in the browser. Use /api/projects/[id]/background-remove to save the result.',
+        },
+        { status: 400 }
+      )
+    }
+
     const shotType = resolveShotTypeFromBody(body)
 
     const requestedPreset = (body as { preset?: unknown }).preset
@@ -1121,6 +1131,16 @@ export async function POST(req: Request) {
   } catch {
     console.warn(`[mockups:${requestId}] Invalid JSON body`)
     return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 })
+  }
+
+  if ((body as { pipeline?: unknown }).pipeline === 'background_remove') {
+    return NextResponse.json(
+      {
+        error:
+          'Background removal runs in the browser. Use /api/projects/[id]/background-remove to save the result.',
+      },
+      { status: 400 }
+    )
   }
 
   const imageDataUrl = (body as { imageDataUrl?: unknown }).imageDataUrl

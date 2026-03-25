@@ -49,7 +49,6 @@ export default function ResultsPage() {
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null)
   const [isEditingAsset, setIsEditingAsset] = useState(false)
   const [editDraft, setEditDraft] = useState('')
-  const [designRealizeRefinements, setDesignRealizeRefinements] = useState('')
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false)
   const [pendingEditedFromId, setPendingEditedFromId] = useState<string | null>(null)
   const retentionDays = limits.assetHistoryRetentionDays
@@ -90,6 +89,8 @@ export default function ResultsPage() {
         return 'Lifestyle'
       case 'detail_collar':
         return 'Collar detail'
+      case 'background_remove':
+        return 'Background removed'
       default:
         return t
     }
@@ -120,14 +121,15 @@ export default function ResultsPage() {
   }, [fetchProject, projectId])
 
   const generationStatus = project?.generation?.status
+  const generationPipeline = project?.generation?.pipeline
   /** All generated assets in gallery order (includes placeholder rows with empty `url` when API key is missing). */
   const lightboxImages = project?.generatedImages ?? []
   const activeLightboxImage = lightboxIndex == null ? null : lightboxImages[lightboxIndex] ?? null
 
   useEffect(() => {
     if (generationStatus !== 'generating') return
+    if (generationPipeline === 'background_remove') return
     let stopped = false
-    let tickCount = 0
 
     const tick = async () => {
       try {
@@ -138,31 +140,7 @@ export default function ResultsPage() {
         } catch {
           setQueueNudgeStatus('retrying')
         }
-        const statusRes = await fetch(`/api/projects/${projectId}/status`, { method: 'GET' })
-        const statusPayload = (await statusRes.json().catch(() => null)) as
-          | {
-              status?: {
-                status: 'idle' | 'generating' | 'complete' | 'error'
-                total: number
-                completed: number
-                nextType?: string
-                errorMessage?: string
-              }
-            }
-          | null
-        const status = statusPayload?.status
-
-        // Refresh full project only periodically, or when status suggests
-        // we should immediately sync full asset data.
-        tickCount += 1
-        const shouldRefreshFullProject =
-          !statusRes.ok ||
-          tickCount % 3 === 0 ||
-          status == null ||
-          status.status !== 'generating'
-        if (shouldRefreshFullProject) {
-          await fetchProject(projectId)
-        }
+        await fetchProject(projectId)
       } catch {
         // Polling errors are non-fatal; the next tick retries.
       }
@@ -172,14 +150,14 @@ export default function ResultsPage() {
     const interval = window.setInterval(() => {
       if (stopped) return
       void tick()
-    }, 6000)
+    }, 2500)
 
     return () => {
       stopped = true
       window.clearInterval(interval)
       setQueueNudgeStatus('idle')
     }
-  }, [fetchProject, generationStatus, projectId])
+  }, [fetchProject, generationPipeline, generationStatus, projectId])
 
   useEffect(() => {
     if (lightboxIndex == null) return
@@ -556,7 +534,6 @@ export default function ResultsPage() {
                           shotTypes: ['flatlay_topdown'],
                           preset: 'studio',
                           pipeline: 'design_realize',
-                          editInstructions: designRealizeRefinements,
                         }),
                       })
                       const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string }
@@ -664,23 +641,6 @@ export default function ResultsPage() {
                   </Button>
                 </div>
               )}
-
-              {isDesignRealizePipeline ? (
-                <div className="mt-3">
-                  <div className="text-xs text-muted-foreground mb-1">
-                    Refinements (optional): make safe improvements without changing logos/prints or silhouette.
-                  </div>
-                  <Textarea
-                    value={designRealizeRefinements}
-                    onChange={(e) => setDesignRealizeRefinements(e.target.value)}
-                    rows={3}
-                    className="mt-2"
-                    placeholder="e.g. Brighter studio lighting; reduce dust; slightly increase contrast; keep print placement unchanged."
-                    aria-label="Design realize refinement instructions"
-                    disabled={isActivelyGenerating || !canGenerateMore}
-                  />
-                </div>
-              ) : null}
               {!canGenerateMoreFeature ? (
                 <p className="text-xs text-muted-foreground">
                   Generate more is not available on your current plan.
