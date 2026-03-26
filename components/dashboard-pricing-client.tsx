@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Check } from 'lucide-react'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { pricingPlans } from '@/lib/pricing'
 import { useSession } from 'next-auth/react'
 import { toast } from '@/hooks/use-toast'
@@ -198,10 +199,12 @@ export function DashboardPricingClient() {
 
   return (
     <div className="relative p-6 sm:p-10 max-w-7xl mx-auto">
-      <div className="mb-10">
-        <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-foreground mb-3">Pricing</h1>
-        <p className="text-muted-foreground text-sm sm:text-base max-w-2xl">
-          Pick the plan that matches your content volume, then scale when your brand grows.
+      <div className="mb-10 text-center">
+        <h1 className="text-balance text-4xl sm:text-6xl font-black tracking-tight text-foreground mb-4">
+          Pricing - Scale your content as you grow
+        </h1>
+        <p className="mx-auto max-w-3xl text-muted-foreground text-sm sm:text-2xl">
+          From solo creators to high-fashion labels, achieve cinematic precision with our tailored AI generation plans.
         </p>
       </div>
 
@@ -468,6 +471,52 @@ export function DashboardPricingClient() {
               ))}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      <section className="mt-14 rounded-xl border border-border bg-black px-4 py-10 sm:px-8 sm:py-14">
+        <div className="mx-auto max-w-3xl">
+          <h2 className="text-center text-2xl sm:text-3xl font-bold tracking-tight text-white mb-8 sm:mb-10">
+            Frequently Asked Questions
+          </h2>
+          <Accordion type="single" collapsible className="w-full space-y-3 sm:space-y-4">
+            <AccordionItem
+              value="brand-accuracy"
+              className="border-0 rounded-xl bg-[#111111] px-5 py-1 sm:px-8 sm:py-2 data-[state=open]:shadow-none"
+            >
+              <AccordionTrigger className="text-left text-base font-semibold text-white hover:no-underline py-5 sm:py-6 [&[data-state=open]]:pb-2">
+                How accurate is the brand representation?
+              </AccordionTrigger>
+              <AccordionContent className="pb-5 sm:pb-6 pt-0 text-sm leading-relaxed text-neutral-400">
+                Our Studio and Label plans allow you to train custom LoRA models on your specific products, ensuring
+                99.9% geometric and texture accuracy for your brand assets.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem
+              value="ownership"
+              className="border-0 rounded-xl bg-[#111111] px-5 py-1 sm:px-8 sm:py-2"
+            >
+              <AccordionTrigger className="text-left text-base font-semibold text-white hover:no-underline py-5 sm:py-6 [&[data-state=open]]:pb-2">
+                Who owns the generated content?
+              </AccordionTrigger>
+              <AccordionContent className="pb-5 sm:pb-6 pt-0 text-sm leading-relaxed text-neutral-400">
+                You maintain 100% commercial ownership of all assets generated on paid plans. Free plan assets are
+                under a creative commons attribution license.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem
+              value="cancel"
+              className="border-0 rounded-xl bg-[#111111] px-5 py-1 sm:px-8 sm:py-2"
+            >
+              <AccordionTrigger className="text-left text-base font-semibold text-white hover:no-underline py-5 sm:py-6 [&[data-state=open]]:pb-2">
+                Can I cancel my subscription anytime?
+              </AccordionTrigger>
+              <AccordionContent className="pb-5 sm:pb-6 pt-0 text-sm leading-relaxed text-neutral-400">
+                Yes. All subscriptions are month-to-month. You can upgrade, downgrade, or cancel directly from your
+                Studio dashboard without any hidden fees.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </section>
 

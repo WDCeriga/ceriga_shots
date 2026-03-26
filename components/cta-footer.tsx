@@ -4,7 +4,6 @@ import { ArrowRight, Instagram } from "lucide-react"
 export function CtaSection() {
   return (
     <section id="cta" className="py-40 border-t border-border relative overflow-hidden">
-      {/* Background accent */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
         <span className="text-[20rem] font-black text-foreground/[0.02] leading-none tracking-tighter">
           AI
@@ -39,31 +38,11 @@ export function CtaSection() {
 
 export function Footer() {
   return (
-    <footer className="border-t border-border py-12">
+    <footer className="mt-auto border-t border-border py-12">
       <div className="max-w-7xl mx-auto px-6 lg:px-12 flex flex-col sm:flex-row items-center justify-between gap-6">
         <Link href="/" className="text-foreground text-sm font-semibold tracking-[0.2em] uppercase">
           Ceriga Shots<span className="text-accent">.</span>
         </Link>
-
-        <nav className="w-full flex flex-wrap items-center justify-center gap-x-4 gap-y-2 sm:gap-x-8 sm:gap-y-0">
-          {[
-            { label: "Pricing", href: "#pricing" },
-            { label: "How it works", href: "#how-it-works" },
-            { label: "Flat lays", href: "/ai-flat-lay-generator" },
-            { label: "Product shots", href: "/ai-product-shots" },
-            // { label: "Video clips", href: "/ai-fashion-video-generator" },
-            { label: "Privacy", href: "/privacy" },
-            { label: "Contact", href: "#cta" },
-          ].map((link) => (
-            <Link
-              key={link.label}
-              href={link.href}
-              className="text-xs text-muted-foreground hover:text-foreground tracking-widest uppercase transition-colors"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
 
         <div className="w-full sm:w-auto flex items-center justify-center sm:justify-end gap-4">
           <Link href="#" aria-label="Instagram" className="text-muted-foreground hover:text-foreground transition-colors">

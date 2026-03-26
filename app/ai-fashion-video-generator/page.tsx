@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function AiFashionVideoGeneratorPage() {
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="min-h-screen flex flex-col bg-background text-foreground">
       <Navbar />
 
       <section className="pt-24 pb-16 border-t border-border">
@@ -68,8 +68,8 @@ export default function AiFashionVideoGeneratorPage() {
 
             <div className="pt-2 text-sm text-muted-foreground">
               Also generate{' '}
-              <Link className="underline underline-offset-2 text-foreground hover:text-accent" href="/ai-flat-lay-generator">
-                AI flat lays
+              <Link className="underline underline-offset-2 text-foreground hover:text-accent" href="/dashboard/generate">
+                flat lays
               </Link>{' '}
               and{' '}
               <Link className="underline underline-offset-2 text-foreground hover:text-accent" href="/ai-product-shots">

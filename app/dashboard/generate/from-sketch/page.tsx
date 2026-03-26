@@ -35,10 +35,10 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
   const callbackPath = isProtoRealMode ? PROTOREAL_PATH : FROM_SKETCH_PATH
   const pageTitle = isProtoRealMode ? 'Mockups to ProtoReal' : 'Sketch-to-3D Mockups'
   const pageDescription = isProtoRealMode
-    ? 'Upload an existing mockup and convert it into a cleaner, semi-real CGI protoreal render while preserving design fidelity.'
+    ? 'Upload an existing mockup and convert it into a photoreal top-down product-shot style flatlay while preserving design fidelity.'
     : 'Upload a drawing or mockup. You get one stylized 3D render of the item on a simple studio background — same idea as your upload, ready for listings or decks.'
   const sketchLabel = isProtoRealMode ? 'Mockup image' : 'Sketch or mockup'
-  const fixedRenderStyle: RenderStyleLevel | undefined = isProtoRealMode ? 'semi_real_cgi' : undefined
+  const fixedRenderStyle: RenderStyleLevel | undefined = isProtoRealMode ? 'photoreal_flatlay' : undefined
 
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string>('')

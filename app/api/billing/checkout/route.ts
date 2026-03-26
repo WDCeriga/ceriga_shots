@@ -96,7 +96,7 @@ export async function POST(req: Request) {
     const origin = new URL(req.url).origin
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: user.stripe_customer_id,
-      return_url: `${origin}/dashboard/pricing`,
+      return_url: `${origin}/pricing`,
     })
     return NextResponse.json({ url: portalSession.url, mode: 'portal' })
   }
@@ -125,8 +125,8 @@ export async function POST(req: Request) {
         message: 'Cancel anytime from Settings > Manage billing.',
       },
     },
-    success_url: `${origin}/dashboard/pricing?checkout=success`,
-    cancel_url: `${origin}/dashboard/pricing?checkout=cancelled`,
+    success_url: `${origin}/pricing?checkout=success`,
+    cancel_url: `${origin}/pricing?checkout=cancelled`,
     metadata: {
       userId: user.id,
       targetRole: plan,

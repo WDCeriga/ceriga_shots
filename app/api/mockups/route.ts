@@ -925,6 +925,30 @@ const DESIGN_BASE_BY_STYLE: Record<RenderStyleLevel, string> = {
     '- Stylized toon-tech 3D only; hard ban on 2D cartoon/illustration output.',
     '- No added text/overlays/watermarks beyond what exists as print on the product.',
   ].join('\n'),
+  photoreal_flatlay: [
+    'PRIMARY TASK (read first — single unambiguous job):',
+    '- Input: a 2D design reference (sketch, line art, flat mockup, screenshot, or simple graphic).',
+    '- Output: exactly ONE square photoreal product photograph of the garment (or apparel item), preserving design fidelity.',
+    '- This is NOT: stylized CGI, toon render, or concept art.',
+    '',
+    'MODE: PHOTOREAL FLATLAY PRODUCT SHOT',
+    '- Render as a realistic e-commerce top-down flatlay product photograph.',
+    '- Keep real fabric grounding/weight/contact behavior and natural fold response.',
+    '',
+    'INPUT HANDLING:',
+    '- Focus on apparel/design artwork only. Ignore UI chrome, rulers, grid, watermarks, bezels, and photo-of-paper edges.',
+    '- If multiple views appear, prioritize the clearest main view.',
+    '',
+    'DESIGN FIDELITY (non-negotiable):',
+    '- Preserve graphics, logos, typography shapes, color relationships, and relative placement exactly.',
+    '- Do NOT invent branding or extra text.',
+    '- Typography fallback policy: if text is too small/ambiguous, preserve shape mass and spacing; do NOT hallucinate letters.',
+    '- Silhouette confidence rule: if garment type is uncertain, keep the closest inferred category but do NOT add category-defining features not present in the reference.',
+    '',
+    'STYLE:',
+    '- Photoreal product-shot look (not CGI/toon).',
+    '- No added text/overlays/watermarks beyond what exists as print on the product.',
+  ].join('\n'),
 }
 
 const DESIGN_REALIZE_WHITE_STUDIO_BLOCK = [
@@ -934,6 +958,16 @@ const DESIGN_REALIZE_WHITE_STUDIO_BLOCK = [
   '- Environment: minimal neutral render backdrop (white to very light grey gradient, ~#F3F3F3 to #FFFFFF), no room/lifestyle context, no props.',
   '- Lighting: controlled CGI studio rig (soft key + fill + subtle rim) with smooth shadows; clean rendered separation from background.',
   '- If the job is a tight crop / detail refinement, keep the same neutral render backdrop.',
+].join('\n')
+
+const DESIGN_REALIZE_PHOTOREAL_FLATLAY_BLOCK = [
+  'FRAMING & SET (fixed — photoreal flatlay mode):',
+  '- One output image only: square, top-down flatlay product photograph.',
+  '- Camera: approximately 90 degrees overhead; natural perspective (no wide-angle distortion).',
+  '- Subject framing: full garment visible with comfortable margins; centered in 1:1 frame.',
+  '- Garment grounding: fabric lies on the surface with believable weight/contact; no floating sections.',
+  '- Environment: clean studio flatlay surface; minimal and unobtrusive; no props/rooms/lifestyle context.',
+  '- Lighting: soft e-commerce studio lighting with realistic short grounded shadows; no harsh streaks.',
 ].join('\n')
 
 const NEGATIVE_DESIGN_WHITE_BG = [
@@ -946,8 +980,8 @@ const NEGATIVE_DESIGN_WHITE_BG = [
 const NEGATIVE_GLOBAL_DESIGN = [
   'NEGATIVE (do NOT do any of the following):',
   '- Output must show ONLY the realized product; no UI, unrelated props, or clutter.',
-  '- Do NOT output a lifelike real-camera mockup/photo look.',
-  '- No illustration/comic/vector/painterly sketch style; keep it as a clean 3D rendered garment visualization.',
+  '- Follow the selected style family strictly (CGI modes stay CGI; photoreal mode stays photoreal).',
+  '- No illustration/comic/vector/painterly sketch style.',
   '- Do NOT replace the artwork with a different design, different logo, or different color story.',
   '- Do NOT add watermarks, borders, letterboxing, device frames, or “before/after” layouts.',
 ].join('\n')
@@ -975,6 +1009,11 @@ const DESIGN_RENDER_STYLE_NEGATIVES: Partial<Record<RenderStyleLevel, string>> =
     '- Strong anti-photography rule: no depth-sensor blur, no chromatic aberration, no film grain, no JPEG noise.',
     '- No 2D cartoon illustration; keep 3D depth and correct volume.',
   ].join('\n'),
+  photoreal_flatlay: [
+    'ANTI-FAIL (photoreal flatlay):',
+    '- No CGI/plastic render shading, toon edge ramps, or synthetic gradient-only material response.',
+    '- No stylized render look; keep physically realistic product-shot lighting and fabric shading.',
+  ].join('\n'),
 }
 
 function normalizePipeline(input: unknown): GenerationPipeline {
@@ -985,6 +1024,7 @@ function normalizeRenderStyleLevel(input: unknown): RenderStyleLevel {
   if (input === 'clean_cgi') return 'clean_cgi'
   if (input === 'semi_real_cgi') return 'semi_real_cgi'
   if (input === 'toon_tech') return 'toon_tech'
+  if (input === 'photoreal_flatlay') return 'photoreal_flatlay'
   return 'clean_cgi'
 }
 
@@ -1045,6 +1085,10 @@ function buildPrompt(args: {
     const renderStyle = args.renderStyleLevel ?? 'clean_cgi'
     const baseCore = DESIGN_BASE_BY_STYLE[renderStyle]
     const styleNegative = DESIGN_RENDER_STYLE_NEGATIVES[renderStyle]
+    const framingBlock =
+      renderStyle === 'photoreal_flatlay'
+        ? DESIGN_REALIZE_PHOTOREAL_FLATLAY_BLOCK
+        : DESIGN_REALIZE_WHITE_STUDIO_BLOCK
 
     const base = garmentTypeAnchor ? `${baseCore}\n\n${garmentTypeAnchor}` : baseCore
     const negative = [NEGATIVE_GLOBAL_DESIGN, NEGATIVE_DESIGN_WHITE_BG, styleNegative].filter(
@@ -1055,7 +1099,7 @@ function buildPrompt(args: {
       : ''
     // Constraint order (design_realize):
     // 1) identity non-negotiables, 2) shot framing + surface/light, 3) negatives, 4) final reminder.
-    return [base, DESIGN_REALIZE_WHITE_STUDIO_BLOCK, userEditBlock || undefined, negative, FIDELITY_REMINDER_DESIGN]
+    return [base, framingBlock, userEditBlock || undefined, negative, FIDELITY_REMINDER_DESIGN]
       .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
       .join('\n---\n')
   }

@@ -9,11 +9,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(),
     },
     {
-      url: `${baseUrl}/ai-flat-lay-generator`,
+      url: `${baseUrl}/ai-product-shots`,
       lastModified: new Date(),
     },
     {
-      url: `${baseUrl}/ai-product-shots`,
+      url: `${baseUrl}/features`,
       lastModified: new Date(),
     },
     {

@@ -16,7 +16,7 @@ type StripePricingResponse = {
 
 export function PricingSection() {
   const { status } = useSession()
-  const pricingCtaHref = status === "authenticated" ? "/dashboard/pricing" : "/signup"
+  const pricingCtaHref = status === "authenticated" ? "/pricing" : "/signup"
   const [stripePrices, setStripePrices] = useState<StripePricingResponse["prices"] | null>(null)
 
   useEffect(() => {
@@ -125,7 +125,7 @@ export function PricingSection() {
 
         <div className="text-center">
           <Link
-            href="/dashboard/pricing"
+            href="/pricing"
             className="text-xs text-muted-foreground hover:text-foreground tracking-widest uppercase transition-colors duration-300 border-b border-border hover:border-foreground pb-1"
           >
             Compare all features →

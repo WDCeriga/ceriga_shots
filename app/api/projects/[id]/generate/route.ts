@@ -89,6 +89,7 @@ function parseRenderStyleLevelFromBody(input: unknown): RenderStyleLevel | undef
   if (input === 'clean_cgi') return 'clean_cgi'
   if (input === 'semi_real_cgi') return 'semi_real_cgi'
   if (input === 'toon_tech') return 'toon_tech'
+  if (input === 'photoreal_flatlay') return 'photoreal_flatlay'
   return undefined
 }
 

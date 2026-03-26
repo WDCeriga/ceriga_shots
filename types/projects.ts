@@ -1,6 +1,6 @@
 export type GenerationPipeline = 'garment_photo' | 'design_realize' | 'background_remove'
 
-export type RenderStyleLevel = 'clean_cgi' | 'semi_real_cgi' | 'toon_tech'
+export type RenderStyleLevel = 'clean_cgi' | 'semi_real_cgi' | 'toon_tech' | 'photoreal_flatlay'
 
 export interface GeneratedImage {
   id: string
@@ -53,8 +53,8 @@ export interface GenerationState {
   garmentType?: string
   pipeline?: GenerationPipeline
   /**
-   * Sketch-to-3D only.
-   * Controls how stylized vs realistic the render looks while still avoiding photoreal mockups.
+   * Sketch/design realization only.
+   * Controls output style family (CGI modes vs photoreal flatlay mode).
    */
   renderStyleLevel?: RenderStyleLevel
   errorMessage?: string

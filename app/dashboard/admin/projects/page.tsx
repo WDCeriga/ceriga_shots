@@ -79,7 +79,7 @@ export default function AdminProjectsPage() {
       case 'background_remove':
         return 'Background remover'
       case 'design_realize':
-        return renderStyleLevel === 'semi_real_cgi' ? 'Mockups to ProtoReal' : 'Sketch-to-3D Mockups'
+        return renderStyleLevel === 'photoreal_flatlay' ? 'Mockups to ProtoReal' : 'Sketch-to-3D Mockups'
       case 'garment_photo':
         return 'Product Shots'
       default:

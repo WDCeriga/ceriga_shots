@@ -1,10 +1,5 @@
-import type { Metadata } from 'next'
-import { DashboardPricingClient } from '@/components/dashboard-pricing-client'
+import { redirect } from 'next/navigation'
 
-export const metadata: Metadata = {
-  title: 'Pricing',
-}
-
-export default function PricingPage() {
-  return <DashboardPricingClient />
+export default function DashboardPricingRedirect() {
+  redirect('/pricing')
 }

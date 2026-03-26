@@ -1,55 +1,63 @@
+import { Download, SlidersHorizontal, Upload } from 'lucide-react'
+
 const steps = [
   {
-    number: "01",
-    title: "Upload your design",
+    number: '01',
+    title: 'Upload your product',
     description:
-      "Drop your clothing design — front, back, or full graphic. PNG or JPG. We accept raw files straight from your design tool.",
+      'Take a raw photo or upload a design file. Any background works. Ceriga automatically prepares your asset for clean generation.',
+    Icon: Upload,
+    tone: 'from-[#090b10] via-[#0f121a] to-[#07090d]',
   },
   {
-    number: "02",
-    title: "AI generates variations",
+    number: '02',
+    title: 'Choose cinematic style',
     description:
-      "Our model analyzes your design and produces flat lays, multiple angles, lifestyle compositions, and short video clips in under 60 seconds.",
+      'Select from preset looks or describe your scene. Control lighting, mood, and framing to match your brand direction.',
+    Icon: SlidersHorizontal,
+    tone: 'from-[#1d212c] via-[#151922] to-[#0c0f16]',
   },
   {
-    number: "03",
-    title: "Download your content pack",
+    number: '03',
+    title: 'Generate & export',
     description:
-      "Get your full library in one ZIP — high-resolution images, platform-ready videos, and format-specific exports.",
+      'Get polished studio-quality outputs in under 60 seconds. Export in high resolution for ads, PDPs, and social.',
+    Icon: Download,
+    tone: 'from-[#07090d] via-[#0e1017] to-[#05070a]',
   },
 ]
 
 export function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-32 border-t border-border">
+    <section id="how-it-works" className="border-t border-border py-28">
       <div className="max-w-7xl mx-auto px-6 lg:px-12">
-        <div className="flex flex-col lg:flex-row lg:items-start gap-16">
-          {/* Label */}
-          <div className="lg:w-72 flex-shrink-0">
-            <span className="flex items-center gap-3 mb-4">
-              <span className="w-6 h-px bg-accent" />
-              <span className="text-accent text-xs tracking-[0.3em] uppercase font-medium">Process</span>
-            </span>
-            <h2 className="text-4xl lg:text-5xl font-black tracking-tight text-foreground text-balance">
-              How it works
-            </h2>
-          </div>
+        <div className="mb-14 text-center">
+          <p className="text-accent text-xs font-medium uppercase tracking-[0.35em]">Process</p>
+          <h2 className="mt-3 text-4xl font-black tracking-tight text-foreground sm:text-5xl">How it Works</h2>
+        </div>
 
-          {/* Steps */}
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12">
-            {steps.map((step, i) => (
-              <div key={step.number} className="group">
-                <div className="flex items-center gap-4 mb-6">
-                  <span className="text-5xl font-black text-accent/30 leading-none">{step.number}</span>
-                  {i < steps.length - 1 && (
-                    <span className="hidden md:block flex-1 h-px bg-border" />
-                  )}
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+          {steps.map((step) => (
+            <article key={step.number}>
+              <div
+                className={`group relative mb-6 h-[360px] overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-b ${step.tone}`}
+              >
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(255,255,255,0.1),transparent_55%)]" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
+
+                <div className="absolute inset-x-10 top-[30%] flex h-28 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] shadow-[0_18px_50px_rgba(0,0,0,0.45)] backdrop-blur-sm transition-transform duration-500 group-hover:scale-[1.03]">
+                  <step.Icon className="h-10 w-10 text-white/45" strokeWidth={1.5} />
                 </div>
-                <h3 className="text-foreground font-semibold text-lg mb-3 tracking-tight">{step.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{step.description}</p>
+
+                <span className="absolute bottom-3 left-4 text-6xl font-black leading-none text-white/[0.12]">
+                  {step.number}
+                </span>
               </div>
-            ))}
-          </div>
+
+              <h3 className="text-2xl font-semibold tracking-tight text-foreground">{step.title}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{step.description}</p>
+            </article>
+          ))}
         </div>
       </div>
     </section>

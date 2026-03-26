@@ -311,7 +311,7 @@ export default function DashboardHome() {
           <div className="rounded-xl border border-border/70 bg-[#151821] p-4 sm:p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Usage</h2>
-              <Link href="/dashboard/pricing" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <Link href="/pricing" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
                 Manage
               </Link>
             </div>

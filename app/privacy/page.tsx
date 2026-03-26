@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <main className="min-h-screen bg-background text-foreground">
+    <main className="min-h-screen flex flex-col bg-background text-foreground">
       <Navbar />
       <section className="py-24 border-t border-border">
         <div className="max-w-3xl mx-auto px-6 lg:px-12 space-y-6">
