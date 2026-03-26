@@ -18,6 +18,33 @@ function nextMonthStart(): Date {
   return d
 }
 
+/**
+ * Snapshot of monthly credits for a user row — no DB writes.
+ * Matches the display logic in {@link getCreditsForUser} (reset window, remaining).
+ */
+export function computeCreditsInfoForDisplay(
+  role: UserRole,
+  creditsUsed: number,
+  creditsResetAtIso: string | null,
+  now: Date = new Date()
+): CreditsInfo {
+  const limits = getRoleLimits(role)
+  const limit = limits.credits
+
+  let used = Number(creditsUsed ?? 0)
+  let resetAt: Date | null = creditsResetAtIso ? new Date(creditsResetAtIso) : null
+
+  if (resetAt && resetAt <= now) {
+    used = 0
+    resetAt = nextMonthStart()
+  } else if (!resetAt) {
+    resetAt = nextMonthStart()
+  }
+
+  const remaining = limit < 0 ? Number.MAX_SAFE_INTEGER : Math.max(0, limit - used)
+  return { used, limit, remaining, resetAt }
+}
+
 function limitForRole(role: UserRole): number {
   const limits = getRoleLimits(role)
   return limits.credits < 0 ? 2147483647 : limits.credits

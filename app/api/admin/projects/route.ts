@@ -46,13 +46,18 @@ export async function GET() {
 
   return NextResponse.json({
     projects: rows.map((r) => {
-      const generation = (r.generation ?? null) as { preset?: string } | null
+      const generation = (r.generation ?? null) as { preset?: string; pipeline?: string; renderStyleLevel?: string } | null
+      const inferredPipeline =
+        generation?.pipeline ??
+        (generation?.renderStyleLevel ? 'design_realize' : 'garment_photo')
       return {
         id: r.id,
         ownerEmail: r.owner_email ?? 'Unknown',
         name: r.name,
         generatedCount: Number(r.generated_count ?? 0),
         visualDirection: generation?.preset ?? '—',
+        pipeline: inferredPipeline,
+        renderStyleLevel: generation?.renderStyleLevel ?? undefined,
         createdAt: r.created_at,
         updatedAt: r.updated_at,
       }

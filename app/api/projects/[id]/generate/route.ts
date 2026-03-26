@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { isDatabaseConfigured } from '@/lib/db'
 import { getProjectGenerationContextForUser, updateProjectForUser } from '@/lib/projects'
 import { mergeGeneration } from '@/lib/merge-generation'
-import type { GenerationPipeline } from '@/types/projects'
+import type { GenerationPipeline, RenderStyleLevel } from '@/types/projects'
 import { enqueueGenerationJobs, type Preset, type ShotType } from '@/lib/generation-queue'
 import {
   checkCreditsForBatch,
@@ -85,6 +85,13 @@ function parsePipelineFromBody(input: unknown): GenerationPipeline | undefined {
   return undefined
 }
 
+function parseRenderStyleLevelFromBody(input: unknown): RenderStyleLevel | undefined {
+  if (input === 'clean_cgi') return 'clean_cgi'
+  if (input === 'semi_real_cgi') return 'semi_real_cgi'
+  if (input === 'toon_tech') return 'toon_tech'
+  return undefined
+}
+
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
@@ -115,6 +122,9 @@ export async function POST(req: NextRequest) {
   const garmentType = normalizeGarmentType((body as { garmentType?: unknown }).garmentType)
   const editInstructions = normalizeEditInstructions((body as { editInstructions?: unknown }).editInstructions)
   const pipelineFromBody = parsePipelineFromBody((body as { pipeline?: unknown }).pipeline)
+  const renderStyleLevelFromBody = parseRenderStyleLevelFromBody(
+    (body as { renderStyleLevel?: unknown }).renderStyleLevel
+  )
 
   if (!Array.isArray(rawShotTypes) || rawShotTypes.length === 0) {
     return NextResponse.json({ error: 'shotTypes must be a non-empty array' }, { status: 400 })
@@ -228,6 +238,7 @@ export async function POST(req: NextRequest) {
       generation: mergeGeneration(currentGen, {
         ...currentGen,
         ...(pipelineFromBody !== undefined ? { pipeline: pipelineFromBody } : {}),
+        ...(renderStyleLevelFromBody !== undefined ? { renderStyleLevel: renderStyleLevelFromBody } : {}),
         ...(garmentType !== undefined ? { garmentType } : {}),
       }),
     })

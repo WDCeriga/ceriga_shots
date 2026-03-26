@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils'
 import { useRole } from '@/hooks/use-role'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import type { RenderStyleLevel } from '@/types/projects'
 import {
   Select,
   SelectContent,
@@ -37,6 +38,7 @@ export default function FromSketchGeneratePage() {
   const [customProductType, setCustomProductType] = useState('')
   const [designRealizeRefinements, setDesignRealizeRefinements] = useState('')
   const [materialHint, setMaterialHint] = useState('')
+  const [renderStyleLevel, setRenderStyleLevel] = useState<RenderStyleLevel>('clean_cgi')
   const { addProject, deleteProject, updateProject } = useProjects()
   const router = useRouter()
   const { status } = useSession()
@@ -218,6 +220,7 @@ export default function FromSketchGeneratePage() {
           completed: 0,
           preset: DESIGN_JOB_PRESET,
           pipeline: 'design_realize',
+          renderStyleLevel,
         },
       })
       createdProjectId = project.id
@@ -230,6 +233,7 @@ export default function FromSketchGeneratePage() {
           shotTypes: [DESIGN_JOB_SHOT],
           preset: DESIGN_JOB_PRESET,
           pipeline: 'design_realize',
+          renderStyleLevel,
           ...(editInstructions ? { editInstructions } : {}),
           ...(resolvedGarmentType ? { garmentType: resolvedGarmentType } : {}),
         }),
@@ -260,6 +264,7 @@ export default function FromSketchGeneratePage() {
           shotTypes: [DESIGN_JOB_SHOT],
           preset: DESIGN_JOB_PRESET,
           pipeline: 'design_realize',
+          renderStyleLevel,
         },
       }).catch(() => {})
 
@@ -292,7 +297,7 @@ export default function FromSketchGeneratePage() {
             Sketch-to-3D Mockups
           </h1>
           <p className="mt-4 max-w-2xl text-sm sm:text-base text-muted-foreground leading-relaxed">
-            Upload a drawing or mockup. You get one photoreal image of the item on a simple white studio background — same
+            Upload a drawing or mockup. You get one stylized 3D render of the item on a simple studio background — same
             idea as your upload, ready for listings or decks.
           </p>
 
@@ -403,7 +408,7 @@ export default function FromSketchGeneratePage() {
                 )}
                 variant="outline"
               >
-                {isLoading ? 'Generating…' : 'Generate realistic image'}
+                  {isLoading ? 'Generating…' : 'Generate 3D render'}
               </Button>
               {!designFlowAllowed ? (
                 <p className="mt-3 text-xs text-muted-foreground">
@@ -464,6 +469,22 @@ export default function FromSketchGeneratePage() {
               </div>
 
               <div className="mt-6">
+                <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Render style</div>
+                <div className="mt-3">
+                  <Select value={renderStyleLevel} onValueChange={(v) => setRenderStyleLevel(v as RenderStyleLevel)}>
+                    <SelectTrigger className="w-full cursor-pointer">
+                      <SelectValue placeholder="Clean CGI" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="clean_cgi">Clean CGI (least life-like)</SelectItem>
+                      <SelectItem value="semi_real_cgi">Semi-real CGI</SelectItem>
+                      <SelectItem value="toon_tech">Toon-tech 3D</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="mt-6">
                 <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Refinement instructions (optional)</div>
                 <Textarea
                   value={designRealizeRefinements}
@@ -497,7 +518,7 @@ export default function FromSketchGeneratePage() {
                   )}
                   variant="outline"
                 >
-                  {isLoading ? 'Generating…' : 'Generate realistic image'}
+                  {isLoading ? 'Generating…' : 'Generate 3D render'}
                 </Button>
                 {!designFlowAllowed ? (
                   <p className="mt-3 text-xs text-muted-foreground">

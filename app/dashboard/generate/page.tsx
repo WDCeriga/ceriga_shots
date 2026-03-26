@@ -478,6 +478,7 @@ export default function GeneratePage() {
           total: 0,
           completed: 0,
           preset: visualDirection,
+          pipeline: 'garment_photo',
         },
       })
       createdProjectId = project.id
@@ -489,6 +490,7 @@ export default function GeneratePage() {
           mode: 'initial',
           shotTypes: allowedShotTypes,
           preset: visualDirection,
+          pipeline: 'garment_photo',
           ...(resolvedGarmentType ? { garmentType: resolvedGarmentType } : {}),
         }),
       })
@@ -515,6 +517,7 @@ export default function GeneratePage() {
           nextType: allowedShotTypes[0],
           shotTypes: allowedShotTypes,
           preset: visualDirection,
+          pipeline: 'garment_photo',
         },
       }).catch(() => {})
 

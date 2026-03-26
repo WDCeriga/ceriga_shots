@@ -128,9 +128,19 @@ export function ShareDialog({ projectId, open, onOpenChange }: ShareDialogProps)
         typeof navigator.clipboard.writeText === 'function'
       if (canClipboard) {
         await navigator.clipboard.writeText(data.shareUrl)
-        toast({ title: 'Share link copied', description: data.shareUrl })
+        toast({
+          title: 'Share link copied',
+          description: 'The link was copied to your clipboard.',
+        })
       } else {
-        toast({ title: 'Share link created', description: data.shareUrl })
+        toast({
+          title: 'Share link created',
+          description: (
+            <span className="block max-w-full break-all [overflow-wrap:anywhere] font-mono text-xs">
+              {data.shareUrl}
+            </span>
+          ),
+        })
       }
     } catch (e) {
       toast({
@@ -214,7 +224,14 @@ export function ShareDialog({ projectId, open, onOpenChange }: ShareDialogProps)
       await navigator.clipboard.writeText(url)
       toast({ title: 'Link copied' })
     } else {
-      toast({ title: 'Share link', description: url })
+      toast({
+        title: 'Share link',
+        description: (
+          <span className="block max-w-full break-all [overflow-wrap:anywhere] font-mono text-xs">
+            {url}
+          </span>
+        ),
+      })
     }
   }
 
@@ -239,7 +256,7 @@ export function ShareDialog({ projectId, open, onOpenChange }: ShareDialogProps)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-w-[calc(100vw-2rem)] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Share links</DialogTitle>
           <DialogDescription>
@@ -294,9 +311,9 @@ export function ShareDialog({ projectId, open, onOpenChange }: ShareDialogProps)
                     key={s.token}
                     className="flex flex-col gap-2 rounded-lg border border-border p-3 text-sm"
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <code className="text-xs truncate block text-muted-foreground">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+                      <div className="min-w-0 w-full flex-1 overflow-hidden">
+                        <code className="text-xs block w-full max-w-full break-all [overflow-wrap:anywhere] font-mono leading-snug text-muted-foreground">
                           {s.shareUrl}
                         </code>
                         <p className="text-xs text-muted-foreground mt-1">
@@ -309,7 +326,7 @@ export function ShareDialog({ projectId, open, onOpenChange }: ShareDialogProps)
                           )}
                         </p>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-1 shrink-0 self-end sm:self-start">
                         {!s.revoked && !s.expired && (
                           <>
                             <Button

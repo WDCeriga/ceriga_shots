@@ -1,5 +1,7 @@
 export type GenerationPipeline = 'garment_photo' | 'design_realize' | 'background_remove'
 
+export type RenderStyleLevel = 'clean_cgi' | 'semi_real_cgi' | 'toon_tech'
+
 export interface GeneratedImage {
   id: string
   type:
@@ -28,6 +30,7 @@ export interface GeneratedImage {
     variationSeed: number
     garmentType?: string
     pipeline?: GenerationPipeline
+    renderStyleLevel?: RenderStyleLevel
   }
   /**
    * Optional edit attribution + request metadata.
@@ -49,6 +52,11 @@ export interface GenerationState {
   preset?: 'raw' | 'editorial' | 'luxury' | 'natural' | 'studio' | 'surprise'
   garmentType?: string
   pipeline?: GenerationPipeline
+  /**
+   * Sketch-to-3D only.
+   * Controls how stylized vs realistic the render looks while still avoiding photoreal mockups.
+   */
+  renderStyleLevel?: RenderStyleLevel
   errorMessage?: string
 }
 

@@ -12,6 +12,8 @@ type AdminProject = {
   name: string
   generatedCount: number
   visualDirection: string
+  pipeline: string
+  renderStyleLevel?: string
   createdAt: string
   updatedAt: string
 }
@@ -72,6 +74,19 @@ export default function AdminProjectsPage() {
     setSortDirection(key === 'createdAt' ? 'desc' : 'asc')
   }
 
+  function formatPipelineLabel(pipeline: string, renderStyleLevel?: string): string {
+    switch (pipeline) {
+      case 'background_remove':
+        return 'Background remover'
+      case 'design_realize':
+        return renderStyleLevel === 'semi_real_cgi' ? 'Mockups to ProtoReal' : 'Sketch-to-3D Mockups'
+      case 'garment_photo':
+        return 'Product Shots'
+      default:
+        return pipeline || '—'
+    }
+  }
+
   return (
     <div className="p-6 lg:p-8 space-y-4">
       <div className="rounded-xl border border-border/60 bg-[#12141a] p-4 sm:p-5">
@@ -87,6 +102,7 @@ export default function AdminProjectsPage() {
             <TableHead>Owner Email</TableHead>
             <TableHead className="w-[260px]">Name</TableHead>
             <TableHead>Visual Direction</TableHead>
+            <TableHead>Pipeline</TableHead>
             <TableHead>
               <button
                 type="button"
@@ -128,6 +144,14 @@ export default function AdminProjectsPage() {
                   {p.visualDirection}
                 </Link>
               </TableCell>
+              <TableCell className="text-xs">
+                <Link
+                  href={`/dashboard/admin/projects/${p.id}`}
+                  className="hover:underline capitalize"
+                >
+                  {formatPipelineLabel(p.pipeline, p.renderStyleLevel)}
+                </Link>
+              </TableCell>
               <TableCell>
                 <Link href={`/dashboard/admin/projects/${p.id}`} className="hover:underline">
                   {p.generatedCount}
@@ -147,7 +171,7 @@ export default function AdminProjectsPage() {
           ))}
           {pagedProjects.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={6} className="text-center text-muted-foreground">No projects found.</TableCell>
+              <TableCell colSpan={7} className="text-center text-muted-foreground">No projects found.</TableCell>
             </TableRow>
           ) : null}
         </TableBody>

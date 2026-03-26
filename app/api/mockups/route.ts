@@ -4,6 +4,7 @@ import { getServerSession } from 'next-auth'
 import { getInternalQueueSecret } from '@/lib/internal-queue-secret'
 import { authOptions } from '@/lib/auth'
 import { isR2Configured, putObjectToR2 } from '@/lib/r2'
+import type { RenderStyleLevel } from '@/types/projects'
 
 type ShotType =
   | 'flatlay_topdown'
@@ -846,15 +847,15 @@ function isDevDataUrlStorageAllowed(): boolean {
 const BASE_DESIGN_REALIZE = [
   'PRIMARY TASK (read first — single unambiguous job):',
   '- Input: a 2D design reference (sketch, line art, flat mockup, screenshot, or simple graphic).',
-  '- Output: exactly ONE square photoreal photograph of the finished physical garment (or apparel item) on a white seamless studio background.',
-  '- This is NOT: a 3D model or mesh export, NOT a multi-angle pack shot, NOT a technical flat or line sheet unless the reference clearly shows that layout, NOT a filter on the same photo — you are inventing how the product would look as a real item in a studio photo.',
-  '- “Photoreal” means believable fabric, seams, drape, and lighting as if a photographer shot the real product — still a single 2D image.',
+  '- Output: exactly ONE square stylized 3D render of the garment (or apparel item), preserving the design faithfully.',
+  '- This is NOT: a photoreal lifestyle mockup, NOT a real-camera product photo, NOT a mesh export, NOT a multi-angle sheet.',
+  '- “3D render” means clean CGI presentation with clear modeled form, controlled digital lighting, and intentionally rendered materials.',
   '',
   'The input may be a hand sketch, line art, digital flat mockup, screen capture of a design, or a simple graphic — it is NOT necessarily a photo of a finished physical product.',
   '',
   'YOUR JOB:',
-  '- Interpret the reference as design intent for one real manufactured garment.',
-  '- Show that garment with believable materials, seams, thickness, weight, and natural drape appropriate to the implied product, as captured in one catalog-style photograph.',
+  '- Interpret the reference as design intent for one rendered 3D garment.',
+  '- Show that garment with clear modeled structure (seams, thickness, folds) and clean CGI material response — not a real-world catalog photo look.',
   '- Preserve the general viewing relationship implied by the reference (e.g. front view, three-quarter, or flat lay) — see framing rules below; do not force a different pose unless the reference is ambiguous (then prefer a clear full-product view on white).',
   '',
   'INPUT HANDLING:',
@@ -868,48 +869,95 @@ const BASE_DESIGN_REALIZE = [
   '- If lettering in the reference is rough, partial, or ambiguous, keep that character (do NOT substitute “clean” readable type that changes the design).',
   '- Do NOT drift to a different garment category than implied (e.g. do not turn a hoodie concept into unrelated outerwear).',
   '',
-  'REALISM (allowed and expected):',
-  '- Infer plausible construction: collar/rib/cuff structure, stitching, fabric texture, and fold behaviour consistent with the design and any garment-type hint.',
-  '- Add only physically reasonable detail; avoid sci-fi materials, impossible seams, or surreal distortion.',
+  'RENDERING (allowed and expected):',
+  '- Infer plausible construction: collar/rib/cuff structure, stitching, fabric texture, and fold behavior consistent with the design and garment type.',
+  '- Keep materials physically plausible, but rendered/CG in presentation (clean, controlled, design-visualization style).',
   '',
   'STYLE:',
-  '- Photoreal product photo — not an illustration, not a flat CAD trace of the sketch.',
+  '- Stylized 3D render output — not photoreal product photography.',
+  '- Not a flat CAD trace; show dimensional 3D form.',
   '- No added text, overlays, or watermarks beyond what exists as print on the product.',
 ].join('\n')
 
 const DESIGN_REALIZE_WHITE_STUDIO_BLOCK = [
-  'FRAMING & SET (fixed — this pipeline):',
-  '- One output image only: square, white seamless studio. Match the general viewing angle and pose implied by the reference (front, three-quarter, flat lay, etc.) — do not force flat lay if the reference is clearly a front or worn view, and do not force a worn model if the reference is clearly a flat presentation.',
+  'FRAMING & SET (fixed — render pipeline):',
+  '- One output image only: square, clean 3D render stage. Match the general viewing angle and pose implied by the reference (front, three-quarter, flat lay, etc.).',
   '- Center the subject; show the full item with comfortable margin; aspect ratio 1:1 square.',
-  '- Environment: pure white seamless studio only — clean white cyclorama or infinite white, evenly lit. No grey drift, no visible floor horizon, no texture on the backdrop.',
-  '- Lighting: soft, even e-commerce studio lighting (large soft key + gentle fill). One subtle natural contact shadow under the subject; no harsh streaks or coloured gels.',
-  '- If the job is a tight crop / detail refinement, keep the same white seamless behind the subject; no lifestyle surfaces.',
+  '- Environment: minimal neutral render backdrop (white to very light grey gradient, ~#F3F3F3 to #FFFFFF), no room/lifestyle context, no props.',
+  '- Lighting: controlled CGI studio rig (soft key + fill + subtle rim) with smooth shadows; clean rendered separation from background.',
+  '- If the job is a tight crop / detail refinement, keep the same neutral render backdrop.',
 ].join('\n')
 
 const NEGATIVE_DESIGN_WHITE_BG = [
   'BACKGROUND & PROPS (strict):',
-  '- No wood, concrete, marble, fabric surfaces under the product, lifestyle rooms, coloured fills, or gradient backdrops.',
+  '- No wood, concrete, marble, fabric surfaces under the product, lifestyle rooms, or props.',
   '- No hands, pencils, sketch paper, clipboards, tape, rulers, or device/chrome.',
-  '- No hangers, hooks, or mannequins unless the reference clearly shows the item on one and reproducing it is required for fidelity — prefer floating or laid-flat presentation on white when ambiguous.',
+  '- No hangers, hooks, or mannequins unless the reference clearly shows one and fidelity requires it.',
 ].join('\n')
 
 const NEGATIVE_GLOBAL_DESIGN = [
   'NEGATIVE (do NOT do any of the following):',
   '- Output must show ONLY the realized product; no UI, unrelated props, or clutter.',
-  '- No illustration/comic/vector/painterly/CG “concept art” look — it must read as a real photograph of a physical product.',
+  '- Do NOT output a lifelike real-camera mockup/photo look.',
+  '- No illustration/comic/vector/painterly sketch style; keep it as a clean 3D rendered garment visualization.',
   '- Do NOT replace the artwork with a different design, different logo, or different color story.',
   '- Do NOT add watermarks, borders, letterboxing, device frames, or “before/after” layouts.',
 ].join('\n')
 
 const FIDELITY_REMINDER_DESIGN = [
-  'FINAL REMINDER — SKETCH/ MOCKUP TO STUDIO PHOTO:',
+  'FINAL REMINDER — SKETCH TO 3D RENDER:',
   '- The output must remain the same product concept as the reference; do not substitute a different garment or different graphics.',
   '- Where the sketch is ambiguous (exact knit vs weave, minor seam paths), choose plausible defaults — no unrelated embellishments.',
   '- Preserve the layout and identity of visible graphics; do not “redesign for readability.”',
+  '- Presentation mode is always rendered CGI (not photoreal product photography).',
 ].join('\n')
+
+const DESIGN_RENDER_STYLE_BLOCKS: Record<RenderStyleLevel, string> = {
+  clean_cgi: [
+    'RENDER STYLE: Clean CGI',
+    '- Use a clean, high-control CGI look (product-visualization style).',
+    '- Materials may be slightly simplified but must still preserve print/graphics placement and silhouette fidelity.',
+    '- Keep lighting digitally controlled: smooth gradients, controlled specular, no film grain/sensor noise.',
+    '- Avoid any “lifelike phone camera” feel: no harsh bloom, no chromatic aberration, no lens haze.',
+  ].join('\n'),
+  semi_real_cgi: [
+    'RENDER STYLE: Semi-real CGI',
+    '- Increase physical believability: better fabric shading, realistic thickness response, and more nuanced fold shadowing.',
+    '- Still keep it clearly CGI: studio-rig lighting, controlled specular, and no real-camera artifacts (no film grain / sensor noise / lens haze).',
+    '- Preserve weave/knit micro texture and ink boundaries, but do not turn it into photoreal mockup photography.',
+  ].join('\n'),
+  toon_tech: [
+    'RENDER STYLE: Toon-tech 3D',
+    '- Use stylized 3D shading with mildly exaggerated edge definition and smooth tonal gradients.',
+    '- Keep a true 3D volumetric render (no 2D cartoon illustration look).',
+    '- Preserve print/graphics identity and edges; if small text is ambiguous, keep it soft/partially indistinct rather than inventing new lettering.',
+  ].join('\n'),
+}
+
+const DESIGN_RENDER_STYLE_NEGATIVES: Partial<Record<RenderStyleLevel, string>> = {
+  clean_cgi: [
+    'ANTI-FAIL (clean CGI):',
+    '- No real-camera photo characteristics (film grain, sensor noise, chromatic aberration, strong lens blur).',
+  ].join('\n'),
+  semi_real_cgi: [
+    'ANTI-FAIL (semi-real CGI):',
+    '- No lifelike worn-real photography artifacts (no sweat stains, no accidental fingerprints, no street grime).',
+  ].join('\n'),
+  toon_tech: [
+    'ANTI-FAIL (toon-tech):',
+    '- No 2D cartoon illustration; keep 3D depth and correct volume.',
+  ].join('\n'),
+}
 
 function normalizePipeline(input: unknown): GenerationPipeline {
   return input === 'design_realize' ? 'design_realize' : 'garment_photo'
+}
+
+function normalizeRenderStyleLevel(input: unknown): RenderStyleLevel {
+  if (input === 'clean_cgi') return 'clean_cgi'
+  if (input === 'semi_real_cgi') return 'semi_real_cgi'
+  if (input === 'toon_tech') return 'toon_tech'
+  return 'clean_cgi'
 }
 
 function buildGarmentTypeAnchor(garmentType: GarmentType): string {
@@ -944,7 +992,7 @@ function buildEditInstructionsBlockDesign(editInstructions: string): string {
     'IMPORTANT RULES:',
     '- Do NOT replace the product concept or swap in new artwork, logos, or a different color story.',
     '- Do NOT change overall garment category or silhouette unless the user explicitly requests it.',
-    '- Allowed: lighting/exposure, contrast, crop/composition on white seamless, subtle material clarity, removing obvious output noise — without inventing new print content.',
+    '- Allowed: lighting/exposure, contrast, crop/composition on the neutral render backdrop, subtle material clarity, removing obvious output noise — without inventing new print content.',
     '- If instructions conflict with preserving design identity, ignore the conflicting parts.',
   ].join('\n')
 }
@@ -957,6 +1005,7 @@ function buildPrompt(args: {
   garmentType?: GarmentType
   editInstructions?: string
   pipeline: GenerationPipeline
+  renderStyleLevel?: RenderStyleLevel
 }) {
   const category = categoryForShotType(args.shotType)
   const isDesign = args.pipeline === 'design_realize'
@@ -964,9 +1013,15 @@ function buildPrompt(args: {
   const garmentTypeAnchor = buildGarmentTypeAnchor(args.garmentType ?? '')
 
   if (isDesign) {
+    const renderStyle = args.renderStyleLevel ?? 'clean_cgi'
     const baseCore = BASE_DESIGN_REALIZE
-    const base = garmentTypeAnchor ? `${baseCore}\n\n${garmentTypeAnchor}` : baseCore
-    const negative = [NEGATIVE_GLOBAL_DESIGN, NEGATIVE_DESIGN_WHITE_BG].join('\n')
+    const styleBlock = DESIGN_RENDER_STYLE_BLOCKS[renderStyle]
+    const styleNegative = DESIGN_RENDER_STYLE_NEGATIVES[renderStyle]
+
+    const base = garmentTypeAnchor ? `${baseCore}\n\n${styleBlock}\n\n${garmentTypeAnchor}` : `${baseCore}\n\n${styleBlock}`
+    const negative = [NEGATIVE_GLOBAL_DESIGN, NEGATIVE_DESIGN_WHITE_BG, styleNegative].filter(
+      (x): x is string => typeof x === 'string' && x.trim().length > 0
+    ).join('\n')
     const userEditBlock = args.editInstructions
       ? buildEditInstructionsBlockDesign(args.editInstructions)
       : ''
@@ -1099,6 +1154,7 @@ export async function POST(req: Request) {
 
     const garmentType = normalizeGarmentType((body as { garmentType?: unknown }).garmentType)
     const pipeline = normalizePipeline((body as { pipeline?: unknown }).pipeline)
+    const renderStyleLevel = normalizeRenderStyleLevel((body as { renderStyleLevel?: unknown }).renderStyleLevel)
 
     const editInstructions = normalizeEditInstructions((body as { editInstructions?: unknown }).editInstructions)
     const editedFromIdRaw = (body as { editedFromId?: unknown }).editedFromId
@@ -1125,6 +1181,7 @@ export async function POST(req: Request) {
       variationSeed,
       garmentType,
       pipeline,
+      renderStyleLevel,
     }
 
     const prompt = buildPrompt({
@@ -1135,6 +1192,7 @@ export async function POST(req: Request) {
       garmentType,
       editInstructions,
       pipeline,
+      renderStyleLevel,
     })
 
     console.warn(`[mockups:${requestId}] Missing API key; returning placeholder for shotType=${shotType}`)
@@ -1242,6 +1300,7 @@ export async function POST(req: Request) {
 
   const garmentType = normalizeGarmentType((body as { garmentType?: unknown }).garmentType)
   const pipeline = normalizePipeline((body as { pipeline?: unknown }).pipeline)
+  const renderStyleLevel = normalizeRenderStyleLevel((body as { renderStyleLevel?: unknown }).renderStyleLevel)
 
   const editInstructions = normalizeEditInstructions((body as { editInstructions?: unknown }).editInstructions)
   const editedFromIdRaw = (body as { editedFromId?: unknown }).editedFromId
@@ -1260,6 +1319,7 @@ export async function POST(req: Request) {
     variationSeed,
     garmentType,
     pipeline,
+    renderStyleLevel,
   }
 
   try {
@@ -1272,6 +1332,7 @@ export async function POST(req: Request) {
       garmentType,
       editInstructions,
       pipeline,
+      renderStyleLevel,
     })
 
     let lastErrorMessage = ''

@@ -74,6 +74,7 @@ async function processSingle(baseUrl: string, workerId: string) {
         editorBrandName: job.editor_brand_name ?? null,
         garmentType: project.generation?.garmentType,
         pipeline: project.generation?.pipeline ?? 'garment_photo',
+        renderStyleLevel: project.generation?.renderStyleLevel,
       }),
     })
 
