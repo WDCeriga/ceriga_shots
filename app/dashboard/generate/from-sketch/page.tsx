@@ -26,8 +26,20 @@ const DESIGN_JOB_SHOT = 'flatlay_topdown' as const
 const DESIGN_JOB_PRESET = 'studio' as const
 
 const FROM_SKETCH_PATH = '/dashboard/generate/from-sketch'
+const PROTOREAL_PATH = '/dashboard/generate/protoreal'
 
-export default function FromSketchGeneratePage() {
+export type DesignRealizeMode = 'sketch3d' | 'protoreal'
+
+export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealizeMode }) {
+  const isProtoRealMode = mode === 'protoreal'
+  const callbackPath = isProtoRealMode ? PROTOREAL_PATH : FROM_SKETCH_PATH
+  const pageTitle = isProtoRealMode ? 'Mockups to ProtoReal' : 'Sketch-to-3D Mockups'
+  const pageDescription = isProtoRealMode
+    ? 'Upload an existing mockup and convert it into a cleaner, semi-real CGI protoreal render while preserving design fidelity.'
+    : 'Upload a drawing or mockup. You get one stylized 3D render of the item on a simple studio background — same idea as your upload, ready for listings or decks.'
+  const sketchLabel = isProtoRealMode ? 'Mockup image' : 'Sketch or mockup'
+  const fixedRenderStyle: RenderStyleLevel | undefined = isProtoRealMode ? 'semi_real_cgi' : undefined
+
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string>('')
   const [isDragging, setIsDragging] = useState(false)
@@ -38,7 +50,7 @@ export default function FromSketchGeneratePage() {
   const [customProductType, setCustomProductType] = useState('')
   const [designRealizeRefinements, setDesignRealizeRefinements] = useState('')
   const [materialHint, setMaterialHint] = useState('')
-  const [renderStyleLevel, setRenderStyleLevel] = useState<RenderStyleLevel>('clean_cgi')
+  const [renderStyleLevel, setRenderStyleLevel] = useState<RenderStyleLevel>(fixedRenderStyle ?? 'clean_cgi')
   const { addProject, deleteProject, updateProject } = useProjects()
   const router = useRouter()
   const { status } = useSession()
@@ -120,6 +132,10 @@ export default function FromSketchGeneratePage() {
     }
   }, [isAuthed, limits.credits])
 
+  useEffect(() => {
+    if (fixedRenderStyle) setRenderStyleLevel(fixedRenderStyle)
+  }, [fixedRenderStyle])
+
   const creditsNeeded = 1
   const hasEnoughCredits =
     creditsRemaining == null || creditsRemaining === Number.MAX_SAFE_INTEGER
@@ -178,7 +194,7 @@ export default function FromSketchGeneratePage() {
         description: 'You must log in to generate content.',
         variant: 'destructive',
       })
-      router.push(`/login?callbackUrl=${encodeURIComponent(FROM_SKETCH_PATH)}`)
+      router.push(`/login?callbackUrl=${encodeURIComponent(callbackPath)}`)
       return
     }
 
@@ -280,7 +296,7 @@ export default function FromSketchGeneratePage() {
         variant: 'destructive',
       })
       if (isAuth) {
-        router.push(`/login?callbackUrl=${encodeURIComponent(FROM_SKETCH_PATH)}`)
+        router.push(`/login?callbackUrl=${encodeURIComponent(callbackPath)}`)
       } else if (createdProjectId) {
         deleteProject(createdProjectId)
       }
@@ -294,11 +310,10 @@ export default function FromSketchGeneratePage() {
       <div className="mx-auto max-w-6xl">
         <div className="mb-10 rounded-xl border border-border/60 bg-[#12141a] p-5 sm:p-6">
           <h1 className="text-3xl sm:text-5xl font-semibold tracking-tight leading-tight">
-            Sketch-to-3D Mockups
+            {pageTitle}
           </h1>
           <p className="mt-4 max-w-2xl text-sm sm:text-base text-muted-foreground leading-relaxed">
-            Upload a drawing or mockup. You get one stylized 3D render of the item on a simple studio background — same
-            idea as your upload, ready for listings or decks.
+            {pageDescription}
           </p>
 
           {!isAuthLoading && !isAuthed && (
@@ -314,7 +329,7 @@ export default function FromSketchGeneratePage() {
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-8">
           <section className="space-y-6 rounded-2xl border border-border/60 bg-[#12141a] p-4 sm:p-5">
             <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground ml-4">
-              Sketch or mockup
+              {sketchLabel}
             </div>
 
             <div
@@ -468,21 +483,30 @@ export default function FromSketchGeneratePage() {
                 ) : null}
               </div>
 
-              <div className="mt-6">
-                <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Render style</div>
-                <div className="mt-3">
-                  <Select value={renderStyleLevel} onValueChange={(v) => setRenderStyleLevel(v as RenderStyleLevel)}>
-                    <SelectTrigger className="w-full cursor-pointer">
-                      <SelectValue placeholder="Clean CGI" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="clean_cgi">Clean CGI (least life-like)</SelectItem>
-                      <SelectItem value="semi_real_cgi">Semi-real CGI</SelectItem>
-                      <SelectItem value="toon_tech">Toon-tech 3D</SelectItem>
-                    </SelectContent>
-                  </Select>
+              {isProtoRealMode ? (
+                <div className="mt-6">
+                  <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Render style</div>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Fixed for this flow: <span className="text-foreground">Semi-real CGI (ProtoReal)</span>
+                  </p>
                 </div>
-              </div>
+              ) : (
+                <div className="mt-6">
+                  <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Render style</div>
+                  <div className="mt-3">
+                    <Select value={renderStyleLevel} onValueChange={(v) => setRenderStyleLevel(v as RenderStyleLevel)}>
+                      <SelectTrigger className="w-full cursor-pointer">
+                        <SelectValue placeholder="Clean CGI" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="clean_cgi">Clean CGI (least life-like)</SelectItem>
+                        <SelectItem value="semi_real_cgi">Semi-real CGI</SelectItem>
+                        <SelectItem value="toon_tech">Toon-tech 3D</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
 
               <div className="mt-6">
                 <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Refinement instructions (optional)</div>
@@ -535,4 +559,8 @@ export default function FromSketchGeneratePage() {
       </div>
     </div>
   )
+}
+
+export default function FromSketchGeneratePage() {
+  return <DesignRealizeGeneratePage mode="sketch3d" />
 }

@@ -216,6 +216,7 @@ const BASE_FIDELITY = [
   '- Aspect ratio: 1:1 square; crop centered on the main subject for this shot type',
   '- When the shot type requires full garment visibility, ensure no cropped hems/sleeves/logo edges',
   '- Never crop or cut off printed text/letterforms that are visible in the reference image; keep all visible print boundaries within frame.',
+  '- No clipped highlights on print ink; no crushed shadow detail in dark fabric folds.',
   '- Shadows must be realistic: grounded, not unnaturally long, and not razor-sharp; avoid shadow streaking/silhouette exaggeration.',
   '- Avoid “cutout” shadows: no uniform outline/halo that traces the garment silhouette like a sticker or vector path; contact shadow should be slightly irregular and broken by fabric thickness + micro-wrinkles.',
   '- Must read as a real studio photograph, not a render or illustration',
@@ -279,13 +280,16 @@ const NEGATIVE_BY_PRESET: Record<Preset, string> = {
     '- No direct sun, no studio hotspots, no artificial lighting character; overcast-only behavior.',
     '- No glossy/wet reflections; concrete must remain fully matte.',
     '- No tiled/repeating “texture map” concrete look; keep physically tactile, non-repeating surface detail.',
+    '- No concrete blur overlays, texture smearing, or “smeared texture-map” patches on the surface.',
     '- Avoid heavy vignettes/overdramatic gradients that imply curved or non-flat geometry.',
   ].join('\n'),
   editorial: [
     'NEGATIVE (editorial preset anti-fail):',
     '- No visible charcoal surface grain/mottling/banding; background must read as seamless and uniform to the eye (micro-matte tooth is okay if it does not read as texture).',
+    '- No paper-grain simulation, paper-fiber texture, or faux print-stock texture overlays.',
     '- No gritty HDR / over-sharpened “AI noise” on fabric or surface.',
     '- No blown highlights on fabric/ink; keep tonal range controlled and premium.',
+    '- No vignette framing or dark-edge vignette falloff.',
     '- Avoid harsh shadow cut-offs; shadows should be gentle and grounded.',
   ].join('\n'),
   luxury: [
@@ -294,12 +298,14 @@ const NEGATIVE_BY_PRESET: Record<Preset, string> = {
     '- No repeated/identical vein patterns; veins must be subtle and non-repeating; avoid “texture map” repetition.',
     '- Avoid over-contrast / plastic look; lighting should wrap softly and stay realistic (no gritty HDR).',
     '- No specular clipping on fabric OR marble; preserve highlight detail and smooth roll-off.',
+    '- Cap marble highlight intensity: no hard white glare patches; keep marble highlights controlled and below clipping.',
     '- Avoid harsh hotspot streaks on marble; specular highlights must be soft and controlled.',
   ].join('\n'),
   natural: [
     'NEGATIVE (natural preset anti-fail):',
     '- No warped/repeating wood plank patterns; grain should feel consistent and non-artificial.',
     '- Avoid warm orange/yellow cast; window light must remain believable (no heavy tungsten look).',
+    '- Cap warmth shift: keep white/neutral fabric areas from drifting orange; avoid amber/yellow color cast.',
     '- No heavy vignettes or curved-table gradients.',
     '- Avoid overprocessed smoothing of fabric texture; keep realism (preserve weave/knit micro texture).',
     '- Avoid glossy/varnished wood reflections; keep wood matte-oiled (no wet look).',
@@ -832,6 +838,8 @@ const FIDELITY_REMINDER = [
   'FINAL REMINDER — PRODUCT FIDELITY:',
   '- The garment in the output must be IDENTICAL to the garment in the input image.',
   '- Identity means prints, colors, construction, and hardware — not preserving ghost-mannequin volume or reference pose when the shot type requires a different layout (flat lay, drape, hang).',
+  '- STRICT IDENTITY CHECKSUM: same garment category, same visible graphics, same visible placement of all graphics/logos/text.',
+  '- STRICT IDENTITY CHECKSUM (repeat): preserve same garment category + same visible graphics + same visible placement.',
   '- If any detail is unclear in the reference image, reproduce ambiguity faithfully — do NOT invent or assume.',
   '- Do not "improve" the design. Do not add details that seem logical. Only reproduce what is visible.',
   '- If you are uncertain about a design element, keep it simple and faithful rather than creative.',
@@ -844,40 +852,80 @@ function isDevDataUrlStorageAllowed(): boolean {
   return process.env.NODE_ENV === 'development'
 }
 
-const BASE_DESIGN_REALIZE = [
-  'PRIMARY TASK (read first — single unambiguous job):',
-  '- Input: a 2D design reference (sketch, line art, flat mockup, screenshot, or simple graphic).',
-  '- Output: exactly ONE square stylized 3D render of the garment (or apparel item), preserving the design faithfully.',
-  '- This is NOT: a photoreal lifestyle mockup, NOT a real-camera product photo, NOT a mesh export, NOT a multi-angle sheet.',
-  '- “3D render” means clean CGI presentation with clear modeled form, controlled digital lighting, and intentionally rendered materials.',
-  '',
-  'The input may be a hand sketch, line art, digital flat mockup, screen capture of a design, or a simple graphic — it is NOT necessarily a photo of a finished physical product.',
-  '',
-  'YOUR JOB:',
-  '- Interpret the reference as design intent for one rendered 3D garment.',
-  '- Show that garment with clear modeled structure (seams, thickness, folds) and clean CGI material response — not a real-world catalog photo look.',
-  '- Preserve the general viewing relationship implied by the reference (e.g. front view, three-quarter, or flat lay) — see framing rules below; do not force a different pose unless the reference is ambiguous (then prefer a clear full-product view on white).',
-  '',
-  'INPUT HANDLING:',
-  '- Focus on the apparel/design artwork. Ignore UI chrome, rulers, canvas grid, watermark, device bezels, browser UI, or photo-of-paper edges if present.',
-  '- If multiple views appear, prioritize the clearest main view of the item.',
-  '- Ignore coloured or busy mockup backgrounds from the reference; the output is always on a clean white studio (see framing rules below).',
-  '',
-  'DESIGN FIDELITY (non-negotiable):',
-  '- Preserve graphics, logos, typography shapes, color relationships, and relative placement as shown — translated onto real fabric with natural curvature and perspective.',
-  '- Do NOT invent new branding, slogans, mascots, or extra text not present in the reference artwork.',
-  '- If lettering in the reference is rough, partial, or ambiguous, keep that character (do NOT substitute “clean” readable type that changes the design).',
-  '- Do NOT drift to a different garment category than implied (e.g. do not turn a hoodie concept into unrelated outerwear).',
-  '',
-  'RENDERING (allowed and expected):',
-  '- Infer plausible construction: collar/rib/cuff structure, stitching, fabric texture, and fold behavior consistent with the design and garment type.',
-  '- Keep materials physically plausible, but rendered/CG in presentation (clean, controlled, design-visualization style).',
-  '',
-  'STYLE:',
-  '- Stylized 3D render output — not photoreal product photography.',
-  '- Not a flat CAD trace; show dimensional 3D form.',
-  '- No added text, overlays, or watermarks beyond what exists as print on the product.',
-].join('\n')
+const DESIGN_BASE_BY_STYLE: Record<RenderStyleLevel, string> = {
+  clean_cgi: [
+    'PRIMARY TASK (read first — single unambiguous job):',
+    '- Input: a 2D design reference (sketch, line art, flat mockup, screenshot, or simple graphic).',
+    '- Output: exactly ONE square clean CGI 3D render of the garment (or apparel item), preserving design fidelity.',
+    '- This is NOT: photoreal lifestyle mockup, real-camera product photo, mesh export, or multi-angle sheet.',
+    '',
+    'MODE: CLEAN CGI',
+    '- Prioritize clean, simplified material response and highly controlled digital lighting.',
+    '- Keep surfaces smooth/intentional and design-visualization-like (not camera-real).',
+    '',
+    'INPUT HANDLING:',
+    '- Focus on apparel/design artwork only. Ignore UI chrome, rulers, grid, watermarks, bezels, and photo-of-paper edges.',
+    '- If multiple views appear, prioritize the clearest main view.',
+    '',
+    'DESIGN FIDELITY (non-negotiable):',
+    '- Preserve graphics, logos, typography shapes, color relationships, and relative placement exactly.',
+    '- Do NOT invent branding or extra text.',
+    '- Typography fallback policy: if text is too small/ambiguous, preserve shape mass and spacing; do NOT hallucinate letters.',
+    '- Silhouette confidence rule: if garment type is uncertain, keep the closest inferred category but do NOT add category-defining features not present in the reference.',
+    '',
+    'STYLE:',
+    '- Stylized 3D render output with visible dimensional form; not a flat CAD trace.',
+    '- No added text/overlays/watermarks beyond what exists as print on the product.',
+  ].join('\n'),
+  semi_real_cgi: [
+    'PRIMARY TASK (read first — single unambiguous job):',
+    '- Input: a 2D design reference (sketch, line art, flat mockup, screenshot, or simple graphic).',
+    '- Output: exactly ONE square semi-real CGI 3D render of the garment (or apparel item), preserving design fidelity.',
+    '- This is NOT: real-camera photography or photoreal lifestyle mockup.',
+    '',
+    'MODE: SEMI-REAL CGI (PROTOREAL)',
+    '- Use richer material response, nuanced fold shading, and stronger physical believability than clean CGI.',
+    '- Keep result clearly CGI (studio-rig digital render behavior, not camera/photo artifacts).',
+    '',
+    'INPUT HANDLING:',
+    '- Focus on apparel/design artwork only. Ignore UI chrome, rulers, grid, watermarks, bezels, and photo-of-paper edges.',
+    '- If multiple views appear, prioritize the clearest main view.',
+    '',
+    'DESIGN FIDELITY (non-negotiable):',
+    '- Preserve graphics, logos, typography shapes, color relationships, and relative placement exactly.',
+    '- Do NOT invent branding or extra text.',
+    '- Typography fallback policy: if text is too small/ambiguous, preserve shape mass and spacing; do NOT hallucinate letters.',
+    '- Silhouette confidence rule: if garment type is uncertain, keep the closest inferred category but do NOT add category-defining features not present in the reference.',
+    '',
+    'STYLE:',
+    '- Semi-real CGI render with controlled digital shading; maintain clear 3D form and volume.',
+    '- No added text/overlays/watermarks beyond what exists as print on the product.',
+  ].join('\n'),
+  toon_tech: [
+    'PRIMARY TASK (read first — single unambiguous job):',
+    '- Input: a 2D design reference (sketch, line art, flat mockup, screenshot, or simple graphic).',
+    '- Output: exactly ONE square toon-tech stylized 3D render of the garment (or apparel item), preserving design fidelity.',
+    '- This is NOT: 2D illustration, comic panel, or painterly concept art.',
+    '',
+    'MODE: TOON-TECH 3D',
+    '- Use stylized shading with clean gradient ramps and slightly emphasized edge definition.',
+    '- Maintain true volumetric 3D geometry and physically plausible garment structure.',
+    '',
+    'INPUT HANDLING:',
+    '- Focus on apparel/design artwork only. Ignore UI chrome, rulers, grid, watermarks, bezels, and photo-of-paper edges.',
+    '- If multiple views appear, prioritize the clearest main view.',
+    '',
+    'DESIGN FIDELITY (non-negotiable):',
+    '- Preserve graphics, logos, typography shapes, color relationships, and relative placement exactly.',
+    '- Do NOT invent branding or extra text.',
+    '- Typography fallback policy: if text is too small/ambiguous, preserve shape mass and spacing; do NOT hallucinate letters.',
+    '- Silhouette confidence rule: if garment type is uncertain, keep the closest inferred category but do NOT add category-defining features not present in the reference.',
+    '',
+    'STYLE:',
+    '- Stylized toon-tech 3D only; hard ban on 2D cartoon/illustration output.',
+    '- No added text/overlays/watermarks beyond what exists as print on the product.',
+  ].join('\n'),
+}
 
 const DESIGN_REALIZE_WHITE_STUDIO_BLOCK = [
   'FRAMING & SET (fixed — render pipeline):',
@@ -912,39 +960,19 @@ const FIDELITY_REMINDER_DESIGN = [
   '- Presentation mode is always rendered CGI (not photoreal product photography).',
 ].join('\n')
 
-const DESIGN_RENDER_STYLE_BLOCKS: Record<RenderStyleLevel, string> = {
-  clean_cgi: [
-    'RENDER STYLE: Clean CGI',
-    '- Use a clean, high-control CGI look (product-visualization style).',
-    '- Materials may be slightly simplified but must still preserve print/graphics placement and silhouette fidelity.',
-    '- Keep lighting digitally controlled: smooth gradients, controlled specular, no film grain/sensor noise.',
-    '- Avoid any “lifelike phone camera” feel: no harsh bloom, no chromatic aberration, no lens haze.',
-  ].join('\n'),
-  semi_real_cgi: [
-    'RENDER STYLE: Semi-real CGI',
-    '- Increase physical believability: better fabric shading, realistic thickness response, and more nuanced fold shadowing.',
-    '- Still keep it clearly CGI: studio-rig lighting, controlled specular, and no real-camera artifacts (no film grain / sensor noise / lens haze).',
-    '- Preserve weave/knit micro texture and ink boundaries, but do not turn it into photoreal mockup photography.',
-  ].join('\n'),
-  toon_tech: [
-    'RENDER STYLE: Toon-tech 3D',
-    '- Use stylized 3D shading with mildly exaggerated edge definition and smooth tonal gradients.',
-    '- Keep a true 3D volumetric render (no 2D cartoon illustration look).',
-    '- Preserve print/graphics identity and edges; if small text is ambiguous, keep it soft/partially indistinct rather than inventing new lettering.',
-  ].join('\n'),
-}
-
 const DESIGN_RENDER_STYLE_NEGATIVES: Partial<Record<RenderStyleLevel, string>> = {
   clean_cgi: [
     'ANTI-FAIL (clean CGI):',
-    '- No real-camera photo characteristics (film grain, sensor noise, chromatic aberration, strong lens blur).',
+    '- Strong anti-photography rule: no depth-sensor blur, no chromatic aberration, no film grain, no JPEG noise, no lens haze.',
   ].join('\n'),
   semi_real_cgi: [
     'ANTI-FAIL (semi-real CGI):',
+    '- Strong anti-photography rule: no depth-sensor blur, no chromatic aberration, no film grain, no JPEG noise.',
     '- No lifelike worn-real photography artifacts (no sweat stains, no accidental fingerprints, no street grime).',
   ].join('\n'),
   toon_tech: [
     'ANTI-FAIL (toon-tech):',
+    '- Strong anti-photography rule: no depth-sensor blur, no chromatic aberration, no film grain, no JPEG noise.',
     '- No 2D cartoon illustration; keep 3D depth and correct volume.',
   ].join('\n'),
 }
@@ -993,6 +1021,7 @@ function buildEditInstructionsBlockDesign(editInstructions: string): string {
     '- Do NOT replace the product concept or swap in new artwork, logos, or a different color story.',
     '- Do NOT change overall garment category or silhouette unless the user explicitly requests it.',
     '- Allowed: lighting/exposure, contrast, crop/composition on the neutral render backdrop, subtle material clarity, removing obvious output noise — without inventing new print content.',
+    '- Consistency latch (regenerate): keep the same view family as the current render unless explicitly changed (front stays front, three-quarter stays three-quarter, flat stays flat).',
     '- If instructions conflict with preserving design identity, ignore the conflicting parts.',
   ].join('\n')
 }
@@ -1014,18 +1043,19 @@ function buildPrompt(args: {
 
   if (isDesign) {
     const renderStyle = args.renderStyleLevel ?? 'clean_cgi'
-    const baseCore = BASE_DESIGN_REALIZE
-    const styleBlock = DESIGN_RENDER_STYLE_BLOCKS[renderStyle]
+    const baseCore = DESIGN_BASE_BY_STYLE[renderStyle]
     const styleNegative = DESIGN_RENDER_STYLE_NEGATIVES[renderStyle]
 
-    const base = garmentTypeAnchor ? `${baseCore}\n\n${styleBlock}\n\n${garmentTypeAnchor}` : `${baseCore}\n\n${styleBlock}`
+    const base = garmentTypeAnchor ? `${baseCore}\n\n${garmentTypeAnchor}` : baseCore
     const negative = [NEGATIVE_GLOBAL_DESIGN, NEGATIVE_DESIGN_WHITE_BG, styleNegative].filter(
       (x): x is string => typeof x === 'string' && x.trim().length > 0
     ).join('\n')
     const userEditBlock = args.editInstructions
       ? buildEditInstructionsBlockDesign(args.editInstructions)
       : ''
-    return [base, negative, DESIGN_REALIZE_WHITE_STUDIO_BLOCK, userEditBlock || undefined, FIDELITY_REMINDER_DESIGN]
+    // Constraint order (design_realize):
+    // 1) identity non-negotiables, 2) shot framing + surface/light, 3) negatives, 4) final reminder.
+    return [base, DESIGN_REALIZE_WHITE_STUDIO_BLOCK, userEditBlock || undefined, negative, FIDELITY_REMINDER_DESIGN]
       .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
       .join('\n---\n')
   }
@@ -1045,13 +1075,15 @@ function buildPrompt(args: {
         ? `${SURFACE_DEGHOST_BLOCK}\n\n${SHOT_PROMPTS[args.shotType]}`
         : SHOT_PROMPTS[args.shotType]
 
+  // Constraint order (garment_photo):
+  // 1) identity non-negotiables, 2) shot framing, 3) surface/light physics, 4) negatives, 5) final reminder.
   return [
     base,
-    negative,
     shotPromptBody,
     preset,
     buildVariationSeed(args.preset, args.shotType, args.generationIndex, args.variationSeed),
     userEditBlock || undefined,
+    negative,
     FIDELITY_REMINDER,
   ]
     .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
