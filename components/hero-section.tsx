@@ -42,6 +42,8 @@ export function HeroSection() {
   const [scrollShimmer, setScrollShimmer] = useState(false)
   const [showDragCue, setShowDragCue] = useState(false)
   const flowSectionRef = useRef<HTMLDivElement | null>(null)
+  const selectedShotsRef = useRef<string[]>(selectedShots)
+  const selectedDirectionRef = useRef<"raw" | "studio">(selectedDirection)
 
   function toggleShot(label: string) {
     setSelectedShots((prev) => {
@@ -52,6 +54,14 @@ export function HeroSection() {
       return [...prev, label]
     })
   }
+
+  useEffect(() => {
+    selectedShotsRef.current = selectedShots
+  }, [selectedShots])
+
+  useEffect(() => {
+    selectedDirectionRef.current = selectedDirection
+  }, [selectedDirection])
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout> | null = null
@@ -90,7 +100,13 @@ export function HeroSection() {
         if (!entry?.isIntersecting) return
         setShowDragCue(true)
         if (cueTimeout) clearTimeout(cueTimeout)
-        cueTimeout = setTimeout(() => setShowDragCue(false), 3200)
+        cueTimeout = setTimeout(() => {
+          setShowDragCue(false)
+          // Once the guidance cursor completes, reveal assets as "just generated".
+          setGeneratedShots(selectedShotsRef.current)
+          setGeneratedDirection(selectedDirectionRef.current)
+          setResultsVisible(true)
+        }, 3200)
       },
       { threshold: 0.35 }
     )
