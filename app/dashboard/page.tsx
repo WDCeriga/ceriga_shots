@@ -210,7 +210,7 @@ export default function DashboardHome() {
           <Link href="/dashboard/generate">
             <Button
               variant="outline"
-              className="w-full min-h-[96px] sm:h-32 flex flex-col items-center justify-center gap-2.5 sm:gap-3 text-center bg-[#151821] border-border/70 hover:bg-[#1b1f29]"
+              className="w-full min-h-[96px] sm:h-32 flex flex-col items-center justify-center gap-2.5 sm:gap-3 text-center bg-[#0a0a0a] border-border/70 hover:bg-[#1b1f29]"
             >
               <div className="text-2xl sm:text-3xl leading-none">+</div>
               <div>
@@ -262,7 +262,7 @@ export default function DashboardHome() {
           <Link href="/dashboard/library">
             <Button
               variant="outline"
-              className="w-full min-h-[96px] sm:h-32 flex flex-col items-center justify-center gap-2.5 sm:gap-3 text-center bg-[#151821] border-border/70 hover:bg-[#1b1f29]"
+              className="w-full min-h-[96px] sm:h-32 flex flex-col items-center justify-center gap-2.5 sm:gap-3 text-center bg-[#0a0a0a] border-border/70 hover:bg-[#1b1f29]"
             >
               <div className="text-2xl sm:text-3xl leading-none">→</div>
               <div>
@@ -280,7 +280,7 @@ export default function DashboardHome() {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_19rem] gap-8 items-start">
-        <section className="rounded-xl border border-border/60 bg-[#12141a] p-4 sm:p-5">
+        <section className="rounded-xl border border-border/60 bg-[#0a0a0a] p-4 sm:p-5">
           {isLoading ? (
             <div>
               <h2 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">Recent Projects</h2>
@@ -308,7 +308,7 @@ export default function DashboardHome() {
         </section>
 
         <aside className="xl:sticky xl:top-6">
-          <div className="rounded-xl border border-border/70 bg-[#151821] p-4 sm:p-5">
+          <div className="rounded-xl border border-border/70 bg-[#0a0a0a] p-4 sm:p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <h2 className="text-lg font-semibold">Usage</h2>
               <Link

@@ -229,7 +229,7 @@ export default function SettingsPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-md border border-border/60 bg-black px-4 py-3">
+            <div className="rounded-md border border-border/60 bg-[#0a0a0a] px-4 py-3">
               <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-2">
                 Signed-in identity
               </div>
@@ -271,7 +271,7 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="rounded-md border border-border/60 bg-black px-4 py-3">
+              <div className="rounded-md border border-border/60 bg-[#0a0a0a] px-4 py-3">
                 <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Credits used</div>
                 <div className="text-3xl font-bold leading-none">
                   {credits ? `${credits.used}` : '...'}
@@ -280,43 +280,26 @@ export default function SettingsPage() {
                   </span>
                 </div>
               </div>
-              <div className="rounded-md border border-border/60 bg-black px-4 py-3">
+              <div className="rounded-md border border-border/60 bg-[#0a0a0a] px-4 py-3">
                 <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Remaining</div>
                 <div className="text-3xl font-bold leading-none">
                   {credits ? credits.remaining : '...'}
                 </div>
               </div>
-              <div className="rounded-md border border-border/60 bg-black px-4 py-3">
+              <div className="rounded-md border border-border/60 bg-[#0a0a0a] px-4 py-3">
                 <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Project limit</div>
                 <div className="text-3xl font-bold leading-none">
                   {projectLimit < 0 ? 'Unlimited' : projectLimit}
                 </div>
               </div>
-              <div className="rounded-md border border-border/60 bg-black px-4 py-3">
+              <div className="rounded-md border border-border/60 bg-[#0a0a0a] px-4 py-3">
                 <div className="mb-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Asset retention</div>
                 <div className="text-3xl font-bold leading-none">
                   {retentionDays < 0 ? 'Unlimited' : retentionLabel}
                 </div>
               </div>
             </div>
-            <div className="flex justify-end">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleManageBilling}
-                disabled={!billing?.customerId || billingOpening}
-                className="bg-secondary/30 border-border/60"
-              >
-                {billingOpening ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Opening…
-                  </>
-                ) : (
-                  'Manage billing'
-                )}
-              </Button>
-            </div>
+            
           </CardContent>
         </Card>
       </div>
@@ -341,7 +324,7 @@ export default function SettingsPage() {
               placeholder="Your brand name"
               maxLength={80}
               disabled={brandLoading || sessionStatus === 'loading' || !session?.user}
-              className="bg-black border-border/60"
+              className="bg-[#0a0a0a] border-border/60"
             />
             <p className="text-xs text-muted-foreground italic">
               {brandLoading ? 'Loading from your account…' : 'This name appears on exported assets and invoices.'}
@@ -354,7 +337,7 @@ export default function SettingsPage() {
               name="category"
               value={formData.category}
               onChange={handleChange}
-              className="w-full px-3 py-2 border border-border/60 rounded-lg bg-black text-foreground"
+              className="w-full px-3 py-2 border border-border/60 rounded-lg bg-[#0a0a0a] text-foreground"
             >
               <option value="apparel">Apparel & Streetwear</option>
               <option value="accessories">Accessories</option>
@@ -399,7 +382,7 @@ export default function SettingsPage() {
       </div>
 
       {sysStatus ? (
-        <Card className="mt-6 bg-[#151821] border-border/70">
+        <Card className="mt-6 bg-[#0a0a0a] border-border/70">
           <CardHeader className="border-b border-border/60">
             <CardTitle>System status</CardTitle>
             <CardDescription>Admin-only configuration checks.</CardDescription>

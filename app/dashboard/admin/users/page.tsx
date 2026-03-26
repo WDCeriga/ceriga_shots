@@ -56,7 +56,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4">
-      <div className="rounded-xl border border-border/60 bg-[#12141a] p-4 sm:p-5">
+      <div className="rounded-xl border border-border/60 bg-[#0a0a0a] p-4 sm:p-5">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Users</h1>
         <p className="text-sm text-muted-foreground mt-1">
           Recent registered users, roles, and usage (credits and projects).
@@ -69,7 +69,7 @@ export default function AdminUsersPage() {
         {users.map((u) => (
           <div
             key={u.id}
-            className="rounded-xl border border-border/70 bg-[#151821] p-4 space-y-3 shadow-sm"
+            className="rounded-xl border border-border/70 bg-[#0a0a0a] p-4 space-y-3 shadow-sm"
           >
             <div className="font-medium text-sm break-words leading-snug">{u.email}</div>
             <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
@@ -95,14 +95,14 @@ export default function AdminUsersPage() {
           </div>
         ))}
         {users.length === 0 ? (
-          <div className="rounded-xl border border-border/70 bg-[#151821] px-4 py-8 text-center text-sm text-muted-foreground">
+          <div className="rounded-xl border border-border/70 bg-[#0a0a0a] px-4 py-8 text-center text-sm text-muted-foreground">
             No users found.
           </div>
         ) : null}
       </div>
 
       {/* Tablet/desktop: table */}
-      <div className="hidden md:block rounded-xl border border-border/70 bg-[#151821] p-2 sm:p-3 -mx-4 sm:mx-0">
+      <div className="hidden md:block rounded-xl border border-border/70 bg-[#0a0a0a] p-2 sm:p-3 -mx-4 sm:mx-0">
         <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>

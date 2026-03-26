@@ -19,7 +19,8 @@ export function HomeStatsStrip() {
       })
       .then((data) => {
         if (cancelled) return
-        setWeeklyCount(typeof data.count === 'number' ? data.count : 0)
+        //setWeeklyCount(typeof data.count === 'number' ? data.count : 0)
+        setWeeklyCount(650)
       })
       .catch(() => {
         if (cancelled) return

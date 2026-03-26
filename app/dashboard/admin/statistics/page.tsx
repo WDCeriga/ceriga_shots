@@ -44,7 +44,7 @@ export default function AdminStatisticsPage() {
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
-      <div className="rounded-xl border border-border/60 bg-[#12141a] p-4 sm:p-5">
+      <div className="rounded-xl border border-border/60 bg-[#0a0a0a] p-4 sm:p-5">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Admin Statistics</h1>
         <p className="text-sm text-muted-foreground mt-1">Platform-wide operational overview.</p>
       </div>
@@ -52,16 +52,16 @@ export default function AdminStatisticsPage() {
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="bg-[#151821] border-border/70"><CardHeader><CardTitle className="text-sm">Users</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats?.users ?? '...'}</div></CardContent></Card>
-        <Card className="bg-[#151821] border-border/70"><CardHeader><CardTitle className="text-sm">Projects</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats?.projects ?? '...'}</div></CardContent></Card>
-        <Card className="bg-[#151821] border-border/70"><CardHeader><CardTitle className="text-sm">Queued Jobs</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats?.queue.queued ?? '...'}</div></CardContent></Card>
-        <Card className="bg-[#151821] border-border/70"><CardHeader><CardTitle className="text-sm">Active Shares</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats?.shares.active ?? '...'}</div></CardContent></Card>
+        <Card className="bg-[#0a0a0a] border-border/70"><CardHeader><CardTitle className="text-sm">Users</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats?.users ?? '...'}</div></CardContent></Card>
+        <Card className="bg-[#0a0a0a] border-border/70"><CardHeader><CardTitle className="text-sm">Projects</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats?.projects ?? '...'}</div></CardContent></Card>
+        <Card className="bg-[#0a0a0a] border-border/70"><CardHeader><CardTitle className="text-sm">Queued Jobs</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats?.queue.queued ?? '...'}</div></CardContent></Card>
+        <Card className="bg-[#0a0a0a] border-border/70"><CardHeader><CardTitle className="text-sm">Active Shares</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats?.shares.active ?? '...'}</div></CardContent></Card>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="bg-[#151821] border-border/70"><CardHeader><CardTitle className="text-sm">Queue: Processing</CardTitle></CardHeader><CardContent><div className="text-xl font-semibold">{stats?.queue.processing ?? '...'}</div></CardContent></Card>
-        <Card className="bg-[#151821] border-border/70"><CardHeader><CardTitle className="text-sm">Queue: Failed</CardTitle></CardHeader><CardContent><div className="text-xl font-semibold">{stats?.queue.failed ?? '...'}</div></CardContent></Card>
-        <Card className="bg-[#151821] border-border/70"><CardHeader><CardTitle className="text-sm">Queue Health</CardTitle></CardHeader><CardContent><div className="text-xl font-semibold">{stats ? (stats.queue.failed > 0 ? 'Attention needed' : 'Healthy') : '...'}</div></CardContent></Card>
+        <Card className="bg-[#0a0a0a] border-border/70"><CardHeader><CardTitle className="text-sm">Queue: Processing</CardTitle></CardHeader><CardContent><div className="text-xl font-semibold">{stats?.queue.processing ?? '...'}</div></CardContent></Card>
+        <Card className="bg-[#0a0a0a] border-border/70"><CardHeader><CardTitle className="text-sm">Queue: Failed</CardTitle></CardHeader><CardContent><div className="text-xl font-semibold">{stats?.queue.failed ?? '...'}</div></CardContent></Card>
+        <Card className="bg-[#0a0a0a] border-border/70"><CardHeader><CardTitle className="text-sm">Queue Health</CardTitle></CardHeader><CardContent><div className="text-xl font-semibold">{stats ? (stats.queue.failed > 0 ? 'Attention needed' : 'Healthy') : '...'}</div></CardContent></Card>
       </div>
 
       <div className="space-y-3">
@@ -72,14 +72,14 @@ export default function AdminStatisticsPage() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="bg-[#151821] border-border/70"><CardHeader><CardTitle className="text-sm">MRR</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats ? formatMoney(stats.finance.revenue.mrr) : '...'}</div></CardContent></Card>
-        <Card className="bg-[#151821] border-border/70"><CardHeader><CardTitle className="text-sm">ARR</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats ? formatMoney(stats.finance.revenue.arr) : '...'}</div></CardContent></Card>
-        <Card className="bg-[#151821] border-border/70"><CardHeader><CardTitle className="text-sm">Monthly Costs (est.)</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats ? formatMoney(stats.finance.costs.estimatedMonthlyCosts) : '...'}</div></CardContent></Card>
-        <Card className="bg-[#151821] border-border/70"><CardHeader><CardTitle className="text-sm">Gross Profit / mo</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats ? formatMoney(stats.finance.profitability.grossProfitMonthly) : '...'}</div></CardContent></Card>
+        <Card className="bg-[#0a0a0a] border-border/70"><CardHeader><CardTitle className="text-sm">MRR</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats ? formatMoney(stats.finance.revenue.mrr) : '...'}</div></CardContent></Card>
+        <Card className="bg-[#0a0a0a] border-border/70"><CardHeader><CardTitle className="text-sm">ARR</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats ? formatMoney(stats.finance.revenue.arr) : '...'}</div></CardContent></Card>
+        <Card className="bg-[#0a0a0a] border-border/70"><CardHeader><CardTitle className="text-sm">Monthly Costs (est.)</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats ? formatMoney(stats.finance.costs.estimatedMonthlyCosts) : '...'}</div></CardContent></Card>
+        <Card className="bg-[#0a0a0a] border-border/70"><CardHeader><CardTitle className="text-sm">Gross Profit / mo</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{stats ? formatMoney(stats.finance.profitability.grossProfitMonthly) : '...'}</div></CardContent></Card>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <Card className="bg-[#151821] border-border/70">
+        <Card className="bg-[#0a0a0a] border-border/70">
           <CardHeader><CardTitle className="text-sm">Gross Margin</CardTitle></CardHeader>
           <CardContent>
             <div className="text-xl font-semibold">
@@ -87,7 +87,7 @@ export default function AdminStatisticsPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="bg-[#151821] border-border/70">
+        <Card className="bg-[#0a0a0a] border-border/70">
           <CardHeader><CardTitle className="text-sm">Active Paid Subscribers</CardTitle></CardHeader>
           <CardContent>
             <div className="text-xl font-semibold">{stats?.finance.paidSubscribers.total ?? '...'}</div>
@@ -96,7 +96,7 @@ export default function AdminStatisticsPage() {
             </p>
           </CardContent>
         </Card>
-        <Card className="bg-[#151821] border-border/70">
+        <Card className="bg-[#0a0a0a] border-border/70">
           <CardHeader><CardTitle className="text-sm">Cost Assumptions</CardTitle></CardHeader>
           <CardContent>
             <div className="text-sm">

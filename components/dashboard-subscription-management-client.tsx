@@ -120,7 +120,7 @@ export function DashboardSubscriptionManagementClient() {
               key={plan.name}
               className={[
                 'rounded-2xl border p-5 flex flex-col min-h-[220px]',
-                isCurrent ? 'border-accent/60 bg-accent/[0.06] ring-1 ring-accent/20' : 'border-border/60 bg-[#0b0d12]',
+                isCurrent ? 'border-accent/60 bg-accent/[0.06] ring-1 ring-accent/20' : 'border-border/60 bg-[#0a0a0a]',
               ].join(' ')}
             >
               <div className="flex items-start justify-between gap-3">
@@ -202,9 +202,9 @@ export function DashboardSubscriptionManagementClient() {
       </div>
 
       <div className="mt-6">
-        <Card className="bg-[#151821] border-border/60">
+        <Card className="bg-[#0a0a0a] border-border/60">
           <CardContent className="space-y-3 p-5 sm:p-6">
-            <div className="rounded-xl border border-border/60 bg-black px-4 py-4">
+            <div className="rounded-xl border border-border/60 bg-[#0a0a0a] px-4 py-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-foreground">Payment</div>

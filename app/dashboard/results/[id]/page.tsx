@@ -781,7 +781,7 @@ export default function ResultsPage() {
             {activeLightboxImage ? formatViewTitle(activeLightboxImage.type) : 'Image preview'}
           </DialogTitle>
           {activeLightboxImage ? (
-            <div className="relative bg-black/40">
+            <div className="relative bg-[#0a0a0a]/40">
               {activeLightboxImage.url ? (
                 <img
                   src={activeLightboxImage.url}

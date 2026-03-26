@@ -109,7 +109,7 @@ export default function LibraryPage() {
 
   return (
     <div className="p-6 lg:p-8">
-      <div className="mb-8 space-y-5 rounded-xl border border-border/60 bg-[#12141a] p-4 sm:p-5">
+      <div className="mb-8 space-y-5 rounded-xl border border-border/60 bg-[#0a0a0a] p-4 sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Project Library</h1>
@@ -156,7 +156,7 @@ export default function LibraryPage() {
       </div>
 
       {projects.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-border bg-[#151821]">
+        <div className="rounded-xl border border-dashed border-border bg-[#0a0a0a]">
           <div className="px-6 py-16 text-center max-w-lg mx-auto">
             <div className="mx-auto w-12 h-12 rounded-xl border border-border bg-secondary/50 flex items-center justify-center mb-4">
               <Plus className="w-5 h-5 text-muted-foreground" />
@@ -176,7 +176,7 @@ export default function LibraryPage() {
       ) : (
         <>
           {filtered.length === 0 ? (
-            <div className="rounded-xl border border-border bg-[#151821] p-8 text-center">
+            <div className="rounded-xl border border-border bg-[#0a0a0a] p-8 text-center">
               <p className="text-sm text-muted-foreground">
                 No results for <span className="font-medium text-foreground">“{query.trim()}”</span>.
               </p>
@@ -190,7 +190,7 @@ export default function LibraryPage() {
             {filtered.map((project) => (
             <div
               key={project.id}
-              className="rounded-xl border border-border overflow-hidden bg-[#151821] hover:border-accent transition-colors group"
+              className="rounded-xl border border-border overflow-hidden bg-[#0a0a0a] hover:border-accent transition-colors group"
             >
               <Link
                 href={`/dashboard/results/${project.id}`}

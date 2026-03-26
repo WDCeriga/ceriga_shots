@@ -13,13 +13,7 @@ import { useRole } from '@/hooks/use-role'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { RenderStyleLevel } from '@/types/projects'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 /** Internal job type for queue + meta; prompt is white-backdrop design_realize in mockups. */
 const DESIGN_JOB_SHOT = 'flatlay_topdown' as const
@@ -30,7 +24,7 @@ const PROTOREAL_PATH = '/dashboard/generate/protoreal'
 
 export type DesignRealizeMode = 'sketch3d' | 'protoreal'
 
-function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealizeMode }) {
+export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealizeMode }) {
   const isProtoRealMode = mode === 'protoreal'
   const callbackPath = isProtoRealMode ? PROTOREAL_PATH : FROM_SKETCH_PATH
   const pageTitle = isProtoRealMode ? 'Mockups to ProtoReal' : 'Sketch-to-3D Mockups'
@@ -87,11 +81,7 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
       const cachedRaw = window.localStorage.getItem('credits-cache')
       if (cachedRaw) {
         const cached = JSON.parse(cachedRaw) as { remaining?: number; limit?: number; ts?: number }
-        if (
-          typeof cached.ts === 'number' &&
-          Date.now() - cached.ts < 60_000 &&
-          typeof cached.remaining === 'number'
-        ) {
+        if (typeof cached.ts === 'number' && Date.now() - cached.ts < 60_000 && typeof cached.remaining === 'number') {
           setCreditsRemaining(cached.remaining)
           if (typeof cached.limit === 'number') setCreditsLimit(cached.limit)
         }
@@ -103,9 +93,7 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
     fetch('/api/me')
       .then(async (res) => {
         if (!res.ok) return null
-        return (await res.json()) as {
-          user?: { credits?: { remaining?: number; limit?: number } | null }
-        }
+        return (await res.json()) as { user?: { credits?: { remaining?: number; limit?: number } | null } }
       })
       .then((data) => {
         if (cancelled) return
@@ -115,10 +103,7 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
         setCreditsLimit(typeof limit === 'number' ? limit : null)
         if (typeof remaining === 'number' && typeof limit === 'number') {
           try {
-            window.localStorage.setItem(
-              'credits-cache',
-              JSON.stringify({ remaining, limit, ts: Date.now() })
-            )
+            window.localStorage.setItem('credits-cache', JSON.stringify({ remaining, limit, ts: Date.now() }))
           } catch {}
         }
       })
@@ -127,6 +112,7 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
         if (cancelled) return
         setCreditsSyncing(false)
       })
+
     return () => {
       cancelled = true
     }
@@ -138,9 +124,7 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
 
   const creditsNeeded = 1
   const hasEnoughCredits =
-    creditsRemaining == null || creditsRemaining === Number.MAX_SAFE_INTEGER
-      ? true
-      : creditsRemaining >= creditsNeeded
+    creditsRemaining == null || creditsRemaining === Number.MAX_SAFE_INTEGER ? true : creditsRemaining >= creditsNeeded
 
   const canGenerateNow =
     !!preview &&
@@ -180,9 +164,7 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-    if (e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0])
-    }
+    if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0])
   }
 
   const handleGenerate = async () => {
@@ -211,11 +193,7 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
     let createdProjectId: string | null = null
     try {
       const resolvedGarmentType =
-        productType === 'auto'
-          ? undefined
-          : productType === 'custom'
-            ? customProductType.trim() || undefined
-            : productType
+        productType === 'auto' ? undefined : productType === 'custom' ? customProductType.trim() || undefined : productType
 
       const refinementParts = [
         designRealizeRefinements.trim() || '',
@@ -223,6 +201,7 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
           ? `Material/fabric hint: ${materialHint.trim()}. Keep it subtle and realistic (do not change the print/logos or silhouette).`
           : '',
       ].filter(Boolean)
+
       const editInstructions = refinementParts.length ? refinementParts.join(' ') : undefined
 
       const project = await addProject({
@@ -254,6 +233,7 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
           ...(resolvedGarmentType ? { garmentType: resolvedGarmentType } : {}),
         }),
       })
+
       if (!enqueueRes.ok) {
         const data = (await enqueueRes.json().catch(() => ({}))) as { error?: string; code?: string }
         if (data.code === 'email_not_verified') {
@@ -269,8 +249,7 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
         throw new Error(data.error || 'Failed to enqueue generation')
       }
 
-      // Navigate as soon as the generation is enqueued, so the user
-      // sees the results page before the first images start rendering.
+      // Navigate as soon as the generation is enqueued.
       void updateProject(project.id, {
         generation: {
           status: 'generating',
@@ -309,12 +288,8 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
     <div className="px-6 py-10 sm:px-10">
       <div className="mx-auto max-w-6xl">
         <div className="mb-10 rounded-xl border border-border/60 bg-[#0a0a0a] p-5 sm:p-6">
-          <h1 className="text-3xl sm:text-5xl font-semibold tracking-tight leading-tight">
-            {pageTitle}
-          </h1>
-          <p className="mt-4 max-w-2xl text-sm sm:text-base text-muted-foreground leading-relaxed">
-            {pageDescription}
-          </p>
+          <h1 className="text-3xl sm:text-5xl font-semibold tracking-tight leading-tight">{pageTitle}</h1>
+          <p className="mt-4 max-w-2xl text-sm sm:text-base text-muted-foreground leading-relaxed">{pageDescription}</p>
 
           {!isAuthLoading && !isAuthed && (
             <div className="mt-6 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
@@ -328,9 +303,7 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-8">
           <section className="space-y-6 rounded-2xl border border-border/60 bg-[#0a0a0a] p-4 sm:p-5">
-            <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground ml-4">
-              {sketchLabel}
-            </div>
+            <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground ml-4">{sketchLabel}</div>
 
             <div
               onDragOver={handleDragOver}
@@ -345,9 +318,7 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
               }}
               className={cn(
                 'group rounded-xl border border-white/15 bg-[#0a0a0a] shadow-sm transition-colors',
-                isDragging
-                  ? 'border-accent/80'
-                  : 'hover:border-red-500/50 hover:shadow-[0_0_18px_rgba(239,68,68,0.25)] hover:bg-red-500/10'
+                isDragging ? 'border-accent/80' : 'hover:border-red-500/50 hover:shadow-[0_0_18px_rgba(239,68,68,0.25)] hover:bg-red-500/10'
               )}
             >
               <input
@@ -379,9 +350,7 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
                           />
                         </div>
                         <p className="mt-4 text-center text-xs text-muted-foreground">Select files or drag and drop to replace</p>
-                        {file?.name && (
-                          <p className="mt-2 text-center text-xs text-muted-foreground truncate">{file.name}</p>
-                        )}
+                        {file?.name && <p className="mt-2 text-center text-xs text-muted-foreground truncate">{file.name}</p>}
                         <button
                           type="button"
                           className="mt-4 mx-auto block w-auto cursor-pointer rounded-sm border-2 border-red-500 bg-red-500/90 px-5 py-1.5 text-xs font-semibold tracking-wide text-white shadow-[0_0_0_2px_rgba(239,68,68,0.18),0_0_20px_rgba(239,68,68,0.18)] hover:bg-red-500"
@@ -396,9 +365,7 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
                             <Upload className="h-6 w-6" />
                           </div>
                           <p className="text-center text-sm font-medium text-foreground">Upload sketch or mockup</p>
-                          <p className="mt-2 text-center text-xs text-muted-foreground">
-                            PNG, JPG, or WebP — flat art, screenshot, or photo of a drawing.
-                          </p>
+                          <p className="mt-2 text-center text-xs text-muted-foreground">PNG, JPG, or WebP — flat art, screenshot, or photo of a drawing.</p>
                           <button
                             type="button"
                             className="mt-5 mx-auto block w-auto cursor-pointer rounded-sm border-2 border-red-500 bg-red-500/90 px-5 py-1.5 text-xs font-semibold tracking-wide text-white shadow-[0_0_0_2px_rgba(239,68,68,0.18),0_0_20px_rgba(239,68,68,0.18)] hover:bg-red-500"
@@ -423,14 +390,14 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
                 )}
                 variant="outline"
               >
-                  {isLoading ? 'Generating…' : 'Generate 3D render'}
+                {isLoading ? 'Generating…' : 'Generate 3D render'}
               </Button>
               {!designFlowAllowed ? (
                 <p className="mt-3 text-xs text-muted-foreground">
                   This quick flow is not available on your current plan (needs studio look + flat presentation).
                 </p>
               ) : null}
-              {!hasEnoughCredits ? (
+              {!creditsSyncing && !hasEnoughCredits ? (
                 <p className="mt-3 text-xs text-destructive">Not enough credits. You need 1 credit for this image.</p>
               ) : null}
             </div>
@@ -442,16 +409,10 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
                 <div className="mb-6 rounded-lg border border-accent/40 bg-accent/5 px-4 py-3">
                   <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Credits</p>
                   <p className="mt-1 text-lg font-bold leading-none">
-                    {creditsRemaining == null
-                      ? '...'
-                      : creditsLimit != null && creditsLimit < 0
-                        ? 'Unlimited'
-                        : creditsRemaining}
+                    {creditsRemaining == null ? '...' : creditsLimit != null && creditsLimit < 0 ? 'Unlimited' : creditsRemaining}
                   </p>
                   <p className="text-[10px] text-muted-foreground mt-1 leading-tight">1 credit per image</p>
-                  {creditsSyncing ? (
-                    <p className="text-[10px] text-muted-foreground mt-1">Syncing latest usage...</p>
-                  ) : null}
+                  {creditsSyncing ? <p className="text-[10px] text-muted-foreground mt-1">Syncing latest usage...</p> : null}
                 </div>
               ) : null}
 
@@ -471,17 +432,13 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
                     <SelectItem value="custom">Other (type below)</SelectItem>
                   </SelectContent>
                 </Select>
-
-                {productType === 'custom' ? (
-                  <div className="mt-3">
-                    <Input
-                      value={customProductType}
-                      onChange={(e) => setCustomProductType(e.target.value)}
-                      placeholder="e.g. shorts, dress, cap…"
-                    />
-                  </div>
-                ) : null}
               </div>
+
+              {productType === 'custom' ? (
+                <div className="mt-3">
+                  <Input value={customProductType} onChange={(e) => setCustomProductType(e.target.value)} placeholder="e.g. shorts, dress, cap…" />
+                </div>
+              ) : null}
 
               {isProtoRealMode ? (
                 <div className="mt-6">
@@ -544,14 +501,8 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
                 >
                   {isLoading ? 'Generating…' : 'Generate 3D render'}
                 </Button>
-                {!designFlowAllowed ? (
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    This flow is not available on your current plan.
-                  </p>
-                ) : null}
-                {!hasEnoughCredits ? (
-                  <p className="mt-3 text-xs text-destructive">Not enough credits. You need 1 credit.</p>
-                ) : null}
+                {!designFlowAllowed ? <p className="mt-3 text-xs text-muted-foreground">This flow is not available on your current plan.</p> : null}
+                {!hasEnoughCredits ? <p className="mt-3 text-xs text-destructive">Not enough credits. You need 1 credit.</p> : null}
               </div>
             </div>
           </aside>
@@ -561,6 +512,3 @@ function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealize
   )
 }
 
-export default function FromSketchGeneratePage() {
-  return <DesignRealizeGeneratePage mode="sketch3d" />
-}
