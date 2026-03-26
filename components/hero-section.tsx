@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowRight, MousePointer2 } from "lucide-react"
+import { ArrowRight, MousePointer2, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
 const visualDirections = [
@@ -16,11 +16,29 @@ const shotTypes = [
   "Hanging shot",
 ] as const
 
+const generatedAssetImageByShotAndDirection: Record<string, Record<"raw" | "studio", string>> = {
+  "Top-down flat lay": {
+    raw: "/images/demo-generated-topdown-raw.jpg",
+    studio: "/images/demo-generated-topdown-studio.jpg",
+  },
+  "Print close-up": {
+    raw: "/images/demo-generated-print-closeup-raw.jpg",
+    studio: "/images/demo-generated-print-closeup-studio.jpg",
+  },
+  "Hanging shot": {
+    raw: "/images/demo-generated-hanging-shot-raw.jpg",
+    studio: "/images/demo-generated-hanging-shot-studio.jpg",
+  },
+}
+
 export function HeroSection() {
   const [resultsVisible, setResultsVisible] = useState(false)
   const [selectedDirection, setSelectedDirection] = useState<(typeof visualDirections)[number]["key"]>("studio")
   const [selectedShots, setSelectedShots] = useState<string[]>(["Top-down flat lay"])
   const [generatedShots, setGeneratedShots] = useState<string[]>(["Top-down flat lay"])
+  const [generatedDirection, setGeneratedDirection] = useState<"raw" | "studio">("studio")
+  const [openResultSrc, setOpenResultSrc] = useState<string | null>(null)
+  const [openResultLabel, setOpenResultLabel] = useState<string>("")
   const [scrollShimmer, setScrollShimmer] = useState(false)
   const [showDragCue, setShowDragCue] = useState(false)
   const flowSectionRef = useRef<HTMLDivElement | null>(null)
@@ -49,6 +67,16 @@ export function HeroSection() {
       window.removeEventListener("scroll", onScroll)
       if (timeoutId) clearTimeout(timeoutId)
     }
+  }, [])
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpenResultSrc(null)
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
   }, [])
 
   useEffect(() => {
@@ -143,7 +171,7 @@ export function HeroSection() {
                     Source
                   </div>
                   <Image
-                    src="/ceriga-favicon-light-512x512.png"
+                    src="/images/demo-initial-hoodie.jpg"
                     alt="Initial uploaded product image"
                     width={420}
                     height={420}
@@ -209,6 +237,7 @@ export function HeroSection() {
                   type="button"
                   onClick={() => {
                     setGeneratedShots(selectedShots)
+                    setGeneratedDirection(selectedDirection)
                     setResultsVisible(true)
                   }}
                   className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-accent px-6 py-3 text-base font-semibold text-accent-foreground transition-colors hover:bg-accent/90"
@@ -236,25 +265,68 @@ export function HeroSection() {
                 <div className="mb-3 text-foreground text-base font-semibold uppercase tracking-[0.12em]">AI Generated Assets</div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {generatedShots.slice(0, 6).map((label, idx) => (
-                    <div
+                    <button
                       key={label}
-                      className={`rounded-xl border border-white/10 bg-[linear-gradient(160deg,#202433_0%,#151a28_55%,#101522_100%)] h-24 sm:h-28 transition-all duration-600 ${
+                      type="button"
+                      onClick={() => {
+                        const src =
+                          generatedAssetImageByShotAndDirection[label]?.[generatedDirection] ??
+                          "/images/demo-generated-topdown-studio.jpg"
+                        setOpenResultSrc(src)
+                        setOpenResultLabel(label)
+                      }}
+                      className={`relative overflow-hidden rounded-xl border border-white/10 h-24 sm:h-28 transition-all duration-600 ${
                         resultsVisible ? "opacity-100 translate-y-0" : "opacity-20 translate-y-1"
                       }`}
                       style={{ transitionDelay: `${idx * 80}ms` }}
                     >
+                      <Image
+                        src={
+                          generatedAssetImageByShotAndDirection[label]?.[generatedDirection] ??
+                          "/images/demo-generated-topdown-studio.jpg"
+                        }
+                        alt={`Generated ${label}`}
+                        fill
+                        sizes="(max-width: 640px) 40vw, 22vw"
+                        className="object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/25" />
                       <div className="flex h-full items-end p-2">
                         <span className="rounded bg-black/40 px-2 py-0.5 text-[10px] uppercase tracking-wider text-foreground/80">
                           {label}
                         </span>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
             </div>
           </div>
         </div>
+
+        {openResultSrc ? (
+          <div
+            className="fixed inset-0 z-[90] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setOpenResultSrc(null)}
+          >
+            <div
+              className="relative w-full max-w-4xl overflow-hidden rounded-2xl border border-white/15 bg-[#0b0d12]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setOpenResultSrc(null)}
+                className="absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-md border border-white/20 bg-black/45 text-white hover:bg-black/60"
+                aria-label="Close preview"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              <div className="relative aspect-[16/10] w-full">
+                <Image src={openResultSrc} alt={openResultLabel || "Generated result"} fill className="object-contain" />
+              </div>
+            </div>
+          </div>
+        ) : null}
 
       </div>
     </section>
