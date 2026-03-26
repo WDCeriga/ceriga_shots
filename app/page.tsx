@@ -2,9 +2,10 @@ import { Navbar } from "@/components/navbar"
 import { HeroSection } from "@/components/hero-section"
 // import { VideoSection } from "@/components/video-section"
 import { HomeStatsStrip } from "@/components/home-stats-strip"
-import { HowItWorks } from "@/components/how-it-works"
+import { HomeTechnicalSuperiority } from "@/components/home-technical-superiority"
 import { GallerySection } from "@/components/gallery-section"
 import { PricingSection } from "@/components/pricing-section"
+import { CommonQuestionsSection } from "@/components/common-questions-section"
 import { CtaSection, Footer } from "@/components/cta-footer"
 
 export default function Home() {
@@ -14,9 +15,10 @@ export default function Home() {
       <HeroSection />
       <HomeStatsStrip />
       {/* <VideoSection /> */}
-      <HowItWorks />
+      <HomeTechnicalSuperiority />
       <GallerySection />
       <PricingSection />
+      <CommonQuestionsSection />
       <CtaSection />
       <Footer />
     </main>

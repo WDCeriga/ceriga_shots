@@ -65,7 +65,36 @@ export default function FeaturesPage() {
       </section>
 
       <section className="border-t border-border py-20">
-        <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-5 px-6 sm:grid-cols-2 lg:grid-cols-3 lg:px-12">
+        <div className="mx-auto w-full max-w-7xl px-6 lg:px-12">
+          <div className="mb-10 text-center">
+            <p className="text-xs font-medium uppercase tracking-[0.35em] text-accent">Style presets</p>
+            <h3 className="mt-3 text-3xl font-black tracking-tight text-foreground sm:text-4xl">
+              Pick the look that fits your brand
+            </h3>
+            <p className="mx-auto mt-4 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+              These presets mirror the visual directions available in Dashboard Generate, and they apply across the
+              product categories configured in Dashboard Settings.
+            </p>
+
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+              {[
+                'Apparel & Streetwear',
+                'Accessories',
+                'Footwear',
+                'Sportswear',
+                'Luxury Fashion',
+              ].map((category) => (
+                <span
+                  key={category}
+                  className="rounded-full border border-white/15 bg-white/[0.03] px-3 py-1.5 text-[11px] uppercase tracking-[0.16em] text-muted-foreground"
+                >
+                  {category}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((feature) => (
             <article
               key={feature.title}
@@ -76,6 +105,7 @@ export default function FeaturesPage() {
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{feature.description}</p>
             </article>
           ))}
+          </div>
         </div>
       </section>
 

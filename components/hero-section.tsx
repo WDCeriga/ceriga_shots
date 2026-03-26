@@ -256,19 +256,6 @@ export function HeroSection() {
           </div>
         </div>
 
-        {/* Stats bar */}
-        <div className="animate-fade-up animation-delay-500 mt-16 pt-10 border-t border-border grid grid-cols-3 gap-8 max-w-lg">
-          {[
-            { value: "12+", label: "Output formats" },
-            { value: "< 60s", label: "Generation time" },
-            { value: "4K", label: "Export quality" },
-          ].map((stat) => (
-            <div key={stat.label}>
-              <div className="text-3xl font-black text-foreground">{stat.value}</div>
-              <div className="text-xs text-muted-foreground tracking-widest uppercase mt-1">{stat.label}</div>
-            </div>
-          ))}
-        </div>
       </div>
     </section>
   )
