@@ -221,7 +221,7 @@ export default function SettingsPage() {
   return (
     <div className="p-6 lg:p-8 max-w-5xl">
       <div className="grid gap-4 lg:grid-cols-[1fr_2.2fr]">
-        <Card className="bg-[#1b1d23] border-border/70">
+        <Card className="bg-[#0a0a0a] border-border/70">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-2">
               <User className="h-4 w-4 text-accent" />
@@ -257,7 +257,7 @@ export default function SettingsPage() {
           </CardFooter>
         </Card>
 
-        <Card className="bg-[#1b1d23] border-border/70">
+        <Card className="bg-[#0a0a0a] border-border/70">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between gap-3">
               <CardTitle className="flex items-center gap-2">
@@ -304,7 +304,7 @@ export default function SettingsPage() {
         </Card>
       </div>
 
-      <Card className="mt-4 bg-[#1b1d23] border-border/70">
+      <Card className="mt-4 bg-[#0a0a0a] border-border/70">
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2">
             <Wrench className="h-4 w-4 text-accent" />

@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --webpack",
+    "dev": "next dev --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "seed:default-user": "node scripts/seed-default-user.js"
+    "seed:default-user": "node scripts/seed-default-user.js",
+    "clean": "node -e \"require('fs').rmSync('.next', { recursive: true, force: true })\""
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1011.0",
