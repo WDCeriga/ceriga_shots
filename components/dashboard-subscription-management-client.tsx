@@ -203,8 +203,7 @@ export function DashboardSubscriptionManagementClient() {
 
       <div className="mt-6">
         <Card className="bg-[#0a0a0a] border-border/60">
-          <CardContent className="space-y-3 p-5 sm:p-6">
-            <div className="rounded-xl border border-border/60 bg-[#0a0a0a] px-4 py-4">
+          <CardContent className="space-y-3 px-5 sm:px-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-foreground">Payment</div>
@@ -220,7 +219,6 @@ export function DashboardSubscriptionManagementClient() {
                   Manage in Stripe
                 </Button>
               </div>
-            </div>
           </CardContent>
         </Card>
       </div>
