@@ -39,11 +39,6 @@ export function DashboardSubscriptionManagementClient() {
 
   const isFree = billing?.role === 'free'
 
-  const activeSubscription = useMemo(() => {
-    const status = billing?.subscriptionStatus ?? null
-    return ['active', 'trialing', 'past_due'].includes(status ?? '')
-  }, [billing?.subscriptionStatus])
-
   useEffect(() => {
     if (authStatus !== 'authenticated') return
     let cancelled = false
@@ -162,7 +157,7 @@ export function DashboardSubscriptionManagementClient() {
                   ) : (
                     <Button
                       type="button"
-                      disabled={actionLoading || !activeSubscription}
+                    disabled={actionLoading}
                       onClick={() => void openCustomerPortal()}
                       className="w-full"
                       variant="secondary"
@@ -192,12 +187,12 @@ export function DashboardSubscriptionManagementClient() {
                 ) : (
                   <Button
                     type="button"
-                    disabled={actionLoading || !activeSubscription}
+                    disabled={actionLoading}
                     onClick={() => void openCustomerPortal()}
                     className="w-full"
                     variant="outline"
                   >
-                    Adjust plan via portal
+                    Upgrade to {plan.name}
                   </Button>
                 )}
               </div>
@@ -219,7 +214,7 @@ export function DashboardSubscriptionManagementClient() {
                   type="button"
                   variant="outline"
                   onClick={() => void openCustomerPortal()}
-                  disabled={isFree || actionLoading || !activeSubscription}
+                  disabled={isFree || actionLoading}
                   className="border-accent/30 text-accent hover:border-accent/60 hover:bg-accent/5"
                 >
                   Manage in Stripe
