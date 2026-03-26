@@ -748,33 +748,33 @@ export default function GeneratePage() {
                 Product type
               </div>
               <div className="mt-3">
-                    <Select
-                      value={productType}
-                      onValueChange={(v) => setProductType(v as typeof productType)}
-                    >
-                      <SelectTrigger className="w-full cursor-pointer">
-                        <SelectValue placeholder="Auto-detect" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="auto">Auto-detect</SelectItem>
-                        <SelectItem value="hoodie">Hoodie</SelectItem>
-                        <SelectItem value="tshirt">T-Shirt</SelectItem>
-                        <SelectItem value="jacket">Jacket</SelectItem>
-                        <SelectItem value="sweatshirt">Sweatshirt</SelectItem>
-                        <SelectItem value="pants">Pants</SelectItem>
-                        <SelectItem value="custom">Other (type)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                <Select
+                  value={productType}
+                  onValueChange={(v) => setProductType(v as typeof productType)}
+                >
+                  <SelectTrigger className="w-full cursor-pointer">
+                    <SelectValue placeholder="Auto-detect" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">Auto-detect</SelectItem>
+                    <SelectItem value="hoodie">Hoodie</SelectItem>
+                    <SelectItem value="tshirt">T-Shirt</SelectItem>
+                    <SelectItem value="jacket">Jacket</SelectItem>
+                    <SelectItem value="sweatshirt">Sweatshirt</SelectItem>
+                    <SelectItem value="pants">Pants</SelectItem>
+                    <SelectItem value="custom">Other (type)</SelectItem>
+                  </SelectContent>
+                </Select>
 
-                    {productType === 'custom' ? (
-                      <div className="mt-3">
-                        <Input
-                          value={customProductType}
-                          onChange={(e) => setCustomProductType(e.target.value)}
-                          placeholder="e.g., jumpsuit, robe, hoodie with zipper…"
-                        />
-                      </div>
-                    ) : null}
+                {productType === 'custom' ? (
+                  <div className="mt-3">
+                    <Input
+                      value={customProductType}
+                      onChange={(e) => setCustomProductType(e.target.value)}
+                      placeholder="e.g., jumpsuit, robe, hoodie with zipper…"
+                    />
+                  </div>
+                ) : null}
               </div>
 
               <div className="my-7 h-px w-full bg-white/15" />

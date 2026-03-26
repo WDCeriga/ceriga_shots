@@ -28,7 +28,7 @@ export function AppSidebar({
   const links = [
     { href: '/dashboard', label: 'Dashboard' },
     { href: '/dashboard/library', label: 'Library' },
-    { href: '/pricing', label: 'Pricing' },
+    { href: '/dashboard/pricing', label: 'Pricing' },
     { href: '/dashboard/settings', label: 'Settings' },
   ]
   const generateLinks: { href: string | null; label: string }[] = [
@@ -202,7 +202,7 @@ export function AppSidebar({
             </div>
             <MaybeSheetClose>
               <Link
-                href="/pricing"
+                href="/dashboard/pricing"
                 className="inline-flex items-center justify-center rounded-sm border border-white/15 bg-transparent px-4 py-1.5 text-xs font-semibold text-foreground hover:bg-secondary hover:border-white/25 transition-colors"
               >
                 Upgrade

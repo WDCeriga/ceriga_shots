@@ -1,5 +1,12 @@
-import { redirect } from 'next/navigation'
+import type { Metadata } from 'next'
 
-export default function DashboardPricingRedirect() {
-  redirect('/pricing')
+import { DashboardSubscriptionManagementClient } from '@/components/dashboard-subscription-management-client'
+
+export const metadata: Metadata = {
+  title: 'Pricing',
+  description: 'Ceriga Shots plans and pricing — manage your subscription in the dashboard.',
+}
+
+export default function DashboardPricingPage() {
+  return <DashboardSubscriptionManagementClient />
 }
