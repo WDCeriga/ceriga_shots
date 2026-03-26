@@ -818,13 +818,18 @@ function isDevDataUrlStorageAllowed(): boolean {
 }
 
 const BASE_DESIGN_REALIZE = [
-  'You are generating a professional photoreal product photograph from a 2D design reference.',
+  'PRIMARY TASK (read first — single unambiguous job):',
+  '- Input: a 2D design reference (sketch, line art, flat mockup, screenshot, or simple graphic).',
+  '- Output: exactly ONE square photoreal photograph of the finished physical garment (or apparel item) on a white seamless studio background.',
+  '- This is NOT: a 3D model or mesh export, NOT a multi-angle pack shot, NOT a technical flat or line sheet unless the reference clearly shows that layout, NOT a filter on the same photo — you are inventing how the product would look as a real item in a studio photo.',
+  '- “Photoreal” means believable fabric, seams, drape, and lighting as if a photographer shot the real product — still a single 2D image.',
+  '',
   'The input may be a hand sketch, line art, digital flat mockup, screen capture of a design, or a simple graphic — it is NOT necessarily a photo of a finished physical product.',
   '',
   'YOUR JOB:',
-  '- Interpret the reference as design intent for a single real manufactured garment (or apparel item).',
-  '- Realize it in full 3D form with believable materials, seams, thickness, weight, and natural drape appropriate to the implied product.',
-  '- The result must look like a real e-commerce / catalog photograph of that finished item.',
+  '- Interpret the reference as design intent for one real manufactured garment.',
+  '- Show that garment with believable materials, seams, thickness, weight, and natural drape appropriate to the implied product, as captured in one catalog-style photograph.',
+  '- Preserve the general viewing relationship implied by the reference (e.g. front view, three-quarter, or flat lay) — see framing rules below; do not force a different pose unless the reference is ambiguous (then prefer a clear full-product view on white).',
   '',
   'INPUT HANDLING:',
   '- Focus on the apparel/design artwork. Ignore UI chrome, rulers, canvas grid, watermark, device bezels, browser UI, or photo-of-paper edges if present.',
@@ -848,7 +853,7 @@ const BASE_DESIGN_REALIZE = [
 
 const DESIGN_REALIZE_WHITE_STUDIO_BLOCK = [
   'FRAMING & SET (fixed — this pipeline):',
-  '- Match the general viewing angle and pose implied by the reference (front, three-quarter, flat lay, etc.) — do not force an unrelated layout.',
+  '- One output image only: square, white seamless studio. Match the general viewing angle and pose implied by the reference (front, three-quarter, flat lay, etc.) — do not force flat lay if the reference is clearly a front or worn view, and do not force a worn model if the reference is clearly a flat presentation.',
   '- Center the subject; show the full item with comfortable margin; aspect ratio 1:1 square.',
   '- Environment: pure white seamless studio only — clean white cyclorama or infinite white, evenly lit. No grey drift, no visible floor horizon, no texture on the backdrop.',
   '- Lighting: soft, even e-commerce studio lighting (large soft key + gentle fill). One subtle natural contact shadow under the subject; no harsh streaks or coloured gels.',
@@ -871,7 +876,7 @@ const NEGATIVE_GLOBAL_DESIGN = [
 ].join('\n')
 
 const FIDELITY_REMINDER_DESIGN = [
-  'FINAL REMINDER — DESIGN REALIZATION:',
+  'FINAL REMINDER — SKETCH/ MOCKUP TO STUDIO PHOTO:',
   '- The output must remain the same product concept as the reference; do not substitute a different garment or different graphics.',
   '- Where the sketch is ambiguous (exact knit vs weave, minor seam paths), choose plausible defaults — no unrelated embellishments.',
   '- Preserve the layout and identity of visible graphics; do not “redesign for readability.”',
