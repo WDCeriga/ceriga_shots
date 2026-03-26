@@ -10,6 +10,7 @@ import {
 } from '@/lib/generation-queue'
 import { getProjectForUser, updateProjectForUser } from '@/lib/projects'
 import { incrementCredits } from '@/lib/credits'
+import { getInternalQueueSecret } from '@/lib/internal-queue-secret'
 import type { GeneratedImage } from '@/types/projects'
 
 export const runtime = 'nodejs'
@@ -47,8 +48,9 @@ async function processSingle(baseUrl: string, workerId: string) {
       'Content-Type': 'application/json',
       'x-owner-id': job.owner_id,
     }
-    if (process.env.INTERNAL_QUEUE_SECRET) {
-      mockupHeaders['x-internal-queue-secret'] = process.env.INTERNAL_QUEUE_SECRET
+    const internalQueueSecret = getInternalQueueSecret()
+    if (internalQueueSecret) {
+      mockupHeaders['x-internal-queue-secret'] = internalQueueSecret
     }
     if (process.env.QUEUE_DISPATCH_SECRET) {
       mockupHeaders['x-queue-secret'] = process.env.QUEUE_DISPATCH_SECRET

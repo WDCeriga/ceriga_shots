@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import { getInternalQueueSecret } from '@/lib/internal-queue-secret'
 
 export async function proxy(req: NextRequest) {
   // Lock down high-cost endpoints that should never be public.
   if (req.nextUrl.pathname.startsWith('/api/mockups')) {
-    const internalSecret = process.env.INTERNAL_QUEUE_SECRET
+    const internalSecret = getInternalQueueSecret()
     const queueSecret = process.env.QUEUE_DISPATCH_SECRET
     const cronSecret = process.env.CRON_SECRET
     const internalToken = req.headers.get('x-internal-queue-secret')

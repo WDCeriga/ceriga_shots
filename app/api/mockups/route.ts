@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { GoogleGenAI } from '@google/genai'
 import { getServerSession } from 'next-auth'
+import { getInternalQueueSecret } from '@/lib/internal-queue-secret'
 import { authOptions } from '@/lib/auth'
 import { isR2Configured, putObjectToR2 } from '@/lib/r2'
 
@@ -193,11 +194,15 @@ const BASE_FIDELITY = [
   '- Preserve exact print placement, graphics, logo position, and colorway',
   '- Preserve typography exactly (letter shapes, spacing, kerning, and partial/blurred/unreadable segments). Do NOT replace unreadable text with a “readable” version.',
   '- If printed text/letterforms are partially visible, occluded, or cut off in the reference image, keep them partially visible/occluded/cut off exactly (do NOT invent missing characters).',
-  '- Preserve true garment silhouette and structure',
+  '- Preserve true garment silhouette and construction (design identity: category, panels, zipper path, hood presence) — NOT the reference pose, internal air volume, or “filled by invisible body / ghost mannequin” shape',
   '- Preserve realistic fabric weight and natural fold behaviour',
   '- Do NOT reshape, smooth, or make the garment look digitally rendered',
   '- Do NOT add, remove, or modify any design element',
   '- Do NOT introduce logos, watermarks, or text not present on the garment itself',
+  '',
+  'POSE, VOLUME, AND SHOT TYPE (critical):',
+  '- If the reference shows the garment puffed out on a ghost mannequin, invisible body, or as a 3D/CGI render with inflated volume, do NOT transfer that volumetric pose into a shot that requires a different real-world layout.',
+  '- Rebuild the garment as it would appear in that shot in real life (e.g. flat lay = unstuffed, lying on a plane with physically plausible flattening). Only natural fabric thickness and folds from gravity and contact with the surface/support — no “worn” or “stuffed” interior volume unless the shot type explicitly matches that presentation.',
   '',
   'PERMITTED REFINEMENTS ONLY:',
   '- Remove dust, lint, and sensor noise',
@@ -236,6 +241,10 @@ const NEGATIVE_BY_CATEGORY: Record<ShotCategory, string> = {
   flatlay: [
     'NEGATIVE (flat lay specific):',
     '- No hangers, hooks, people, hands, mannequins, or props touching the garment.',
+    '- No ghost mannequin or invisible-wearer volume: no upright hood, balaclava, or face mask that reads as a filled head while the torso lies flat on the surface.',
+    '- No “inflated” torso, sleeves, or hood that imply a body inside when the shot is laid flat / top-down; only natural fabric thickness and real folds from lying on the plane.',
+    '- Hoods and integrated face masks: must be flattened, folded, tucked, or collapsed onto the surface — not a vertical tube or standing head volume; preserve zipper lines, eye openings, and print faithfully while collapsing volume.',
+    '- No copying front-view mannequin or CGI inflation into the flat layout — re-lay the garment as unstuffed fabric.',
     '- No perspective tilt for strict top-down shots; no wide-angle distortion.',
     '- No horizon line, no corners/room edges, no “infinite cyclorama curve”; the surface is a single flat plane.',
     '- No warped/bent background plane; no wavy geometry; no texture stretch/smear; avoid repeating patterns.',
@@ -249,6 +258,7 @@ const NEGATIVE_BY_CATEGORY: Record<ShotCategory, string> = {
     '- No bent walls or warped planes; avoid stretched textures and unnatural perspective.',
     '- Avoid heavy vignettes/gradients that imply curved geometry unless explicitly requested.',
     '- No floating/detached garment: no hovering/float gap between the hanger and the clothing.',
+    '- No rigid ghost-mannequin shell: drape and hang must follow gravity and fabric weight, not copy inflated CGI or invisible-body volume from the reference.',
     '- No razor-sharp or unnaturally long shadows; keep shadow softness realistic and grounded.',
   ].join('\n'),
   detail: [
@@ -392,7 +402,7 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
     '- Optics: ~50mm equivalent lens; minimal distortion',
     '- Depth of field: moderate (f/5.6 to f/8); garment mostly sharp while background remains calm',
     '- Garment placement: loosely draped over a surface edge; half resting, half hanging',
-    '- Front face visible and dominant; drape should look physically plausible with realistic gravity',
+    '- Front face visible and dominant; drape should look physically plausible with realistic gravity (do not copy upright mannequin or CGI “filled” volume from the reference unless the reference clearly matches this draped pose)',
     '- Scale & framing: garment fills ~72-85% of frame with comfortable margin (no cropped hems or printed edges)',
     '- Fabric contact: grounded on the surface/edge everywhere it touches (no hover gap, no floating sections)',
     '- Keep composition premium and minimal; no clutter background',
@@ -458,6 +468,21 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
     '- Do NOT crop off visible collar/neckline edges or visible stitch boundaries; keep all visible edges inside the frame.',
   ].join('\n'),
 }
+
+/** Prepended to all flat-lay shot prompts for garment_photo — stops ghost-mannequin/CGI volume from carrying over. */
+const FLATLAYOUT_GHOST_MANNEQUIN_BLOCK = [
+  'DE-GHOST / FLAT PHYSICS (mandatory for this shot):',
+  '- Treat the reference as the garment’s design and construction only; do NOT preserve ghost-mannequin inflation, CGI “stuffed” volume, or upright hood/balaclava/mask geometry from a frontal or worn-style reference.',
+  '- Full-zip masks / balaclava hoods: keep zipper path, openings, and graphics faithful, but the mask region must collapse flat or open and lie flat — never a vertical “tube” or filled head on the surface.',
+  '- Sleeves and body: unstuffed; natural thickness and folds from the garment resting on the plane only — no cylindrical “arm inside” illusion for top-down flat lay.',
+].join('\n')
+
+/** Prepended to surface (draped + hanging) shot prompts — natural support vs copied mannequin volume. */
+const SURFACE_DEGHOST_BLOCK = [
+  'DE-GHOST / SURFACE PHYSICS (mandatory for this shot):',
+  '- If the reference is ghost mannequin, worn fill, or CGI with inflated volume, rebuild natural drape or hang for this shot from gravity and fabric weight — do not copy invisible-body inflation or rigid shell shape.',
+  '- Draped shots: fabric must fall and compress at the edge in a physically plausible way; hanging shots: shoulders and hem respond to the hanger and gravity, not a pasted mannequin torso.',
+].join('\n')
 
 const PRESET_BASE: Record<Preset, string> = {
   raw: [
@@ -805,6 +830,7 @@ function buildVariationSeed(
 const FIDELITY_REMINDER = [
   'FINAL REMINDER — PRODUCT FIDELITY:',
   '- The garment in the output must be IDENTICAL to the garment in the input image.',
+  '- Identity means prints, colors, construction, and hardware — not preserving ghost-mannequin volume or reference pose when the shot type requires a different layout (flat lay, drape, hang).',
   '- If any detail is unclear in the reference image, reproduce ambiguity faithfully — do NOT invent or assume.',
   '- Do not "improve" the design. Do not add details that seem logical. Only reproduce what is visible.',
   '- If you are uncertain about a design element, keep it simple and faithful rather than creative.',
@@ -957,10 +983,17 @@ function buildPrompt(args: {
 
   const userEditBlock = args.editInstructions ? buildEditInstructionsBlock(args.editInstructions) : ''
 
+  const shotPromptBody =
+    category === 'flatlay'
+      ? `${FLATLAYOUT_GHOST_MANNEQUIN_BLOCK}\n\n${SHOT_PROMPTS[args.shotType]}`
+      : category === 'surface'
+        ? `${SURFACE_DEGHOST_BLOCK}\n\n${SHOT_PROMPTS[args.shotType]}`
+        : SHOT_PROMPTS[args.shotType]
+
   return [
     base,
     negative,
-    SHOT_PROMPTS[args.shotType],
+    shotPromptBody,
     preset,
     buildVariationSeed(args.preset, args.shotType, args.generationIndex, args.variationSeed),
     userEditBlock || undefined,
@@ -995,7 +1028,7 @@ function retryNote(lastErrorMessage: string) {
 export const runtime = 'nodejs'
 
 export async function POST(req: Request) {
-  const internalSecret = process.env.INTERNAL_QUEUE_SECRET
+  const internalSecret = getInternalQueueSecret()
   const internalToken = req.headers.get('x-internal-queue-secret')
   const queueSecret = process.env.QUEUE_DISPATCH_SECRET
   const queueToken = req.headers.get('x-queue-secret')
