@@ -89,6 +89,22 @@
   * {
     @apply border-border outline-ring/50;
   }
+  a,
+  button,
+  [role='button'],
+  input[type='button'],
+  input[type='submit'],
+  input[type='reset'],
+  summary {
+    cursor: pointer;
+  }
+  button:disabled,
+  input:disabled,
+  select:disabled,
+  textarea:disabled,
+  [aria-disabled='true'] {
+    cursor: not-allowed;
+  }
   body {
     @apply bg-background text-foreground;
   }
@@ -286,4 +302,35 @@
 .heading-accordion-in {
   animation: heading-accordion-in 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
   transform-origin: top;
+}
+
+@keyframes flow-cue-route {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.95); /* entry */
+  }
+  8% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  28% {
+    opacity: 1;
+    transform: translate(140px, 48px) scale(1); /* source image */
+  }
+  52% {
+    opacity: 1;
+    transform: translate(510px, 62px) scale(1); /* visual direction */
+  }
+  74% {
+    opacity: 1;
+    transform: translate(520px, 148px) scale(1); /* shot types */
+  }
+  100% {
+    opacity: 1;
+    transform: translate(540px, 232px) scale(1); /* generate assets */
+  }
+}
+
+.animate-flow-cue-route {
+  animation: flow-cue-route 2.9s cubic-bezier(0.22, 1, 0.36, 1) both;
 }

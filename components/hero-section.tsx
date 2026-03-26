@@ -1,15 +1,79 @@
+"use client"
+
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, MousePointer2 } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
 
-const generatedShots = [
-  { src: "/images/hoodie-flatlay.jpg", label: "Flat Lay" },
-  { src: "/images/hoodie-angle.jpg", label: "45° Angle" },
-  { src: "/images/hoodie-closeup.jpg", label: "Close-up" },
-  { src: "/images/hoodie-lifestyle.jpg", label: "Lifestyle" },
-]
+const visualDirections = [
+  { key: "raw", title: "Urban concrete" },
+  { key: "studio", title: "Studio" },
+] as const
+
+const shotTypes = [
+  "Top-down flat lay",
+  "Print close-up",
+  "Hanging shot",
+] as const
 
 export function HeroSection() {
+  const [resultsVisible, setResultsVisible] = useState(false)
+  const [selectedDirection, setSelectedDirection] = useState<(typeof visualDirections)[number]["key"]>("studio")
+  const [selectedShots, setSelectedShots] = useState<string[]>(["Top-down flat lay"])
+  const [generatedShots, setGeneratedShots] = useState<string[]>(["Top-down flat lay"])
+  const [scrollShimmer, setScrollShimmer] = useState(false)
+  const [showDragCue, setShowDragCue] = useState(false)
+  const flowSectionRef = useRef<HTMLDivElement | null>(null)
+
+  function toggleShot(label: string) {
+    setSelectedShots((prev) => {
+      if (prev.includes(label)) {
+        if (prev.length === 1) return prev
+        return prev.filter((item) => item !== label)
+      }
+      return [...prev, label]
+    })
+  }
+
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+    const onScroll = () => {
+      setScrollShimmer(true)
+      if (timeoutId) clearTimeout(timeoutId)
+      timeoutId = setTimeout(() => setScrollShimmer(false), 220)
+    }
+
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => {
+      window.removeEventListener("scroll", onScroll)
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [])
+
+  useEffect(() => {
+    let cueTimeout: ReturnType<typeof setTimeout> | null = null
+    const target = flowSectionRef.current
+    if (!target) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0]
+        if (!entry?.isIntersecting) return
+        setShowDragCue(true)
+        if (cueTimeout) clearTimeout(cueTimeout)
+        cueTimeout = setTimeout(() => setShowDragCue(false), 3200)
+      },
+      { threshold: 0.35 }
+    )
+
+    observer.observe(target)
+    return () => {
+      observer.disconnect()
+      if (cueTimeout) clearTimeout(cueTimeout)
+    }
+  }, [])
+
   return (
     <section className="relative min-h-screen flex flex-col justify-center overflow-hidden pt-16">
       {/* Subtle grid background */}
@@ -62,46 +126,132 @@ export function HeroSection() {
           </Link>
         </div>
 
-        {/* Before / After visual */}
-        <div className="animate-fade-up animation-delay-400 mt-24 grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-          {/* Original */}
-          <div className="relative group">
-            <div className="absolute top-4 left-4 z-10 bg-background/80 backdrop-blur-sm border border-border px-3 py-1.5 text-xs text-white tracking-widest uppercase">
-              Original
-            </div>
-            <div className="overflow-hidden">
-              <Image
-                src="/images/hoodie-original.jpg"
-                alt="Original hoodie product photo"
-                width={800}
-                height={600}
-                className="w-full h-auto group-hover:scale-105 transition-transform duration-700"
-                priority
-              />
-            </div>
-          </div>
-
-          {/* Generated grid */}
-          <div className="relative">
-            <div className="absolute top-4 left-4 z-10 bg-accent/90 backdrop-blur-sm px-3 py-1.5 text-xs text-foreground tracking-widest uppercase font-semibold">
-              AI Generated
-            </div>
-            <div className="grid grid-cols-2 gap-1">
-              {generatedShots.map((shot) => (
-                <div key={shot.label} className="relative overflow-hidden group/card">
+        {/* Generate flow visual */}
+        <div ref={flowSectionRef} className="animate-fade-up animation-delay-400 mt-24 relative">
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_12%_10%,rgba(239,68,68,0.16),transparent_35%),radial-gradient(circle_at_82%_78%,rgba(239,68,68,0.10),transparent_40%)]" />
+          {showDragCue ? (
+            <span className="pointer-events-none hidden lg:inline-flex absolute left-[10%] top-[10%] z-20 h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-accent text-white shadow-[0_10px_24px_rgba(239,68,68,0.45)] animate-flow-cue-route">
+              <MousePointer2 className="h-5 w-5 rotate-12" />
+            </span>
+          ) : null}
+          <div className="grid gap-10 lg:grid-cols-[0.9fr_1.25fr] lg:items-start">
+            <div className="relative">
+              <div className="absolute -inset-3 rounded-2xl bg-white/[0.02] blur-xl" />
+              <div className="relative rounded-2xl border border-white/10 bg-[#0e121b] p-4">
+                <div className="relative mx-auto max-w-[22rem] overflow-hidden rounded-xl border border-white/10 bg-[linear-gradient(165deg,#1f2430_0%,#101522_100%)]">
+                  <div className="absolute left-3 top-3 z-10 rounded bg-black/35 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.15em] text-white/80">
+                    Source
+                  </div>
                   <Image
-                    src={shot.src}
-                    alt={`Generated ${shot.label} shot`}
-                    width={400}
-                    height={300}
-                    className="w-full h-auto group-hover/card:scale-110 transition-transform duration-700"
+                    src="/ceriga-favicon-light-512x512.png"
+                    alt="Initial uploaded product image"
+                    width={420}
+                    height={420}
+                    className="w-full h-auto opacity-95"
+                    priority
                   />
-                  <div className="absolute inset-0 bg-background/0 group-hover/card:bg-background/30 transition-colors duration-300" />
-                  <span className="absolute bottom-2 left-2 text-[10px] tracking-widest uppercase text-foreground/70 bg-background/60 backdrop-blur-sm px-2 py-0.5">
-                    {shot.label}
-                  </span>
                 </div>
-              ))}
+                <div className="mt-3 text-center text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Initial image
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div className="rounded-xl border border-white/10 bg-[#0d1118] px-5 py-4">
+                <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Generation Flow</div>
+              </div>
+
+              <div className="mt-3 grid gap-3">
+                <div className="rounded-xl border border-white/10 bg-[#0d1118] px-5 py-4">
+                  <div className="text-sm text-muted-foreground">1. Visual direction</div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {visualDirections.map((direction) => (
+                      <button
+                        key={direction.key}
+                        type="button"
+                        onClick={() => setSelectedDirection(direction.key)}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                          selectedDirection === direction.key
+                            ? "bg-accent text-accent-foreground"
+                            : "border border-white/15 text-foreground/80 hover:bg-white/5"
+                        }`}
+                      >
+                        {direction.title}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-white/10 bg-[#0d1118] px-5 py-4">
+                  <div className="text-sm text-muted-foreground">2. Shot types</div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {shotTypes.map((shot) => (
+                      <button
+                        key={shot}
+                        type="button"
+                        onClick={() => toggleShot(shot)}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                          selectedShots.includes(shot)
+                            ? "bg-accent text-accent-foreground border border-accent/70"
+                            : "border border-white/15 text-foreground/80 hover:bg-white/5"
+                        }`}
+                      >
+                        {shot}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setGeneratedShots(selectedShots)
+                    setResultsVisible(true)
+                  }}
+                  className="group relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-accent px-6 py-3 text-base font-semibold text-accent-foreground transition-colors hover:bg-accent/90"
+                >
+                  <span
+                    className={`pointer-events-none absolute inset-0 bg-[linear-gradient(110deg,transparent_20%,rgba(255,255,255,0.28)_48%,transparent_74%)] transition-transform duration-700 ${
+                      scrollShimmer ? "translate-x-[180%]" : "translate-x-[-160%]"
+                    }`}
+                  />
+                  <span className="pointer-events-none absolute inset-0 rounded-xl ring-1 ring-accent/70 animate-pulse [animation-duration:2.2s]" />
+                  Generate Assets
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResultsVisible(false)
+                  }}
+                  className="inline-flex items-center justify-center rounded-xl border border-white/15 px-6 py-3 text-base font-medium text-foreground transition-colors hover:bg-white/5"
+                >
+                  Reset
+                </button>
+              </div>
+
+              <div className="mt-6 rounded-2xl border border-white/10 bg-[#0d1118] p-4 sm:p-5">
+                <div className="mb-3 text-foreground text-base font-semibold uppercase tracking-[0.12em]">AI Generated Assets</div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {generatedShots.slice(0, 6).map((label, idx) => (
+                    <div
+                      key={label}
+                      className={`rounded-xl border border-white/10 bg-[linear-gradient(160deg,#202433_0%,#151a28_55%,#101522_100%)] h-24 sm:h-28 transition-all duration-600 ${
+                        resultsVisible ? "opacity-100 translate-y-0" : "opacity-20 translate-y-1"
+                      }`}
+                      style={{ transitionDelay: `${idx * 80}ms` }}
+                    >
+                      <div className="flex h-full items-end p-2">
+                        <span className="rounded bg-black/40 px-2 py-0.5 text-[10px] uppercase tracking-wider text-foreground/80">
+                          {label}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
