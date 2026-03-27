@@ -577,10 +577,18 @@ export default function GeneratePage() {
   }
 
   return (
-    <div className="px-6 py-10 sm:px-10">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-10">
-          <h1 className="whitespace-nowrap text-3xl sm:text-5xl font-semibold tracking-tight leading-none">
+    <div className="relative overflow-hidden px-6 py-10 sm:px-10">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.2]"
+        style={{
+          backgroundImage:
+            'linear-gradient(var(--color-foreground) 1px, transparent 1px), linear-gradient(90deg, var(--color-foreground) 1px, transparent 1px)',
+          backgroundSize: '72px 72px',
+        }}
+      />
+      <div className="relative mx-auto max-w-6xl">
+        <div className="mb-10 max-w-2xl">
+          <h1 className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl md:text-5xl">
             Creating{' '}
             {activeHeadingAnimVariant === 'typing' ? (
               <span
@@ -597,7 +605,7 @@ export default function GeneratePage() {
               <AnimatedHeadingWord variant={activeHeadingAnimVariant as NonTypingHeadingAnimVariantKey} />
             )}
           </h1>
-          <p className="mt-4 max-w-2xl text-sm sm:text-base text-muted-foreground leading-relaxed">
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
             Transform your concepts into studio-grade visuals with precision lighting and composition control.
           </p>
 
@@ -613,7 +621,7 @@ export default function GeneratePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_420px] gap-8">
           {/* Left: Upload + generation options */}
-          <section className="space-y-6">
+          <section className="space-y-6 rounded-2xl border border-border/60 bg-[#0a0a0a] p-4 sm:p-5">
             <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground ml-4">
               Product image
             </div>
@@ -703,11 +711,7 @@ export default function GeneratePage() {
               <Button
                 onClick={handleGenerate}
                 disabled={!canGenerateNow}
-                className={cn(
-                  'w-full rounded-full py-6 text-sm tracking-[0.35em] uppercase cursor-pointer disabled:cursor-not-allowed',
-                  'bg-red-500/8 border border-red-500/35 text-foreground shadow-sm hover:bg-red-500/18 hover:border-red-500/70 hover:shadow-[0_0_18px_rgba(239,68,68,0.25)] transition-shadow'
-                )}
-                variant="outline"
+                className="h-12 w-full rounded-xl text-sm font-semibold tracking-wide disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Generating…' : 'Generate Content'}
               </Button>
@@ -723,7 +727,7 @@ export default function GeneratePage() {
           </section>
 
           {/* Right: Direction + shot types + CTA */}
-          <aside className="rounded-t-none rounded-b-2xl border border-white/15 border-t-0 bg-card/50 shadow-sm">
+          <aside className="rounded-t-none rounded-b-2xl border border-white/15 border-t-0 bg-[#0a0a0a] shadow-sm">
             <div className="border-t border-white/15 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-6">
               {isAuthed ? (
                 <div className="mb-6 rounded-lg border border-accent/40 bg-accent/5 px-4 py-3">
@@ -874,11 +878,7 @@ export default function GeneratePage() {
                 <Button
                   onClick={handleGenerate}
                   disabled={!canGenerateNow}
-                  className={cn(
-                    'w-full rounded-full py-6 text-sm tracking-[0.35em] uppercase cursor-pointer disabled:cursor-not-allowed',
-                  'bg-red-500/8 border border-red-500/35 text-foreground shadow-sm hover:bg-red-500/18 hover:border-red-500/70 hover:shadow-[0_0_18px_rgba(239,68,68,0.25)] transition-shadow'
-                  )}
-                  variant="outline"
+                  className="h-12 w-full rounded-xl text-sm font-semibold tracking-wide disabled:cursor-not-allowed"
                 >
                   {isLoading ? 'Generating…' : 'Generate Content'}
                 </Button>

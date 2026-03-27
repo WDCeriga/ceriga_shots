@@ -285,11 +285,19 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
   }
 
   return (
-    <div className="px-6 py-10 sm:px-10">
-      <div className="mx-auto max-w-6xl">
-        <div className="mb-10 rounded-xl border border-border/60 bg-[#0a0a0a] p-5 sm:p-6">
-          <h1 className="text-3xl sm:text-5xl font-semibold tracking-tight leading-tight">{pageTitle}</h1>
-          <p className="mt-4 max-w-2xl text-sm sm:text-base text-muted-foreground leading-relaxed">{pageDescription}</p>
+    <div className="relative overflow-hidden px-6 py-10 sm:px-10">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.2]"
+        style={{
+          backgroundImage:
+            'linear-gradient(var(--color-foreground) 1px, transparent 1px), linear-gradient(90deg, var(--color-foreground) 1px, transparent 1px)',
+          backgroundSize: '72px 72px',
+        }}
+      />
+      <div className="relative mx-auto max-w-6xl">
+        <div className="mb-10 max-w-2xl space-y-3">
+          <h1 className="text-3xl font-semibold leading-tight tracking-tight sm:text-4xl md:text-5xl">{pageTitle}</h1>
+          <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">{pageDescription}</p>
 
           {!isAuthLoading && !isAuthed && (
             <div className="mt-6 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
@@ -384,11 +392,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
               <Button
                 onClick={handleGenerate}
                 disabled={!canGenerateNow}
-                className={cn(
-                  'w-full rounded-full py-6 text-sm tracking-[0.35em] uppercase cursor-pointer disabled:cursor-not-allowed',
-                  'bg-red-500/8 border border-red-500/35 text-foreground shadow-sm hover:bg-red-500/18 hover:border-red-500/70 hover:shadow-[0_0_18px_rgba(239,68,68,0.25)] transition-shadow'
-                )}
-                variant="outline"
+                className="h-12 w-full rounded-xl text-sm font-semibold tracking-wide disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Generating…' : 'Generate 3D render'}
               </Button>
@@ -441,11 +445,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
               ) : null}
 
               {isProtoRealMode ? (
-                <div className="mt-6">
-                  <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Render style</div>
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    Fixed for this flow: <span className="text-foreground">Semi-real CGI (ProtoReal)</span>
-                  </p>
+                <div className="mt-6">                  
                 </div>
               ) : (
                 <div className="mt-6">
@@ -493,11 +493,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
                 <Button
                   onClick={handleGenerate}
                   disabled={!canGenerateNow}
-                  className={cn(
-                    'w-full rounded-full py-6 text-sm tracking-[0.35em] uppercase cursor-pointer disabled:cursor-not-allowed',
-                    'bg-red-500/8 border border-red-500/35 text-foreground shadow-sm hover:bg-red-500/18 hover:border-red-500/70 hover:shadow-[0_0_18px_rgba(239,68,68,0.25)] transition-shadow'
-                  )}
-                  variant="outline"
+                  className="h-12 w-full rounded-xl text-sm font-semibold tracking-wide disabled:cursor-not-allowed"
                 >
                   {isLoading ? 'Generating…' : 'Generate 3D render'}
                 </Button>

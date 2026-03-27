@@ -7,9 +7,11 @@ export function HomeTechnicalSuperiority() {
         <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-muted-foreground">Core capabilities</p>
         <h2 className="mt-2 text-4xl font-black tracking-tight text-foreground sm:text-5xl">Technical Superiority</h2>
 
-        <div className="mt-10 grid grid-cols-1 gap-4 lg:grid-cols-12">
-          <article className="relative overflow-hidden rounded-xl border border-white/10 bg-[radial-gradient(circle_at_40%_10%,rgba(239,68,68,0.22),transparent_40%),linear-gradient(160deg,#18120f_0%,#0f0f13_45%,#0a0b0f_100%)] p-6 lg:col-span-8 lg:min-h-[360px]">
-            <div className="absolute inset-0 bg-[linear-gradient(25deg,rgba(239,68,68,0.24)_0%,transparent_34%,rgba(239,68,68,0.12)_64%,transparent_100%)]" />
+        <div className="relative mt-10 overflow-hidden rounded-2xl bg-black">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(239,68,68,0.14),transparent_34%),linear-gradient(145deg,rgba(239,68,68,0.10)_0%,transparent_38%,rgba(239,68,68,0.05)_70%,transparent_100%)]" />
+
+          <div className="relative z-10 grid grid-cols-1 gap-4 lg:grid-cols-12">
+          <article className="relative overflow-hidden rounded-xl border border-white/10 bg-black/35 p-6 lg:col-span-8 lg:min-h-[360px]">
             <div className="relative">
               <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Neural engine</p>
               <h3 className="mt-2 text-4xl font-black tracking-tight text-foreground">Sub-pixel fidelity</h3>
@@ -20,7 +22,7 @@ export function HomeTechnicalSuperiority() {
             </div>
           </article>
 
-          <article className="rounded-xl border border-white/10 bg-[#16171d] p-6 lg:col-span-4 lg:min-h-[360px]">
+          <article className="rounded-xl border border-white/10 bg-black/35 p-6 lg:col-span-4 lg:min-h-[360px]">
             <Zap className="h-5 w-5 text-accent" />
             <h3 className="mt-24 text-3xl font-black tracking-tight text-foreground">Instant queue</h3>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
@@ -28,7 +30,7 @@ export function HomeTechnicalSuperiority() {
             </p>
           </article>
 
-          <article className="rounded-xl border border-white/10 bg-[#16171d] p-6 lg:col-span-4 lg:min-h-[240px]">
+          <article className="rounded-xl border border-white/10 bg-black/35 p-6 lg:col-span-4 lg:min-h-[240px]">
             <Aperture className="h-5 w-5 text-accent" />
             <h3 className="mt-10 text-3xl font-black tracking-tight text-foreground">Optical depth</h3>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
@@ -36,7 +38,7 @@ export function HomeTechnicalSuperiority() {
             </p>
           </article>
 
-          <article className="rounded-xl border border-white/10 bg-[#16171d] p-6 lg:col-span-4 lg:min-h-[240px]">
+          <article className="rounded-xl border border-white/10 bg-black/35 p-6 lg:col-span-4 lg:min-h-[240px]">
             <Layers3 className="h-5 w-5 text-accent" />
             <h3 className="mt-10 text-3xl font-black tracking-tight text-foreground">Preset control</h3>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
@@ -45,7 +47,7 @@ export function HomeTechnicalSuperiority() {
             </p>
           </article>
 
-          <article className="rounded-xl border border-white/10 bg-[#16171d] p-6 lg:col-span-4 lg:min-h-[240px]">
+          <article className="rounded-xl border border-white/10 bg-black/35 p-6 lg:col-span-4 lg:min-h-[240px]">
             <Boxes className="h-5 w-5 text-accent" />
             <h3 className="mt-10 text-3xl font-black tracking-tight text-foreground">Direct asset output</h3>
             <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
@@ -59,6 +61,7 @@ export function HomeTechnicalSuperiority() {
               ))}
             </div>
           </article>
+          </div>
         </div>
       </div>
     </section>

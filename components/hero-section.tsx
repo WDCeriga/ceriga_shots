@@ -16,6 +16,13 @@ const shotTypes = [
   "Hanging shot",
 ] as const
 
+const heroStats = [
+  { value: "1.2M+", label: "Assets Generated" },
+  { value: "850+", label: "Active Brands" },
+  { value: "1.4s", label: "Avg. Gen Time" },
+  { value: "92%", label: "Cost Reduction" },
+] as const
+
 const generatedAssetImageByShotAndDirection: Record<string, Record<"raw" | "studio", string>> = {
   "Top-down flat lay": {
     raw: "/images/demo-generated-topdown-raw.jpg",
@@ -122,7 +129,7 @@ export function HeroSection() {
     <section className="relative min-h-screen flex flex-col justify-center overflow-hidden pt-16">
       {/* Subtle grid background */}
       <div
-        className="absolute inset-0 opacity-[0.04]"
+        className="absolute inset-0 opacity-[0.2]"
         style={{
           backgroundImage: `linear-gradient(var(--color-foreground) 1px, transparent 1px), linear-gradient(90deg, var(--color-foreground) 1px, transparent 1px)`,
           backgroundSize: "80px 80px",
@@ -170,8 +177,24 @@ export function HeroSection() {
           </Link>
         </div>
 
+        <div className="animate-fade-up animation-delay-400 mt-30 border-y border-border/80 py-10">
+          <div className="grid grid-cols-2 gap-y-8 sm:grid-cols-4 lg:grid-cols-4 lg:gap-x-6">
+            {heroStats.map((stat) => (
+              <div key={stat.label} className="text-center">
+                <div className="text-5xl font-black tracking-tight text-accent sm:text-5.5xl">{stat.value}</div>
+                <p className="mt-2 text-[10px] uppercase tracking-[0.35em] text-muted-foreground/90">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="animate-fade-up animation-delay-500 mt-28 border-t border-border/70 pt-8 text-center">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-accent">Interactive Experience</p>
+          <h2 className="mt-2 text-4xl font-black tracking-tight text-foreground sm:text-6xl">Try the Studio</h2>
+        </div>
+
         {/* Generate flow visual */}
-        <div ref={flowSectionRef} className="animate-fade-up animation-delay-400 mt-24 relative">
+        <div ref={flowSectionRef} className="animate-fade-up animation-delay-500 mt-12 relative">
           <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_12%_10%,rgba(239,68,68,0.16),transparent_35%),radial-gradient(circle_at_82%_78%,rgba(239,68,68,0.10),transparent_40%)]" />
           {showDragCue ? (
             <span className="pointer-events-none hidden lg:inline-flex absolute left-[10%] top-[10%] z-20 h-10 w-10 items-center justify-center rounded-full border border-white/25 bg-accent text-white shadow-[0_10px_24px_rgba(239,68,68,0.45)] animate-flow-cue-route">

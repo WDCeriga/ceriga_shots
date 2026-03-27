@@ -138,12 +138,6 @@ export function DashboardSubscriptionManagementClient() {
                     {plan.creditsPerMonth} credits / month
                   </div>
                 </div>
-
-                {recommended ? (
-                  <span className="rounded-full bg-accent px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-foreground whitespace-nowrap">
-                    Most popular
-                  </span>
-                ) : null}
               </div>
 
               <p className="mt-4 text-sm text-muted-foreground leading-relaxed">{plan.description}</p>

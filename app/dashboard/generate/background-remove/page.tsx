@@ -115,8 +115,16 @@ export default function BackgroundRemovePage() {
   }
 
   return (
-    <div className="px-4 py-8 sm:px-8 sm:py-10">
-      <div className="mx-auto max-w-6xl space-y-8">
+    <div className="relative overflow-hidden px-4 py-8 sm:px-8 sm:py-10">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.2]"
+        style={{
+          backgroundImage:
+            'linear-gradient(var(--color-foreground) 1px, transparent 1px), linear-gradient(90deg, var(--color-foreground) 1px, transparent 1px)',
+          backgroundSize: '72px 72px',
+        }}
+      />
+      <div className="relative mx-auto max-w-6xl space-y-8">
         {/* Header */}
         <div className="max-w-2xl space-y-3">
           <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl">
@@ -131,7 +139,7 @@ export default function BackgroundRemovePage() {
         {/* Main grid: source | result */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-stretch lg:gap-8">
           {/* Source + controls */}
-          <section className="flex flex-col rounded-2xl border border-white/10 bg-card/40 shadow-sm backdrop-blur-sm">
+          <section className="flex flex-col rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-sm backdrop-blur-sm">
             <div className="border-b border-white/10 px-5 py-4 sm:px-6">
               <h2 className="text-sm font-semibold tracking-tight">Source image</h2>
               <p className="mt-0.5 text-xs text-muted-foreground">Clear subject edges work best.</p>
@@ -259,7 +267,7 @@ export default function BackgroundRemovePage() {
           </section>
 
           {/* Result */}
-          <section className="flex min-h-[min(520px,70vh)] flex-col rounded-2xl border border-white/10 bg-card/40 shadow-sm backdrop-blur-sm lg:min-h-[560px]">
+          <section className="flex min-h-[min(520px,70vh)] flex-col rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-sm backdrop-blur-sm lg:min-h-[560px]">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-5 py-4 sm:px-6">
               <div>
                 <h2 className="text-sm font-semibold tracking-tight">Result</h2>

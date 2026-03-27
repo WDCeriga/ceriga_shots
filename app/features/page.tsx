@@ -4,6 +4,7 @@ import Link from 'next/link'
 
 import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/cta-footer'
+import { MockupsPhotorealSlider } from '@/components/mockups-photoreal-slider'
 
 export const metadata: Metadata = {
   title: 'Features',
@@ -161,7 +162,7 @@ export default function FeaturesPage() {
               <div className="overflow-hidden rounded-lg border border-white/10 bg-[linear-gradient(160deg,#7f5a37_0%,#4f3622_42%,#241812_100%)]" />
               <div className="relative col-span-2 overflow-hidden rounded-lg border border-white/10 bg-[linear-gradient(160deg,#8fa2a4_0%,#6f8a90_48%,#3f5156_100%)]">
                 <span className="absolute bottom-3 right-3 rounded bg-black/40 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-white/80">
-                  Cinematic gen-4
+                  Nano Banana 2
                 </span>
               </div>
             </div>
@@ -172,22 +173,7 @@ export default function FeaturesPage() {
       <section className="border-t border-border py-16">
         <div className="mx-auto grid w-full max-w-7xl gap-8 px-6 lg:grid-cols-[1.15fr_1fr] lg:items-center lg:px-12">
           <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#0f1218] p-3">
-            <div className="relative h-[420px] overflow-hidden rounded-lg border border-white/10">
-              <div className="absolute inset-y-0 left-0 w-1/2 bg-[linear-gradient(160deg,#1a1d24_0%,#0f1117_100%)]" />
-              <div className="absolute inset-y-0 right-0 w-1/2 bg-[linear-gradient(160deg,#cbcbc6_0%,#bab9b4_55%,#a9a8a3_100%)]" />
-              <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-white/20" />
-
-              <div className="absolute left-5 top-5 rounded bg-black/35 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-white/80">
-                Digital mockup
-              </div>
-              <div className="absolute right-5 top-5 rounded bg-accent/90 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-accent-foreground">
-                Final render
-              </div>
-
-              <div className="absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 rounded-md border border-accent/80 bg-accent px-3 py-1 text-xs font-bold text-accent-foreground shadow-[0_0_16px_rgba(239,68,68,0.38)]">
-                {'<->'}
-              </div>
-            </div>
+            <MockupsPhotorealSlider />
           </div>
 
           <div className="rounded-xl border border-white/10 bg-[#0f1218] p-6 lg:p-8">
