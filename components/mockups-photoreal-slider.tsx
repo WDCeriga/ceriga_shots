@@ -1,9 +1,13 @@
 'use client'
 
+import Image from 'next/image'
 import { useCallback, useMemo, useRef, useState } from 'react'
 
+const BEFORE_IMAGE_SRC = '/images/mockups-protoreal-before.jpg'
+const AFTER_IMAGE_SRC = '/images/mockups-protoreal-after.jpg'
+
 export function MockupsPhotorealSlider() {
-  const [sliderValue, setSliderValue] = useState(58)
+  const [sliderValue, setSliderValue] = useState(52)
   const [isDragging, setIsDragging] = useState(false)
   const sliderSurfaceRef = useRef<HTMLDivElement | null>(null)
   const afterWidth = useMemo(() => `${sliderValue}%`, [sliderValue])
@@ -47,14 +51,14 @@ export function MockupsPhotorealSlider() {
           beforeLabelHidden ? 'opacity-0' : 'opacity-100'
         }`}
       >
-        Before
+        PhotoReal
       </div>
       <div
         className={`pointer-events-none absolute right-4 top-4 z-20 rounded bg-accent px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-accent-foreground transition-opacity duration-200 ${
           afterLabelHidden ? 'opacity-0' : 'opacity-100'
         }`}
       >
-        AI After
+        Mockup
       </div>
 
       <div
@@ -67,10 +71,13 @@ export function MockupsPhotorealSlider() {
           <RawMockVisual />
         </div>
 
-        <div className="absolute inset-y-0 left-0 overflow-hidden" style={{ width: afterWidth }}>
-          <div className="absolute inset-0 w-[100cqw]">
-            <GeneratedMockVisual />
-          </div>
+        <div
+          className="absolute inset-0"
+          style={{
+            clipPath: `inset(0 ${100 - sliderValue}% 0 0)`,
+          }}
+        >
+          <GeneratedMockVisual />
         </div>
 
         <div className="pointer-events-none absolute inset-y-0 z-30" style={{ left: afterWidth }}>
@@ -91,10 +98,7 @@ export function MockupsPhotorealSlider() {
           aria-label="Compare mockup and photoreal generated result"
           className="h-2 w-full cursor-ew-resize appearance-none rounded-full bg-white/10 accent-[var(--color-accent)]"
         />
-        <div className="mt-2 flex items-center justify-between text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
-          <span>Digital mockup</span>
-          <span>Final render</span>
-        </div>
+        
       </div>
     </div>
   )
@@ -103,25 +107,27 @@ export function MockupsPhotorealSlider() {
 function RawMockVisual() {
   return (
     <div className="relative h-full w-full">
-      <div className="absolute inset-0 bg-[linear-gradient(160deg,#202532_0%,#161923_48%,#11141b_100%)]" />
-      <div className="absolute left-[14%] top-[16%] h-[68%] w-[38%] rounded-xl bg-white/10 blur-[0.6px]" />
-      <div className="absolute right-[15%] top-[16%] h-[68%] w-[30%] rounded-xl bg-white/5 blur-[1px]" />
-      <div className="absolute bottom-6 left-6 max-w-[65%] rounded border border-white/15 bg-black/30 px-3 py-2 text-xs text-white/70">
-        Dim room lighting, no styling, no retouching.
-      </div>
+      <Image
+        src={BEFORE_IMAGE_SRC}
+        alt="Mockup before conversion"
+        fill
+        sizes="(max-width: 1024px) 100vw, 900px"
+        className="object-contain object-center"
+      />
     </div>
   )
 }
 
 function GeneratedMockVisual() {
   return (
-    <div className="relative h-full w-full">
-      <div className="absolute inset-0 bg-[linear-gradient(160deg,#c9dee4_0%,#d4c5bf_55%,#b8a59c_100%)]" />
-      <div className="absolute left-[10%] top-[10%] h-[74%] w-[36%] rounded-xl bg-white/70 shadow-[0_12px_30px_rgba(0,0,0,0.22)]" />
-      <div className="absolute right-[14%] top-[12%] h-[72%] w-[31%] rounded-xl bg-[#1d2532] shadow-[0_12px_30px_rgba(0,0,0,0.35)]" />
-      <div className="absolute bottom-6 left-6 rounded border border-black/10 bg-white/80 px-3 py-2 text-xs font-medium text-[#1c1f26] backdrop-blur">
-        Styled, color-corrected, export-ready.
-      </div>
+    <div className="relative h-full w-full bg-[#0b0b0f]">
+      <Image
+        src={AFTER_IMAGE_SRC}
+        alt="Photoreal image after conversion"
+        fill
+        sizes="(max-width: 1024px) 100vw, 900px"
+        className="object-contain object-center"
+      />
     </div>
   )
 }

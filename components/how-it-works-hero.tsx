@@ -145,12 +145,13 @@ export function HowItWorksHero() {
 function RawMockVisual() {
   return (
     <div className="relative h-full w-full">
-      <div className="absolute inset-0 bg-[linear-gradient(160deg,#202532_0%,#161923_48%,#11141b_100%)]" />
-      <div className="absolute left-[14%] top-[16%] h-[68%] w-[38%] rounded-xl bg-white/10 blur-[0.6px]" />
-      <div className="absolute right-[15%] top-[16%] h-[68%] w-[30%] rounded-xl bg-white/5 blur-[1px]" />
-      <div className="absolute bottom-6 left-6 max-w-[65%] rounded border border-white/15 bg-black/30 px-3 py-2 text-xs text-white/70">
-        Dim room lighting, no styling, no retouching.
-      </div>
+      <Image
+        src="/images/protoreal-before.jpg"
+        alt="Digital mockup before conversion"
+        fill
+        className="object-cover"
+        sizes="(max-width: 1024px) 100vw, 50vw"
+      />
     </div>
   )
 }
