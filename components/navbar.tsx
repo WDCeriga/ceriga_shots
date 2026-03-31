@@ -5,14 +5,7 @@ import Link from "next/link"
 import { Menu, X } from "lucide-react"
 
 export function Navbar() {
-  const [scrolled, setScrolled] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40)
-    window.addEventListener("scroll", onScroll, { passive: true })
-    return () => window.removeEventListener("scroll", onScroll)
-  }, [])
 
   useEffect(() => {
     const closeOnResize = () => {
@@ -23,11 +16,7 @@ export function Navbar() {
   }, [])
 
   return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        scrolled ? "bg-background/90 backdrop-blur-md border-b border-border" : "bg-transparent"
-      }`}
-    >
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 h-16">
         <div className="relative flex h-full items-center justify-between">
           <Link href="/" className="text-foreground text-sm font-semibold tracking-[0.2em] uppercase shrink-0">
@@ -61,7 +50,7 @@ export function Navbar() {
               onClick={() => setMobileOpen((v) => !v)}
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
               aria-expanded={mobileOpen}
-              className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background/70 text-foreground hover:bg-secondary transition-colors"
+              className="md:hidden inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-background text-foreground hover:bg-secondary transition-colors"
             >
               {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </button>
@@ -78,7 +67,7 @@ export function Navbar() {
       </nav>
 
       {mobileOpen ? (
-        <div className="md:hidden border-t border-border bg-background/95 backdrop-blur-md">
+        <div className="md:hidden border-t border-border bg-background">
           <div className="max-w-7xl mx-auto px-4 py-3 flex flex-col gap-1">
             {[
               { label: "How it works", href: "/how-it-works" },
