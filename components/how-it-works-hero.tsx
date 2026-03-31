@@ -45,7 +45,7 @@ export function HowItWorksHero() {
 
   return (
     <section className="relative overflow-hidden border-t border-border">
-      <div className="pointer-events-none absolute inset-0 opacity-[0.04] [background-image:linear-gradient(var(--color-foreground)_1px,transparent_1px),linear-gradient(90deg,var(--color-foreground)_1px,transparent_1px)] [background-size:80px_80px]" />
+      <div className="pointer-events-none absolute inset-0 opacity-[0.1] [background-image:linear-gradient(var(--color-foreground)_1px,transparent_1px),linear-gradient(90deg,var(--color-foreground)_1px,transparent_1px)] [background-size:80px_80px]" />
 
       <div className="relative mx-auto grid w-full max-w-7xl gap-14 px-6 pb-20 pt-16 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-10 lg:px-12 lg:pt-24">
         <div>

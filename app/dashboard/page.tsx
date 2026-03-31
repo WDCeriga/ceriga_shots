@@ -192,7 +192,7 @@ export default function DashboardHome() {
     <div className="relative min-h-screen">
       {/* Subtle grid background to match the index hero */}
       <div
-        className="absolute inset-0 opacity-[0.07]"
+        className="absolute inset-0 opacity-[0.1]"
         style={{
           backgroundImage: `linear-gradient(var(--color-foreground) 1px, transparent 1px), linear-gradient(90deg, var(--color-foreground) 1px, transparent 1px)`,
           backgroundSize: '80px 80px',

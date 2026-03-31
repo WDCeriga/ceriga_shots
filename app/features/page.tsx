@@ -50,7 +50,7 @@ export default function FeaturesPage() {
     <main className="min-h-screen flex flex-col bg-background text-foreground">
       <Navbar />
 
-      <section className="border-t border-border pt-24 pb-16">
+      <section className="border-t border-border pt-40 pb-16">
         <div className="mx-auto w-full max-w-7xl px-6 text-center lg:px-12">
           <p className="text-xs font-medium uppercase tracking-[0.35em] text-accent">Technical excellence</p>
           <h1 className="mx-auto mt-4 max-w-5xl text-balance text-5xl font-black tracking-tight sm:text-6xl lg:text-7xl">
@@ -65,7 +65,7 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      <section className="border-t border-border py-20">
+      <section className="border-t border-border py-40">
         <div className="mx-auto w-full max-w-7xl px-6 lg:px-12">
           <div className="mb-10 text-center">
             <p className="text-xs font-medium uppercase tracking-[0.35em] text-accent">Style presets</p>
@@ -170,7 +170,7 @@ export default function FeaturesPage() {
         </div>
       </section>
 
-      <section className="border-t border-border py-16">
+      <section className="border-t border-border py-45">
         <div className="mx-auto grid w-full max-w-7xl gap-8 px-6 lg:grid-cols-[1.15fr_1fr] lg:items-center lg:px-12">
           <div className="relative overflow-hidden rounded-xl border border-white/10 bg-[#0f1218] p-3">
             <MockupsPhotorealSlider />

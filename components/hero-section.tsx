@@ -129,7 +129,7 @@ export function HeroSection() {
     <section className="relative min-h-screen flex flex-col justify-center overflow-hidden pt-16">
       {/* Subtle grid background */}
       <div
-        className="absolute inset-0 opacity-[0.2]"
+        className="absolute inset-0 opacity-[0.1]"
         style={{
           backgroundImage: `linear-gradient(var(--color-foreground) 1px, transparent 1px), linear-gradient(90deg, var(--color-foreground) 1px, transparent 1px)`,
           backgroundSize: "80px 80px",
@@ -224,11 +224,7 @@ export function HeroSection() {
               </div>
             </div>
 
-            <div>
-              <div className="rounded-xl border border-white/10 bg-[#0d1118] px-5 py-4">
-                <div className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Generation Flow</div>
-              </div>
-
+            <div className="rounded-2xl border border-white/10 bg-[#0d1118] p-4">
               <div className="mt-3 grid gap-3">
                 <div className="rounded-xl border border-white/10 bg-[#0d1118] px-5 py-4">
                   <div className="text-sm text-muted-foreground">1. Visual direction</div>
@@ -300,7 +296,7 @@ export function HeroSection() {
                 </button>
               </div>
 
-              <div className="mt-6 rounded-2xl border border-white/10 bg-[#0d1118] p-4 sm:p-5">
+              <div className="p-5 sm:pl-1">
                 <div className="mb-3 text-foreground text-base font-semibold uppercase tracking-[0.12em]">AI Generated Assets</div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {generatedShots.slice(0, 6).map((label, idx) => (
@@ -314,7 +310,7 @@ export function HeroSection() {
                         setOpenResultSrc(src)
                         setOpenResultLabel(label)
                       }}
-                      className={`relative overflow-hidden rounded-xl border border-white/10 h-24 sm:h-28 transition-all duration-600 ${
+                      className={`relative overflow-hidden rounded-xl border border-white/10 h-34 sm:h-48 transition-all duration-600 ${
                         resultsVisible ? "opacity-100 translate-y-0" : "opacity-20 translate-y-1"
                       }`}
                       style={{ transitionDelay: `${idx * 80}ms` }}

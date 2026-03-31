@@ -287,7 +287,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
   return (
     <div className="relative overflow-hidden px-6 py-10 sm:px-10">
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.2]"
+        className="pointer-events-none absolute inset-0 opacity-[0.1]"
         style={{
           backgroundImage:
             'linear-gradient(var(--color-foreground) 1px, transparent 1px), linear-gradient(90deg, var(--color-foreground) 1px, transparent 1px)',

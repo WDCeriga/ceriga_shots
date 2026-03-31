@@ -198,7 +198,7 @@ export function DashboardPricingClient() {
   }
 
   return (
-    <div className="relative p-6 sm:p-10 max-w-7xl mx-auto">
+    <div className="relative p-10 py-20 max-w-7xl mx-auto">
       <div className="mb-10 text-center">
         <h1 className="text-balance text-4xl sm:text-6xl font-black tracking-tight text-foreground mb-4">
           Pricing - Scale your content as you grow
@@ -208,7 +208,7 @@ export function DashboardPricingClient() {
         </p>
       </div>
 
-      <div className="mb-8 flex items-center justify-center">
+      <div className="mb-10 flex items-center justify-center">
         <div className="inline-flex items-center rounded-lg border border-border p-1 bg-card">
           <button
             type="button"
