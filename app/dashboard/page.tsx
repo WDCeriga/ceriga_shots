@@ -207,10 +207,10 @@ export default function DashboardHome() {
         </p>
         
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-          <Link href="/dashboard/generate">
+          <Link href="/dashboard/generate" className="h-full">
             <Button
               variant="outline"
-              className="w-full min-h-[96px] sm:h-32 flex flex-col items-center justify-center gap-2.5 sm:gap-3 text-center bg-[#0a0a0a] border-border/70 hover:bg-[#1b1f29]"
+              className="h-full w-full min-h-[96px] sm:min-h-[168px] flex flex-col items-center justify-center gap-2.5 sm:gap-3 text-center bg-[#0a0a0a] border-border/70 hover:bg-[#1b1f29]"
             >
               <div className="text-2xl sm:text-3xl leading-none">+</div>
               <div>
@@ -220,7 +220,7 @@ export default function DashboardHome() {
             </Button>
           </Link>
 
-          <div className="hidden sm:block rounded-lg border border-border/70 bg-gradient-to-b from-[#1a1d24] to-[#151821] p-4 sm:p-5">
+          <div className="hidden sm:block h-full min-h-[168px] rounded-lg border border-border/70 bg-gradient-to-b from-[#1a1d24] to-[#151821] p-4 sm:p-5">
             {isLoading ? (
               <div className="animate-pulse space-y-3">
                 <div className="h-4 w-28 rounded bg-secondary" />
@@ -259,10 +259,10 @@ export default function DashboardHome() {
             )}
           </div>
 
-          <Link href="/dashboard/library">
+          <Link href="/dashboard/library" className="h-full">
             <Button
               variant="outline"
-              className="w-full min-h-[96px] sm:h-32 flex flex-col items-center justify-center gap-2.5 sm:gap-3 text-center bg-[#0a0a0a] border-border/70 hover:bg-[#1b1f29]"
+              className="h-full w-full min-h-[96px] sm:min-h-[168px] flex flex-col items-center justify-center gap-2.5 sm:gap-3 text-center bg-[#0a0a0a] border-border/70 hover:bg-[#1b1f29]"
             >
               <div className="text-2xl sm:text-3xl leading-none">→</div>
               <div>

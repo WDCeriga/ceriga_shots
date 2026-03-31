@@ -32,9 +32,9 @@ export function AppSidebar({
     { href: '/dashboard/settings', label: 'Settings' },
   ]
   const generateLinks: { href: string | null; label: string }[] = [
-    { href: '/dashboard/generate/background-remove', label: 'Background remover' },
-    { href: '/dashboard/generate/from-sketch', label: 'Sketch-to-3D Mockups' },
-    { href: '/dashboard/generate/protoreal', label: 'Mockups to ProtoReal' },
+    { href: '/dashboard/generate/background-remove', label: 'Background Studio' },
+    { href: '/dashboard/generate/from-sketch', label: 'Concept to Mockup' },
+    { href: '/dashboard/generate/protoreal', label: 'Photoreal Mockup' },
     { href: '/dashboard/generate', label: 'Product Shots' },
   ]
   const adminLinks = [

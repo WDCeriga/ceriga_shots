@@ -979,6 +979,28 @@ const DESIGN_REALIZE_PHOTOREAL_FLATLAY_BLOCK = [
   '- Lighting: soft e-commerce studio lighting with realistic short grounded shadows; no harsh streaks.',
 ].join('\n')
 
+const DESIGN_FIDELITY_HARDLOCK = [
+  'IDENTITY LOCK (critical — non-negotiable):',
+  '- Treat the reference as the source of truth for product identity. Reconstruct/render it faithfully; do NOT redesign.',
+  '- Preserve exact graphic/logo count, placement, relative scale, spacing, orientation, and edge boundaries.',
+  '- Preserve exact colorway relationships and panel color blocking; do NOT swap hues or simplify multi-tone regions.',
+  '- Preserve typography faithfully: letterform silhouettes, spacing, occlusions, and ambiguity. Do NOT "clean up" or rewrite text.',
+  '- If text/graphics are partially unclear, keep that ambiguity instead of inventing missing strokes/characters.',
+  '- Preserve construction cues visible in the reference: seam paths, placket/zip path, rib zones, pocket positions, hood/collar presence, cuff/hem behavior.',
+  '- Preserve the same dominant visible face/view family implied by the reference (front stays front, back stays back, etc.) unless explicitly changed.',
+  '- If the reference contains UI/screenshot clutter, ignore all non-product context and realize only the apparel item.',
+].join('\n')
+
+const DESIGN_OUTPUT_QUALITY_GUARDRAILS = [
+  'OUTPUT QUALITY GUARDRAILS:',
+  '- Output exactly ONE square image (1:1).',
+  '- Keep full product visibility with comfortable margins; no clipped hems/sleeves/logo edges unless the input crop itself is tight detail.',
+  '- Maintain physically plausible volume and fold behavior for the chosen style family (CGI clean/semi/toon or photoreal flatlay).',
+  '- No extra accessories, props, mannequins, people, or room context unless clearly required by the reference.',
+  '- No added overlays, labels, watermarks, borders, split-views, or before/after composites.',
+  '- No AI artifacts: warped geometry, duplicated logos, melted seams, illegible invented text, or texture smearing.',
+].join('\n')
+
 const NEGATIVE_DESIGN_WHITE_BG = [
   'BACKGROUND & PROPS (strict):',
   '- No wood, concrete, marble, fabric surfaces under the product, lifestyle rooms, or props.',
@@ -1000,7 +1022,7 @@ const FIDELITY_REMINDER_DESIGN = [
   '- The output must remain the same product concept as the reference; do not substitute a different garment or different graphics.',
   '- Where the sketch is ambiguous (exact knit vs weave, minor seam paths), choose plausible defaults — no unrelated embellishments.',
   '- Preserve the layout and identity of visible graphics; do not “redesign for readability.”',
-  '- Presentation mode is always rendered CGI (not photoreal product photography).',
+  '- Presentation mode must strictly follow the selected style family (CGI modes stay CGI; photoreal_flatlay stays photoreal).',
 ].join('\n')
 
 const DESIGN_RENDER_STYLE_NEGATIVES: Partial<Record<RenderStyleLevel, string>> = {
@@ -1099,7 +1121,9 @@ function buildPrompt(args: {
         ? DESIGN_REALIZE_PHOTOREAL_FLATLAY_BLOCK
         : DESIGN_REALIZE_WHITE_STUDIO_BLOCK
 
-    const base = garmentTypeAnchor ? `${baseCore}\n\n${garmentTypeAnchor}` : baseCore
+    const base = [baseCore, DESIGN_FIDELITY_HARDLOCK, garmentTypeAnchor || undefined]
+      .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+      .join('\n\n')
     const negative = [NEGATIVE_GLOBAL_DESIGN, NEGATIVE_DESIGN_WHITE_BG, styleNegative].filter(
       (x): x is string => typeof x === 'string' && x.trim().length > 0
     ).join('\n')
@@ -1108,7 +1132,7 @@ function buildPrompt(args: {
       : ''
     // Constraint order (design_realize):
     // 1) identity non-negotiables, 2) shot framing + surface/light, 3) negatives, 4) final reminder.
-    return [base, framingBlock, userEditBlock || undefined, negative, FIDELITY_REMINDER_DESIGN]
+    return [base, framingBlock, DESIGN_OUTPUT_QUALITY_GUARDRAILS, userEditBlock || undefined, negative, FIDELITY_REMINDER_DESIGN]
       .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
       .join('\n---\n')
   }
