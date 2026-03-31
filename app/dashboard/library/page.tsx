@@ -80,6 +80,10 @@ export default function LibraryPage() {
 
   const getProjectType = (project: Project) => {
     const pipeline = project.generation?.pipeline
+    const renderStyleLevel = project.generation?.renderStyleLevel
+    if (renderStyleLevel === 'photoreal_flatlay') {
+      return { label: 'Mockups to ProtoReal', className: 'border-red-500/35 bg-red-500/10 text-red-400' }
+    }
     if (pipeline === 'design_realize') {
       return { label: 'Sketch-to-3D', className: 'border-red-500/35 bg-red-500/10 text-red-400' }
     }
@@ -91,6 +95,12 @@ export default function LibraryPage() {
     }
     // If older projects don't have generation info, assume product-shot style.
     return { label: 'Product Shots', className: 'border-border bg-secondary/30 text-muted-foreground' }
+  }
+
+  const getProjectPreset = (project: Project) => {
+    const preset = project.generation?.preset
+    if (!preset) return '—'
+    return preset.replace(/_/g, ' ')
   }
 
   const filtered = projects
@@ -226,6 +236,21 @@ export default function LibraryPage() {
                         {project.generatedCount ?? project.generatedImages.length} assets
                       </span>
                     </div>
+                  </div>
+                  <div className="mt-2 grid grid-cols-1 gap-1 text-[11px] text-muted-foreground">
+                    <p>
+                      Preset: <span className="text-foreground/90">{getProjectPreset(project)}</span>
+                    </p>
+                    {project.generation?.garmentType ? (
+                      <p>
+                        Product type: <span className="text-foreground/90">{project.generation.garmentType}</span>
+                      </p>
+                    ) : null}
+                    {project.generation?.status ? (
+                      <p>
+                        Status: <span className="text-foreground/90 capitalize">{project.generation.status}</span>
+                      </p>
+                    ) : null}
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
                     {new Date(project.createdAt).toLocaleDateString()}

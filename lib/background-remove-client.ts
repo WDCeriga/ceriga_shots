@@ -28,6 +28,39 @@ async function compositeBlobOnWhite(blob: Blob): Promise<Blob> {
   })
 }
 
+async function compositeBlobOnCustomBackground(foregroundBlob: Blob, backgroundSource: Blob): Promise<Blob> {
+  const fg = await createImageBitmap(foregroundBlob)
+  const bg = await createImageBitmap(backgroundSource)
+  const canvas = document.createElement('canvas')
+  canvas.width = fg.width
+  canvas.height = fg.height
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    fg.close()
+    bg.close()
+    throw new Error('Canvas not supported')
+  }
+
+  // Cover-fit background to avoid letterboxing while keeping output dimensions stable.
+  const scale = Math.max(canvas.width / bg.width, canvas.height / bg.height)
+  const drawW = bg.width * scale
+  const drawH = bg.height * scale
+  const drawX = (canvas.width - drawW) / 2
+  const drawY = (canvas.height - drawH) / 2
+  ctx.drawImage(bg, drawX, drawY, drawW, drawH)
+  ctx.drawImage(fg, 0, 0)
+  fg.close()
+  bg.close()
+
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(
+      (b) => (b ? resolve(b) : reject(new Error('Failed to encode image'))),
+      'image/png',
+      0.92
+    )
+  })
+}
+
 async function resizeBlobMaxEdge(blob: Blob, maxEdge: number): Promise<Blob> {
   const bmp = await createImageBitmap(blob)
   const w = bmp.width
@@ -70,7 +103,7 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   })
 }
 
-export type BackgroundRemoveOutputMode = 'transparent' | 'white'
+export type BackgroundRemoveOutputMode = 'transparent' | 'white' | 'custom'
 
 /**
  * Shared @imgly/background-removal options: WebGPU when available, worker thread.
@@ -99,7 +132,8 @@ export async function preloadBackgroundRemovalAssets(): Promise<void> {
  */
 export async function removeBackgroundToDataUrl(
   source: File | Blob,
-  outputMode: BackgroundRemoveOutputMode
+  outputMode: BackgroundRemoveOutputMode,
+  customBackgroundSource?: File | Blob
 ): Promise<string> {
   const { removeBackground } = await import('@imgly/background-removal')
 
@@ -107,6 +141,11 @@ export async function removeBackgroundToDataUrl(
 
   if (outputMode === 'white') {
     blob = await compositeBlobOnWhite(blob)
+  } else if (outputMode === 'custom') {
+    if (!customBackgroundSource) {
+      throw new Error('Custom background image is required.')
+    }
+    blob = await compositeBlobOnCustomBackground(blob, customBackgroundSource)
   }
 
   let maxEdge = 2048

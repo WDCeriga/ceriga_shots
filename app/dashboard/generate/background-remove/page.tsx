@@ -18,11 +18,14 @@ const CHECKER_BG =
 export default function BackgroundRemovePage() {
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string>('')
+  const [customBgFile, setCustomBgFile] = useState<File | null>(null)
+  const [customBgPreview, setCustomBgPreview] = useState<string>('')
   const [resultDataUrl, setResultDataUrl] = useState<string | null>(null)
   const [isDragging, setIsDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [bgRemoveOutput, setBgRemoveOutput] = useState<BackgroundRemoveOutputMode>('transparent')
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const customBgInputRef = useRef<HTMLInputElement | null>(null)
   const preloadStartedRef = useRef(false)
 
   useEffect(() => {
@@ -75,11 +78,19 @@ export default function BackgroundRemovePage() {
 
   const handleRemoveBackground = async () => {
     if (!file || !preview) return
+    if (bgRemoveOutput === 'custom' && !customBgFile) {
+      toast({
+        title: 'Custom background required',
+        description: 'Upload a background image to use this output mode.',
+        variant: 'destructive',
+      })
+      return
+    }
 
     setIsLoading(true)
     setResultDataUrl(null)
     try {
-      const dataUrl = await removeBackgroundToDataUrl(file, bgRemoveOutput)
+      const dataUrl = await removeBackgroundToDataUrl(file, bgRemoveOutput, customBgFile ?? undefined)
       setResultDataUrl(dataUrl)
       toast({
         title: 'Background removed',
@@ -110,8 +121,29 @@ export default function BackgroundRemovePage() {
   const handleReset = () => {
     setFile(null)
     setPreview('')
+    setCustomBgFile(null)
+    setCustomBgPreview('')
     setResultDataUrl(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
+    if (customBgInputRef.current) customBgInputRef.current.value = ''
+  }
+
+  const handleCustomBgFile = (selectedFile: File) => {
+    if (!selectedFile.type.startsWith('image/')) {
+      toast({
+        title: 'Unsupported file',
+        description: 'Please choose a background image (PNG, JPG, or WebP).',
+        variant: 'destructive',
+      })
+      return
+    }
+    setCustomBgFile(selectedFile)
+    setResultDataUrl(null)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      setCustomBgPreview(e.target?.result as string)
+    }
+    reader.readAsDataURL(selectedFile)
   }
 
   return (
@@ -131,8 +163,8 @@ export default function BackgroundRemovePage() {
             Background remover
           </h1>
           <p className="text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Drop a product photo, pick transparent or white output, and get a PNG instantly. Processing stays on your
-            device — nothing is sent to our servers until you use other tools.
+            Drop a product photo, pick transparent, white, or custom background output, and get a PNG instantly.
+            Processing stays on your device — nothing is sent to our servers until you use other tools.
           </p>
         </div>
 
@@ -200,7 +232,7 @@ export default function BackgroundRemovePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <button
                   type="button"
                   onClick={() => setBgRemoveOutput('transparent')}
@@ -227,7 +259,56 @@ export default function BackgroundRemovePage() {
                   <div className="text-sm font-medium">White backdrop</div>
                   <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">Catalog-style solid white</div>
                 </button>
+                <button
+                  type="button"
+                  onClick={() => setBgRemoveOutput('custom')}
+                  className={cn(
+                    'rounded-xl border px-4 py-3.5 text-left transition-all',
+                    bgRemoveOutput === 'custom'
+                      ? 'border-red-500/50 bg-red-500/10 ring-1 ring-red-500/30'
+                      : 'border-white/10 hover:border-white/20 hover:bg-white/[0.03]'
+                  )}
+                >
+                  <div className="text-sm font-medium">Custom background</div>
+                  <div className="mt-0.5 text-[11px] leading-snug text-muted-foreground">Upload your own backdrop image</div>
+                </button>
               </div>
+
+              {bgRemoveOutput === 'custom' ? (
+                <div className="space-y-3 rounded-xl border border-white/10 bg-background/20 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs text-muted-foreground">Custom background image</p>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 rounded-lg border-white/15 bg-transparent text-xs"
+                      onClick={() => customBgInputRef.current?.click()}
+                      disabled={isLoading}
+                    >
+                      <Upload className="mr-1.5 h-3.5 w-3.5" />
+                      Upload
+                    </Button>
+                  </div>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    ref={customBgInputRef}
+                    className="hidden"
+                    onChange={(e) => e.target.files?.[0] && handleCustomBgFile(e.target.files[0])}
+                  />
+                  {customBgPreview ? (
+                    <div className="flex items-center gap-3">
+                      <div className="relative h-14 w-14 overflow-hidden rounded-md border border-white/10">
+                        <Image src={customBgPreview} alt="Custom background preview" fill className="object-cover" unoptimized />
+                      </div>
+                      <p className="min-w-0 truncate text-xs text-muted-foreground">{customBgFile?.name}</p>
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">No background selected yet.</p>
+                  )}
+                </div>
+              ) : null}
 
               <div className="mt-auto flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                 <Button
@@ -243,7 +324,7 @@ export default function BackgroundRemovePage() {
                   ) : (
                     <>
                       <Sparkles className="mr-2 h-4 w-4 opacity-90" />
-                      Remove background
+                      Replace background
                     </>
                   )}
                 </Button>
@@ -317,7 +398,7 @@ export default function BackgroundRemovePage() {
                   <p className="text-sm font-medium text-foreground/90">No result yet</p>
                   <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                     Upload a photo and choose <span className="text-foreground/80">Remove background</span>. Your cutout
-                    appears here with a checkerboard (transparent) or white preview.
+                    appears here with a checkerboard (transparent), white preview, or your uploaded custom backdrop.
                   </p>
                 </div>
               )}

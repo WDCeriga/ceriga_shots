@@ -75,11 +75,14 @@ export default function AdminProjectsPage() {
   }
 
   function formatPipelineLabel(pipeline: string, renderStyleLevel?: string): string {
+    if (renderStyleLevel === 'photoreal_flatlay') {
+      return 'Mockups to ProtoReal'
+    }
     switch (pipeline) {
       case 'background_remove':
         return 'Background remover'
       case 'design_realize':
-        return renderStyleLevel === 'photoreal_flatlay' ? 'Mockups to ProtoReal' : 'Sketch-to-3D Mockups'
+        return 'Sketch-to-3D Mockups'
       case 'garment_photo':
         return 'Product Shots'
       default:
