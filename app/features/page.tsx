@@ -233,14 +233,14 @@ export default function FeaturesPage() {
             </div>
           </div>
 
-          <div className="rounded-[2rem] border border-white/10 bg-[#171c24] p-4 lg:p-5">
+          <div className="rounded-[2rem] bg-[#171c24] p-4 lg:p-5">
             <div className="grid grid-cols-2 gap-3">
-              <div className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-[url('/images/original-bg.png')] bg-cover bg-center">
+              <div className="relative aspect-square overflow-hidden rounded-xl bg-[url('/images/original-bg.png')] bg-cover bg-center">
                 <span className="absolute left-3 top-3 rounded bg-black/40 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-white/80">
                   Original
                 </span>
               </div>
-              <div className="relative aspect-square overflow-hidden rounded-xl border border-white/10 bg-[url('/images/generated-bg.png')] bg-cover bg-center">
+              <div className="relative aspect-square overflow-hidden rounded-xl bg-[url('/images/generated-bg.png')] bg-cover bg-center">
                 <span className="absolute left-3 top-3 rounded bg-accent/90 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-accent-foreground">
                   Generated background
                 </span>
