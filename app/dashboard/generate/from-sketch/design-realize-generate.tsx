@@ -15,7 +15,7 @@ import { Textarea } from '@/components/ui/textarea'
 import type { RenderStyleLevel } from '@/types/projects'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
-/** Internal job type for queue + meta; prompt is white-backdrop design_realize in mockups. */
+/** Internal job type for queue + meta. ProtoReal uses garment_photo prompt pipeline. */
 const DESIGN_JOB_SHOT = 'flatlay_topdown' as const
 const DESIGN_JOB_PRESET = 'studio' as const
 
@@ -23,9 +23,90 @@ const FROM_SKETCH_PATH = '/dashboard/generate/from-sketch'
 const PROTOREAL_PATH = '/dashboard/generate/protoreal'
 
 export type DesignRealizeMode = 'sketch3d' | 'protoreal'
+type ProductTypeOption =
+  | 'auto'
+  | 'tshirt'
+  | 'hoodie'
+  | 'sweatshirt'
+  | 'jacket'
+  | 'joggers'
+  | 'shorts'
+  | 'cap'
+  | 'beanie'
+  | 'tote_bag'
+  | 'sneakers'
+  | 'other'
+type FitStyleOption = 'auto' | 'regular' | 'oversized' | 'boxy' | 'slim'
+type FitStyleOptionExtended = FitStyleOption | 'other'
+type MaterialOption = 'auto' | 'cotton' | 'heavyweight_cotton' | 'fleece' | 'nylon' | 'denim' | 'leather' | 'other'
+type BrandingOption = 'auto' | 'none' | 'screen_print' | 'puff_print' | 'embroidery' | 'minimal_logo' | 'large_graphic' | 'other'
+type FinishWashOption = 'auto' | 'clean_new' | 'washed' | 'vintage_fade' | 'other'
+
+const PRODUCT_TYPE_LABEL: Record<ProductTypeOption, string> = {
+  auto: 'Auto',
+  tshirt: 'T-Shirt',
+  hoodie: 'Hoodie',
+  sweatshirt: 'Sweatshirt',
+  jacket: 'Jacket',
+  joggers: 'Joggers',
+  shorts: 'Shorts',
+  cap: 'Cap',
+  beanie: 'Beanie',
+  tote_bag: 'Tote bag',
+  sneakers: 'Sneakers',
+  other: 'Other (type below)',
+}
+
+const FIT_STYLE_LABEL: Record<FitStyleOption, string> = {
+  auto: 'Auto',
+  regular: 'Regular',
+  oversized: 'Oversized',
+  boxy: 'Boxy',
+  slim: 'Slim',
+}
+
+const MATERIAL_LABEL: Record<MaterialOption, string> = {
+  auto: 'Auto',
+  cotton: 'Cotton',
+  heavyweight_cotton: 'Heavyweight cotton',
+  fleece: 'Fleece',
+  nylon: 'Nylon',
+  denim: 'Denim',
+  leather: 'Leather',
+  other: 'Other (type below)',
+}
+
+const BRANDING_LABEL: Record<BrandingOption, string> = {
+  auto: 'Auto',
+  none: 'None (blank)',
+  screen_print: 'Screen print',
+  puff_print: 'Puff print',
+  embroidery: 'Embroidery',
+  minimal_logo: 'Minimal logo',
+  large_graphic: 'Large graphic',
+  other: 'Other (type below)',
+}
+
+const FINISH_WASH_LABEL: Record<FinishWashOption, string> = {
+  auto: 'Auto',
+  clean_new: 'Clean (new)',
+  washed: 'Washed',
+  vintage_fade: 'Vintage fade',
+  other: 'Other (type below)',
+}
+
+const CLOTHING_PRODUCT_TYPES = new Set<ProductTypeOption>([
+  'tshirt',
+  'hoodie',
+  'sweatshirt',
+  'jacket',
+  'joggers',
+  'shorts',
+])
 
 export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: DesignRealizeMode }) {
   const isProtoRealMode = mode === 'protoreal'
+  const generationPipeline = isProtoRealMode ? 'garment_photo' : 'design_realize'
   const callbackPath = isProtoRealMode ? PROTOREAL_PATH : FROM_SKETCH_PATH
   const pageTitle = isProtoRealMode ? 'Mockups to ProtoReal' : 'Sketch-to-3D Mockups'
   const pageDescription = isProtoRealMode
@@ -38,10 +119,17 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
   const [preview, setPreview] = useState<string>('')
   const [isDragging, setIsDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [productType, setProductType] = useState<'auto' | 'hoodie' | 'tshirt' | 'jacket' | 'sweatshirt' | 'pants' | 'custom'>(
-    'auto'
-  )
+  const [productType, setProductType] = useState<ProductTypeOption>('auto')
   const [customProductType, setCustomProductType] = useState('')
+  const [fitStyle, setFitStyle] = useState<FitStyleOptionExtended>('auto')
+  const [customFitStyle, setCustomFitStyle] = useState('')
+  const [materialType, setMaterialType] = useState<MaterialOption>('auto')
+  const [customMaterialType, setCustomMaterialType] = useState('')
+  const [brandingType, setBrandingType] = useState<BrandingOption>('auto')
+  const [customBrandingType, setCustomBrandingType] = useState('')
+  const [finishWash, setFinishWash] = useState<FinishWashOption>('auto')
+  const [customFinishWash, setCustomFinishWash] = useState('')
+  const [customNotes, setCustomNotes] = useState('')
   const [designRealizeRefinements, setDesignRealizeRefinements] = useState('')
   const [materialHint, setMaterialHint] = useState('')
   const [renderStyleLevel, setRenderStyleLevel] = useState<RenderStyleLevel>(fixedRenderStyle ?? 'clean_cgi')
@@ -133,6 +221,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
     isAuthed &&
     designFlowAllowed &&
     hasEnoughCredits
+  const showFitStyle = isProtoRealMode && CLOTHING_PRODUCT_TYPES.has(productType)
 
   const handleFile = (selectedFile: File) => {
     if (!selectedFile.type.startsWith('image/')) {
@@ -193,14 +282,46 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
     let createdProjectId: string | null = null
     try {
       const resolvedGarmentType =
-        productType === 'auto' ? undefined : productType === 'custom' ? customProductType.trim() || undefined : productType
+        productType === 'auto'
+          ? undefined
+          : productType === 'other'
+            ? customProductType.trim() || undefined
+            : PRODUCT_TYPE_LABEL[productType]
 
-      const refinementParts = [
-        designRealizeRefinements.trim() || '',
-        materialHint.trim()
-          ? `Material/fabric hint: ${materialHint.trim()}. Keep it subtle and realistic (do not change the print/logos or silhouette).`
-          : '',
-      ].filter(Boolean)
+      const protoRealPromptParts = isProtoRealMode
+        ? [
+            productType !== 'auto' && productType !== 'other' ? `Product type: ${PRODUCT_TYPE_LABEL[productType]}.` : '',
+            productType === 'other' && customProductType.trim() ? `Product type: ${customProductType.trim()}.` : '',
+            showFitStyle && fitStyle !== 'auto'
+              ? `Fit/style: ${
+                  fitStyle === 'other' ? customFitStyle.trim() || 'custom' : FIT_STYLE_LABEL[fitStyle as FitStyleOption]
+                }.`
+              : '',
+            materialType !== 'auto'
+              ? `Material: ${materialType === 'other' ? customMaterialType.trim() || 'custom' : MATERIAL_LABEL[materialType]}.`
+              : '',
+            brandingType !== 'auto'
+              ? `Print/branding type: ${
+                  brandingType === 'other' ? customBrandingType.trim() || 'custom' : BRANDING_LABEL[brandingType]
+                }.`
+              : '',
+            finishWash !== 'auto'
+              ? `Finish/wash: ${
+                  finishWash === 'other' ? customFinishWash.trim() || 'custom' : FINISH_WASH_LABEL[finishWash]
+                }.`
+              : '',
+            customNotes.trim() ? `Custom notes: ${customNotes.trim()}.` : '',
+          ].filter(Boolean)
+        : []
+
+      const refinementParts = isProtoRealMode
+        ? protoRealPromptParts
+        : [
+            designRealizeRefinements.trim() || '',
+            materialHint.trim()
+              ? `Material/fabric hint: ${materialHint.trim()}. Keep it subtle and realistic (do not change the print/logos or silhouette).`
+              : '',
+          ].filter(Boolean)
 
       const editInstructions = refinementParts.length ? refinementParts.join(' ') : undefined
 
@@ -214,7 +335,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
           total: 0,
           completed: 0,
           preset: DESIGN_JOB_PRESET,
-          pipeline: 'design_realize',
+          pipeline: generationPipeline,
           renderStyleLevel,
         },
       })
@@ -227,7 +348,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
           mode: 'initial',
           shotTypes: [DESIGN_JOB_SHOT],
           preset: DESIGN_JOB_PRESET,
-          pipeline: 'design_realize',
+          pipeline: generationPipeline,
           renderStyleLevel,
           ...(editInstructions ? { editInstructions } : {}),
           ...(resolvedGarmentType ? { garmentType: resolvedGarmentType } : {}),
@@ -258,7 +379,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
           nextType: DESIGN_JOB_SHOT,
           shotTypes: [DESIGN_JOB_SHOT],
           preset: DESIGN_JOB_PRESET,
-          pipeline: 'design_realize',
+          pipeline: generationPipeline,
           renderStyleLevel,
         },
       }).catch(() => {})
@@ -394,7 +515,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
                 disabled={!canGenerateNow}
                 className="h-12 w-full rounded-xl text-sm font-semibold tracking-wide disabled:cursor-not-allowed"
               >
-                {isLoading ? 'Generating…' : 'Generate 3D render'}
+                {isLoading ? 'Generating…' : isProtoRealMode ? 'Generate photoreal mockup' : 'Generate 3D render'}
               </Button>
               {!designFlowAllowed ? (
                 <p className="mt-3 text-xs text-muted-foreground">
@@ -427,25 +548,167 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
                     <SelectValue placeholder="Auto" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="auto">Auto</SelectItem>
-                    <SelectItem value="hoodie">Hoodie</SelectItem>
                     <SelectItem value="tshirt">T-Shirt</SelectItem>
-                    <SelectItem value="jacket">Jacket</SelectItem>
+                    <SelectItem value="hoodie">Hoodie</SelectItem>
                     <SelectItem value="sweatshirt">Sweatshirt</SelectItem>
-                    <SelectItem value="pants">Pants</SelectItem>
-                    <SelectItem value="custom">Other (type below)</SelectItem>
+                    <SelectItem value="jacket">Jacket</SelectItem>
+                    <SelectItem value="joggers">Joggers</SelectItem>
+                    <SelectItem value="shorts">Shorts</SelectItem>
+                    <SelectItem value="cap">Cap</SelectItem>
+                    <SelectItem value="beanie">Beanie</SelectItem>
+                    <SelectItem value="tote_bag">Tote Bag</SelectItem>
+                    <SelectItem value="sneakers">Sneakers</SelectItem>
+                    <SelectItem value="auto">Auto</SelectItem>
+                    <SelectItem value="other">Other (type)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-
-              {productType === 'custom' ? (
+              {isProtoRealMode && productType === 'other' ? (
                 <div className="mt-3">
-                  <Input value={customProductType} onChange={(e) => setCustomProductType(e.target.value)} placeholder="e.g. shorts, dress, cap…" />
+                  <Input
+                    value={customProductType}
+                    onChange={(e) => setCustomProductType(e.target.value)}
+                    placeholder="Type custom product type"
+                    disabled={isLoading}
+                  />
                 </div>
               ) : null}
 
               {isProtoRealMode ? (
-                <div className="mt-6">                  
+                <div className="mt-6 space-y-4">
+                  {showFitStyle ? (
+                    <div>
+                      <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Fit / style</div>
+                      <div className="mt-3">
+                        <Select value={fitStyle} onValueChange={(v) => setFitStyle(v as FitStyleOption)}>
+                          <SelectTrigger className="w-full cursor-pointer">
+                            <SelectValue placeholder="Auto" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="regular">Regular</SelectItem>
+                            <SelectItem value="oversized">Oversized</SelectItem>
+                            <SelectItem value="boxy">Boxy</SelectItem>
+                            <SelectItem value="slim">Slim</SelectItem>
+                            <SelectItem value="auto">Auto</SelectItem>
+                            <SelectItem value="other">Other (type)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {fitStyle === 'other' ? (
+                        <div className="mt-3">
+                          <Input
+                            value={customFitStyle}
+                            onChange={(e) => setCustomFitStyle(e.target.value)}
+                            placeholder="Type custom fit/style"
+                            disabled={isLoading}
+                          />
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <div>
+                    <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Material</div>
+                    <div className="mt-3">
+                      <Select value={materialType} onValueChange={(v) => setMaterialType(v as MaterialOption)}>
+                        <SelectTrigger className="w-full cursor-pointer">
+                          <SelectValue placeholder="Auto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cotton">Cotton</SelectItem>
+                          <SelectItem value="heavyweight_cotton">Heavyweight Cotton</SelectItem>
+                          <SelectItem value="fleece">Fleece</SelectItem>
+                          <SelectItem value="nylon">Nylon</SelectItem>
+                          <SelectItem value="denim">Denim</SelectItem>
+                          <SelectItem value="leather">Leather</SelectItem>
+                          <SelectItem value="auto">Auto</SelectItem>
+                          <SelectItem value="other">Other (type)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {materialType === 'other' ? (
+                      <div className="mt-3">
+                        <Input
+                          value={customMaterialType}
+                          onChange={(e) => setCustomMaterialType(e.target.value)}
+                          placeholder="Type custom material"
+                          disabled={isLoading}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div>
+                    <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Print / branding type</div>
+                    <div className="mt-3">
+                      <Select value={brandingType} onValueChange={(v) => setBrandingType(v as BrandingOption)}>
+                        <SelectTrigger className="w-full cursor-pointer">
+                          <SelectValue placeholder="Auto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None (blank)</SelectItem>
+                          <SelectItem value="screen_print">Screen print</SelectItem>
+                          <SelectItem value="puff_print">Puff print</SelectItem>
+                          <SelectItem value="embroidery">Embroidery</SelectItem>
+                          <SelectItem value="minimal_logo">Minimal logo</SelectItem>
+                          <SelectItem value="large_graphic">Large graphic</SelectItem>
+                          <SelectItem value="auto">Auto</SelectItem>
+                          <SelectItem value="other">Other (type)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {brandingType === 'other' ? (
+                      <div className="mt-3">
+                        <Input
+                          value={customBrandingType}
+                          onChange={(e) => setCustomBrandingType(e.target.value)}
+                          placeholder="Type custom print/branding type"
+                          disabled={isLoading}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div>
+                    <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Finish / wash</div>
+                    <div className="mt-3">
+                      <Select value={finishWash} onValueChange={(v) => setFinishWash(v as FinishWashOption)}>
+                        <SelectTrigger className="w-full cursor-pointer">
+                          <SelectValue placeholder="Auto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="clean_new">Clean (new)</SelectItem>
+                          <SelectItem value="washed">Washed</SelectItem>
+                          <SelectItem value="vintage_fade">Vintage fade</SelectItem>
+                          <SelectItem value="auto">Auto</SelectItem>
+                          <SelectItem value="other">Other (type)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {finishWash === 'other' ? (
+                      <div className="mt-3">
+                        <Input
+                          value={customFinishWash}
+                          onChange={(e) => setCustomFinishWash(e.target.value)}
+                          placeholder="Type custom finish/wash"
+                          disabled={isLoading}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div>
+                    <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Custom notes (optional)</div>
+                    <Textarea
+                      value={customNotes}
+                      onChange={(e) => setCustomNotes(e.target.value)}
+                      className="mt-3"
+                      rows={2}
+                      placeholder="Anything specific? (e.g. small logo, centered, subtle look)"
+                      aria-label="Custom notes"
+                      disabled={isLoading}
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="mt-6">
@@ -465,29 +728,33 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
                 </div>
               )}
 
-              <div className="mt-6">
-                <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Refinement instructions (optional)</div>
-                <Textarea
-                  value={designRealizeRefinements}
-                  onChange={(e) => setDesignRealizeRefinements(e.target.value)}
-                  className="mt-3"
-                  rows={3}
-                  placeholder="e.g. Match the sketch colorway (e.g. dark navy + off-white print); reduce dust; fix muddy lighting; brighten studio lighting slightly; keep print placement unchanged."
-                  aria-label="Design realize refinement instructions"
-                  disabled={isLoading}
-                />
-              </div>
+              {!isProtoRealMode ? (
+                <>
+                  <div className="mt-6">
+                    <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Refinement instructions (optional)</div>
+                    <Textarea
+                      value={designRealizeRefinements}
+                      onChange={(e) => setDesignRealizeRefinements(e.target.value)}
+                      className="mt-3"
+                      rows={3}
+                      placeholder="e.g. Match the sketch colorway (e.g. dark navy + off-white print); reduce dust; fix muddy lighting; brighten studio lighting slightly; keep print placement unchanged."
+                      aria-label="Design realize refinement instructions"
+                      disabled={isLoading}
+                    />
+                  </div>
 
-              <div className="mt-4">
-                <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Material / fabric hint (optional)</div>
-                <Input
-                  value={materialHint}
-                  onChange={(e) => setMaterialHint(e.target.value)}
-                  placeholder="e.g. heavy cotton french terry (dark navy); ribbed cuffs; hoodie pocket; metal zipper"
-                  className="mt-3"
-                  disabled={isLoading}
-                />
-              </div>
+                  <div className="mt-4">
+                    <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Material / fabric hint (optional)</div>
+                    <Input
+                      value={materialHint}
+                      onChange={(e) => setMaterialHint(e.target.value)}
+                      placeholder="e.g. heavy cotton french terry (dark navy); ribbed cuffs; hoodie pocket; metal zipper"
+                      className="mt-3"
+                      disabled={isLoading}
+                    />
+                  </div>
+                </>
+              ) : null}
 
               <div className="mt-10 lg:hidden">
                 <Button
@@ -495,7 +762,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
                   disabled={!canGenerateNow}
                   className="h-12 w-full rounded-xl text-sm font-semibold tracking-wide disabled:cursor-not-allowed"
                 >
-                  {isLoading ? 'Generating…' : 'Generate 3D render'}
+                  {isLoading ? 'Generating…' : isProtoRealMode ? 'Generate photoreal mockup' : 'Generate 3D render'}
                 </Button>
                 {!designFlowAllowed ? <p className="mt-3 text-xs text-muted-foreground">This flow is not available on your current plan.</p> : null}
                 {!hasEnoughCredits ? <p className="mt-3 text-xs text-destructive">Not enough credits. You need 1 credit.</p> : null}
