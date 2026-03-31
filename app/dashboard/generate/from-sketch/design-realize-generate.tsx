@@ -41,6 +41,8 @@ type FitStyleOptionExtended = FitStyleOption | 'other'
 type MaterialOption = 'auto' | 'cotton' | 'heavyweight_cotton' | 'fleece' | 'nylon' | 'denim' | 'leather' | 'other'
 type BrandingOption = 'auto' | 'none' | 'screen_print' | 'puff_print' | 'embroidery' | 'minimal_logo' | 'large_graphic' | 'other'
 type FinishWashOption = 'auto' | 'clean_new' | 'washed' | 'vintage_fade' | 'other'
+type FabricWeightOption = 'lightweight' | 'midweight' | 'heavyweight'
+type SketchDesignTypeOption = 'none' | 'small_logo' | 'large_graphic' | 'full_print'
 
 const PRODUCT_TYPE_LABEL: Record<ProductTypeOption, string> = {
   auto: 'Auto',
@@ -95,6 +97,19 @@ const FINISH_WASH_LABEL: Record<FinishWashOption, string> = {
   other: 'Other (type below)',
 }
 
+const FABRIC_WEIGHT_LABEL: Record<FabricWeightOption, string> = {
+  lightweight: 'Lightweight',
+  midweight: 'Midweight',
+  heavyweight: 'Heavyweight',
+}
+
+const SKETCH_DESIGN_TYPE_LABEL: Record<SketchDesignTypeOption, string> = {
+  none: 'None (blank)',
+  small_logo: 'Small logo',
+  large_graphic: 'Large graphic',
+  full_print: 'Full print',
+}
+
 const CLOTHING_PRODUCT_TYPES = new Set<ProductTypeOption>([
   'tshirt',
   'hoodie',
@@ -130,8 +145,9 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
   const [finishWash, setFinishWash] = useState<FinishWashOption>('auto')
   const [customFinishWash, setCustomFinishWash] = useState('')
   const [customNotes, setCustomNotes] = useState('')
-  const [designRealizeRefinements, setDesignRealizeRefinements] = useState('')
-  const [materialHint, setMaterialHint] = useState('')
+  const [sketchFabricWeight, setSketchFabricWeight] = useState<FabricWeightOption>('midweight')
+  const [sketchDesignType, setSketchDesignType] = useState<SketchDesignTypeOption>('none')
+  const [sketchExtraInstructions, setSketchExtraInstructions] = useState('')
   const [renderStyleLevel, setRenderStyleLevel] = useState<RenderStyleLevel>(fixedRenderStyle ?? 'clean_cgi')
   const { addProject, deleteProject, updateProject } = useProjects()
   const router = useRouter()
@@ -222,6 +238,56 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
     designFlowAllowed &&
     hasEnoughCredits
   const showFitStyle = isProtoRealMode && CLOTHING_PRODUCT_TYPES.has(productType)
+  const showSketchFitStructure = !isProtoRealMode && CLOTHING_PRODUCT_TYPES.has(productType)
+
+  useEffect(() => {
+    if (isProtoRealMode) return
+    if (productType === 'hoodie') {
+      setMaterialType('fleece')
+      setSketchFabricWeight('heavyweight')
+      setFitStyle('regular')
+      return
+    }
+    if (productType === 'tshirt') {
+      setMaterialType('cotton')
+      setSketchFabricWeight('midweight')
+      setFitStyle('regular')
+      return
+    }
+    if (productType === 'sweatshirt') {
+      setMaterialType('fleece')
+      setSketchFabricWeight('heavyweight')
+      setFitStyle('regular')
+      return
+    }
+    if (productType === 'jacket') {
+      setMaterialType('nylon')
+      setSketchFabricWeight('midweight')
+      setFitStyle('regular')
+      return
+    }
+    if (productType === 'joggers') {
+      setMaterialType('fleece')
+      setSketchFabricWeight('midweight')
+      setFitStyle('regular')
+      return
+    }
+    if (productType === 'shorts') {
+      setMaterialType('cotton')
+      setSketchFabricWeight('lightweight')
+      setFitStyle('regular')
+      return
+    }
+    if (productType === 'sneakers') {
+      setMaterialType('leather')
+      setSketchFabricWeight('midweight')
+      return
+    }
+    if (productType === 'cap' || productType === 'beanie' || productType === 'tote_bag') {
+      setMaterialType('cotton')
+      setSketchFabricWeight('midweight')
+    }
+  }, [isProtoRealMode, productType])
 
   const handleFile = (selectedFile: File) => {
     if (!selectedFile.type.startsWith('image/')) {
@@ -314,14 +380,25 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
           ].filter(Boolean)
         : []
 
-      const refinementParts = isProtoRealMode
-        ? protoRealPromptParts
-        : [
-            designRealizeRefinements.trim() || '',
-            materialHint.trim()
-              ? `Material/fabric hint: ${materialHint.trim()}. Keep it subtle and realistic (do not change the print/logos or silhouette).`
+      const sketchPromptParts = !isProtoRealMode
+        ? [
+            productType !== 'auto' && productType !== 'other' ? `Product type: ${PRODUCT_TYPE_LABEL[productType]}.` : '',
+            productType === 'other' && customProductType.trim() ? `Product type: ${customProductType.trim()}.` : '',
+            showSketchFitStructure
+              ? `Fit/structure: ${
+                  fitStyle === 'other' || fitStyle === 'auto' ? 'Regular' : FIT_STYLE_LABEL[fitStyle as FitStyleOption]
+                }.`
               : '',
+            materialType !== 'auto'
+              ? `Material: ${materialType === 'other' ? customMaterialType.trim() || 'custom' : MATERIAL_LABEL[materialType]}.`
+              : '',
+            `Fabric weight: ${FABRIC_WEIGHT_LABEL[sketchFabricWeight]}.`,
+            `Design type: ${SKETCH_DESIGN_TYPE_LABEL[sketchDesignType]}.`,
+            sketchExtraInstructions.trim() ? `Extra instructions: ${sketchExtraInstructions.trim()}.` : '',
           ].filter(Boolean)
+        : []
+
+      const refinementParts = isProtoRealMode ? protoRealPromptParts : sketchPromptParts
 
       const editInstructions = refinementParts.length ? refinementParts.join(' ') : undefined
 
@@ -541,7 +618,9 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
                 </div>
               ) : null}
 
-              <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Product type (optional)</div>
+              <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">
+                {isProtoRealMode ? 'Product type (optional)' : 'Product type'}
+              </div>
               <div className="mt-3">
                 <Select value={productType} onValueChange={(v) => setProductType(v as typeof productType)}>
                   <SelectTrigger className="w-full cursor-pointer">
@@ -563,7 +642,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
                   </SelectContent>
                 </Select>
               </div>
-              {isProtoRealMode && productType === 'other' ? (
+              {productType === 'other' ? (
                 <div className="mt-3">
                   <Input
                     value={customProductType}
@@ -711,49 +790,111 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
                   </div>
                 </div>
               ) : (
-                <div className="mt-6">
-                  <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Render style</div>
-                  <div className="mt-3">
-                    <Select value={renderStyleLevel} onValueChange={(v) => setRenderStyleLevel(v as RenderStyleLevel)}>
-                      <SelectTrigger className="w-full cursor-pointer">
-                        <SelectValue placeholder="Clean CGI" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="clean_cgi">Clean CGI (least life-like)</SelectItem>
-                        <SelectItem value="semi_real_cgi">Semi-real CGI</SelectItem>
-                        <SelectItem value="toon_tech">Toon-tech 3D</SelectItem>
-                      </SelectContent>
-                    </Select>
+                <div className="mt-6 space-y-4">
+                  {showSketchFitStructure ? (
+                    <div>
+                      <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Fit / structure</div>
+                      <div className="mt-3">
+                        <Select value={fitStyle} onValueChange={(v) => setFitStyle(v as FitStyleOptionExtended)}>
+                          <SelectTrigger className="w-full cursor-pointer">
+                            <SelectValue placeholder="Regular" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="regular">Regular</SelectItem>
+                            <SelectItem value="oversized">Oversized</SelectItem>
+                            <SelectItem value="boxy">Boxy</SelectItem>
+                            <SelectItem value="slim">Slim</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <div>
+                    <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Material</div>
+                    <div className="mt-3">
+                      <Select value={materialType} onValueChange={(v) => setMaterialType(v as MaterialOption)}>
+                        <SelectTrigger className="w-full cursor-pointer">
+                          <SelectValue placeholder="Auto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cotton">Cotton</SelectItem>
+                          <SelectItem value="heavyweight_cotton">Heavyweight cotton</SelectItem>
+                          <SelectItem value="fleece">Fleece</SelectItem>
+                          <SelectItem value="nylon">Nylon</SelectItem>
+                          <SelectItem value="denim">Denim</SelectItem>
+                          <SelectItem value="leather">Leather</SelectItem>
+                          <SelectItem value="auto">Auto</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
+
+                  <div>
+                    <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Weight</div>
+                    <div className="mt-3">
+                      <Select value={sketchFabricWeight} onValueChange={(v) => setSketchFabricWeight(v as FabricWeightOption)}>
+                        <SelectTrigger className="w-full cursor-pointer">
+                          <SelectValue placeholder="Midweight" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="lightweight">Lightweight</SelectItem>
+                          <SelectItem value="midweight">Midweight</SelectItem>
+                          <SelectItem value="heavyweight">Heavyweight</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Render style</div>
+                    <div className="mt-3">
+                      <Select value={renderStyleLevel} onValueChange={(v) => setRenderStyleLevel(v as RenderStyleLevel)}>
+                        <SelectTrigger className="w-full cursor-pointer">
+                          <SelectValue placeholder="Studio Clean (sharp, minimal)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="clean_cgi">Studio Clean (sharp, minimal)</SelectItem>
+                          <SelectItem value="semi_real_cgi">Realistic (soft shadows, natural)</SelectItem>
+                          <SelectItem value="toon_tech">Stylized 3D (slightly exaggerated)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Design type</div>
+                    <div className="mt-3">
+                      <Select value={sketchDesignType} onValueChange={(v) => setSketchDesignType(v as SketchDesignTypeOption)}>
+                        <SelectTrigger className="w-full cursor-pointer">
+                          <SelectValue placeholder="None (blank)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None (blank)</SelectItem>
+                          <SelectItem value="small_logo">Small logo</SelectItem>
+                          <SelectItem value="large_graphic">Large graphic</SelectItem>
+                          <SelectItem value="full_print">Full print</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                 </div>
               )}
 
               {!isProtoRealMode ? (
-                <>
-                  <div className="mt-6">
-                    <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Refinement instructions (optional)</div>
-                    <Textarea
-                      value={designRealizeRefinements}
-                      onChange={(e) => setDesignRealizeRefinements(e.target.value)}
-                      className="mt-3"
-                      rows={3}
-                      placeholder="e.g. Match the sketch colorway (e.g. dark navy + off-white print); reduce dust; fix muddy lighting; brighten studio lighting slightly; keep print placement unchanged."
-                      aria-label="Design realize refinement instructions"
-                      disabled={isLoading}
-                    />
-                  </div>
-
-                  <div className="mt-4">
-                    <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Material / fabric hint (optional)</div>
-                    <Input
-                      value={materialHint}
-                      onChange={(e) => setMaterialHint(e.target.value)}
-                      placeholder="e.g. heavy cotton french terry (dark navy); ribbed cuffs; hoodie pocket; metal zipper"
-                      className="mt-3"
-                      disabled={isLoading}
-                    />
-                  </div>
-                </>
+                <div className="mt-6">
+                  <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Extra instructions (optional)</div>
+                  <Textarea
+                    value={sketchExtraInstructions}
+                    onChange={(e) => setSketchExtraInstructions(e.target.value)}
+                    className="mt-3"
+                    rows={3}
+                    placeholder="Anything else to refine while keeping design identity?"
+                    aria-label="Extra instructions"
+                    disabled={isLoading}
+                  />
+                </div>
               ) : null}
 
               <div className="mt-10 lg:hidden">
