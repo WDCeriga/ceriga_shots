@@ -96,16 +96,6 @@ export default function ResultsPage() {
     }
   }
 
-  const formatGenerationType = (
-    pipeline?: 'garment_photo' | 'design_realize' | 'background_remove',
-    renderStyleLevel?: 'clean_cgi' | 'semi_real_cgi' | 'toon_tech' | 'photoreal_flatlay'
-  ) => {
-    if (renderStyleLevel === 'photoreal_flatlay') return 'Mockups to ProtoReal'
-    if (pipeline === 'design_realize') return 'Sketch-to-3D Mockups'
-    if (pipeline === 'background_remove') return 'Background remover'
-    return 'Product Shots'
-  }
-
   useEffect(() => {
     let cancelled = false
     setIsHydrating(true)
@@ -135,7 +125,14 @@ export default function ResultsPage() {
   /** All generated assets in gallery order (includes placeholder rows with empty `url` when API key is missing). */
   const lightboxImages = project?.generatedImages ?? []
   const activeLightboxImage = lightboxIndex == null ? null : lightboxImages[lightboxIndex] ?? null
-  const projectGenerationType = formatGenerationType(project?.generation?.pipeline, project?.generation?.renderStyleLevel)
+  const generationTypeLabel =
+    project?.generation?.renderStyleLevel === 'photoreal_flatlay'
+      ? 'Mockups to ProtoReal'
+      : generationPipeline === 'design_realize'
+        ? 'Sketch-to-3D Mockups'
+        : generationPipeline === 'background_remove'
+          ? 'Background remover'
+          : 'Product Shots'
 
   useEffect(() => {
     if (generationStatus !== 'generating') return
@@ -475,9 +472,9 @@ export default function ResultsPage() {
                 ? ` (${project.generation.total}/${project.generation.total})`
                 : ''}
           </p>
-          {projectGenerationType ? (
+          {generationTypeLabel ? (
             <p className="text-sm text-muted-foreground mt-1">
-              Generation type: <span className="text-foreground">{projectGenerationType}</span>
+              Generation type: <span className="text-foreground">{generationTypeLabel}</span>
             </p>
           ) : null}
           {generationLabel ? (

@@ -97,12 +97,6 @@ export default function LibraryPage() {
     return { label: 'Product Shots', className: 'border-border bg-secondary/30 text-muted-foreground' }
   }
 
-  const getProjectPreset = (project: Project) => {
-    const preset = project.generation?.preset
-    if (!preset) return '—'
-    return preset.replace(/_/g, ' ')
-  }
-
   const filtered = projects
     .filter((p) => {
       if (!normalizedQuery) return true
@@ -236,21 +230,6 @@ export default function LibraryPage() {
                         {project.generatedCount ?? project.generatedImages.length} assets
                       </span>
                     </div>
-                  </div>
-                  <div className="mt-2 grid grid-cols-1 gap-1 text-[11px] text-muted-foreground">
-                    <p>
-                      Preset: <span className="text-foreground/90">{getProjectPreset(project)}</span>
-                    </p>
-                    {project.generation?.garmentType ? (
-                      <p>
-                        Product type: <span className="text-foreground/90">{project.generation.garmentType}</span>
-                      </p>
-                    ) : null}
-                    {project.generation?.status ? (
-                      <p>
-                        Status: <span className="text-foreground/90 capitalize">{project.generation.status}</span>
-                      </p>
-                    ) : null}
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
                     {new Date(project.createdAt).toLocaleDateString()}
