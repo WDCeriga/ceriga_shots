@@ -53,6 +53,12 @@ export interface GenerationState {
   garmentType?: string
   pipeline?: GenerationPipeline
   /**
+   * Optional smaller, compressed image URL used as the AI generation input.
+   * Keeping this separate from `Project.originalImage` lets us preserve the
+   * high-res original for UI/download while reducing model input cost.
+   */
+  sourceImageUrl?: string
+  /**
    * Sketch/design realization only.
    * Controls output style family (CGI modes vs photoreal flatlay mode).
    */

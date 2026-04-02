@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { RenderStyleLevel } from '@/types/projects'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { uploadOriginalImageToR2 } from '@/lib/original-image-upload-client'
+import { uploadGenerationSourceImageToR2, uploadOriginalImageToR2 } from '@/lib/original-image-upload-client'
 
 /** Internal job type for queue + meta. ProtoReal uses garment_photo prompt pipeline. */
 const DESIGN_JOB_SHOT = 'flatlay_topdown' as const
@@ -405,6 +405,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
       const editInstructions = refinementParts.length ? refinementParts.join(' ') : undefined
 
       const originalImageUrl = await uploadOriginalImageToR2(file)
+      const sourceImageUrl = await uploadGenerationSourceImageToR2(file)
 
       const project = await addProject({
         name: file.name.replace(/\.[^/.]+$/, ''),
@@ -418,6 +419,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
           preset: DESIGN_JOB_PRESET,
           pipeline: generationPipeline,
           renderStyleLevel,
+          sourceImageUrl,
         },
       })
       createdProjectId = project.id

@@ -2,6 +2,7 @@
 
 const MAX_UPLOAD_BYTES = 4_000_000 // Leave headroom under Vercel's ~4.5MB function payload limit.
 const MAX_IMAGE_DIMENSION = 2000
+const GENERATION_SOURCE_MAX_DIMENSION = 1536
 
 function isCompressibleType(mime: string): boolean {
   const t = mime.toLowerCase().trim()
@@ -89,6 +90,67 @@ export async function uploadOriginalImageToR2(file: File): Promise<string> {
 
   const data = (await res.json()) as { url?: string }
   if (!data.url) throw new Error('Upload succeeded but no URL returned.')
+  return data.url
+}
+
+async function createGenerationSourceFile(file: File): Promise<File> {
+  const mime = file.type || ''
+  if (!mime || !isCompressibleType(mime)) {
+    // If we can't reliably decode/encode, fall back to the original.
+    return file
+  }
+
+  const img = await decodeImage(file)
+  const { width, height } = img
+  if (!width || !height) return file
+
+  const scale = Math.min(1, GENERATION_SOURCE_MAX_DIMENSION / Math.max(width, height))
+  const targetW = Math.max(1, Math.round(width * scale))
+  const targetH = Math.max(1, Math.round(height * scale))
+
+  const canvas = document.createElement('canvas')
+  canvas.width = targetW
+  canvas.height = targetH
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return file
+
+  ctx.drawImage(img, 0, 0, targetW, targetH)
+
+  async function toBlob(type: string, quality: number): Promise<Blob | null> {
+    return await new Promise((resolve) => canvas.toBlob(resolve, type, quality))
+  }
+
+  // Prefer WebP to reduce bytes; fallback to JPEG.
+  let blob = await toBlob('image/webp', 0.78)
+  let outMime = 'image/webp'
+  if (!blob) {
+    blob = await toBlob('image/jpeg', 0.82)
+    outMime = 'image/jpeg'
+  }
+  if (!blob) return file
+
+  const base = (file.name || 'source').replace(/\.[^/.]+$/, '') || 'source'
+  const ext = outMime === 'image/jpeg' ? 'jpg' : 'webp'
+  return new File([blob], `${base}-source.${ext}`, { type: outMime })
+}
+
+export async function uploadGenerationSourceImageToR2(file: File): Promise<string> {
+  const sourceFile = await createGenerationSourceFile(file)
+  const form = new FormData()
+  form.append('file', sourceFile, sourceFile.name)
+
+  const res = await fetch('/api/r2/generation-source-upload', {
+    method: 'POST',
+    body: form,
+  })
+
+  if (!res.ok) {
+    const message = await res.text().catch(() => '')
+    throw new Error(message || `Source upload failed (${res.status})`)
+  }
+
+  const data = (await res.json()) as { url?: string }
+  if (!data.url) throw new Error('Source upload succeeded but no URL returned.')
   return data.url
 }
 

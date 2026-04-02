@@ -62,7 +62,7 @@ async function processSingle(baseUrl: string, workerId: string) {
       method: 'POST',
       headers: mockupHeaders,
       body: JSON.stringify({
-        imageUrl: project.originalImage,
+        imageUrl: project.generation?.sourceImageUrl || project.originalImage,
         projectId: project.id,
         shotType: job.shot_type,
         preset: job.preset,

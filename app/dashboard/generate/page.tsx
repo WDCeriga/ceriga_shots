@@ -10,7 +10,7 @@ import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
 import { useRole } from '@/hooks/use-role'
 import { Input } from '@/components/ui/input'
-import { uploadOriginalImageToR2 } from '@/lib/original-image-upload-client'
+import { uploadGenerationSourceImageToR2, uploadOriginalImageToR2 } from '@/lib/original-image-upload-client'
 import {
   Select,
   SelectContent,
@@ -471,6 +471,7 @@ export default function GeneratePage() {
             : productType
 
       const originalImageUrl = await uploadOriginalImageToR2(file)
+      const sourceImageUrl = await uploadGenerationSourceImageToR2(file)
 
       const project = await addProject({
         name: file.name.replace(/\.[^/.]+$/, ''),
@@ -483,6 +484,7 @@ export default function GeneratePage() {
           completed: 0,
           preset: visualDirection,
           pipeline: 'garment_photo',
+          sourceImageUrl,
         },
       })
       createdProjectId = project.id
