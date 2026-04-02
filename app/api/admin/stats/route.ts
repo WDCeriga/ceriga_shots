@@ -43,6 +43,23 @@ export async function GET() {
       and stripe_subscription_status = any(${ACTIVE_BILLING_STATUSES}::text[])
     group by role
   `) as Array<{ role: 'starter' | 'studio' | 'label'; count: number }>
+  const [successfulGenerationsRow] = (await db`
+    select count(*)::int as count
+    from generation_jobs
+    where status = 'done'
+      and model_calls > 0
+  `) as Array<{ count: number }>
+  const [successfulGenerationModelCallsRow] = (await db`
+    select coalesce(sum(model_calls), 0)::int as total
+    from generation_jobs
+    where status = 'done'
+      and model_calls > 0
+  `) as Array<{ total: number }>
+  const [allBilledModelCallsRow] = (await db`
+    select coalesce(sum(model_calls), 0)::int as total
+    from generation_jobs
+    where model_calls > 0
+  `) as Array<{ total: number }>
 
   const roleCounts = { starter: 0, studio: 0, label: 0 }
   for (const row of paidRows) {
@@ -57,6 +74,12 @@ export async function GET() {
   const activePaidSubscribers = roleCounts.starter + roleCounts.studio + roleCounts.label
   const variableCostPerPaidUser = Number(process.env.FINANCE_COST_PER_ACTIVE_SUBSCRIBER ?? 3)
   const fixedMonthlyCost = Number(process.env.FINANCE_FIXED_MONTHLY_COST ?? 0)
+  const costPerModelCall = Number(process.env.FINANCE_COST_PER_MODEL_CALL ?? 0.04)
+  const successfulGenerations = Number(successfulGenerationsRow?.count ?? 0)
+  const successfulGenerationModelCalls = Number(successfulGenerationModelCallsRow?.total ?? 0)
+  const allBilledModelCalls = Number(allBilledModelCallsRow?.total ?? 0)
+  const estimatedGenerationCostTotal = successfulGenerationModelCalls * costPerModelCall
+  const estimatedBilledGenerationCostTotal = allBilledModelCalls * costPerModelCall
   const estimatedMonthlyCosts = activePaidSubscribers * variableCostPerPaidUser + fixedMonthlyCost
   const grossProfitMonthly = mrr - estimatedMonthlyCosts
   const grossMarginPercent = mrr > 0 ? (grossProfitMonthly / mrr) * 100 : 0
@@ -87,6 +110,14 @@ export async function GET() {
         variableCostPerPaidUser: money(variableCostPerPaidUser),
         fixedMonthlyCost: money(fixedMonthlyCost),
         estimatedMonthlyCosts: money(estimatedMonthlyCosts),
+        generation: {
+          successfulGenerations,
+          successfulModelCalls: successfulGenerationModelCalls,
+          allBilledModelCalls,
+          costPerModelCall: money(costPerModelCall),
+          estimatedTotalCost: money(estimatedGenerationCostTotal),
+          estimatedBilledTotalCost: money(estimatedBilledGenerationCostTotal),
+        },
       },
       profitability: {
         grossProfitMonthly: money(grossProfitMonthly),

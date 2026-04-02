@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 
 type AdminUser = {
   id: string
@@ -43,6 +46,13 @@ function UsageDetails({ u }: { u: AdminUser }) {
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [grantUser, setGrantUser] = useState('')
+  const [grantAmount, setGrantAmount] = useState('10')
+  const [grantReason, setGrantReason] = useState('')
+  const [grantLoading, setGrantLoading] = useState(false)
+  const [grantFeedback, setGrantFeedback] = useState<string | null>(null)
+  const [grantError, setGrantError] = useState<string | null>(null)
+  const [grantModalOpen, setGrantModalOpen] = useState(false)
 
   useEffect(() => {
     fetch('/api/admin/users')
@@ -54,13 +64,125 @@ export default function AdminUsersPage() {
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load users'))
   }, [])
 
+  async function submitGrantCredits() {
+    setGrantFeedback(null)
+    setGrantError(null)
+    const amount = Number(grantAmount)
+    if (!grantUser.trim()) {
+      setGrantError('Please enter a user email or user ID.')
+      return
+    }
+    if (!Number.isInteger(amount) || amount <= 0) {
+      setGrantError('Please enter a valid integer amount.')
+      return
+    }
+
+    setGrantLoading(true)
+    try {
+      const res = await fetch('/api/admin/credits/grant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user: grantUser.trim(),
+          amount,
+          reason: grantReason.trim() || null,
+        }),
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string
+        grant?: {
+          email: string
+          amount: number
+          after: { remaining: number; limit: number }
+        }
+      }
+      if (!res.ok) throw new Error(data.error || 'Failed to grant credits')
+      if (!data.grant) throw new Error('Missing grant response')
+      setGrantFeedback(
+        `Granted ${data.grant.amount} credits to ${data.grant.email}. Remaining: ${data.grant.after.remaining}/${data.grant.after.limit}.`
+      )
+      setGrantUser('')
+      setGrantReason('')
+    } catch (e) {
+      setGrantError(e instanceof Error ? e.message : 'Failed to grant credits')
+    } finally {
+      setGrantLoading(false)
+    }
+  }
+
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-4">
       <div className="rounded-xl border border-border/60 bg-[#0a0a0a] p-4 sm:p-5">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Users</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Recent registered users, roles, and usage (credits and projects).
-        </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Users</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Recent registered users, roles, and usage (credits and projects).
+            </p>
+          </div>
+          <Dialog
+            open={grantModalOpen}
+            onOpenChange={(open) => {
+              setGrantModalOpen(open)
+              if (!open) {
+                setGrantError(null)
+                setGrantFeedback(null)
+                setGrantLoading(false)
+              }
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button type="button">Grant Credits</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Grant Bonus Credits</DialogTitle>
+                <DialogDescription>
+                  Add one-time credits by reducing monthly credits used. Lookup supports email or user ID.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">User email or ID</label>
+                  <Input
+                    value={grantUser}
+                    onChange={(e) => setGrantUser(e.target.value)}
+                    placeholder="user@brand.com or UUID"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">Credits to grant</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={grantAmount}
+                    onChange={(e) => setGrantAmount(e.target.value)}
+                    placeholder="10"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs text-muted-foreground">Reason (optional)</label>
+                  <Input
+                    value={grantReason}
+                    onChange={(e) => setGrantReason(e.target.value)}
+                    placeholder="e.g. support credit for failed run"
+                  />
+                </div>
+                {grantFeedback ? <p className="text-xs text-emerald-400">{grantFeedback}</p> : null}
+                {grantError ? <p className="text-xs text-destructive">{grantError}</p> : null}
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setGrantModalOpen(false)}>
+                  Close
+                </Button>
+                <Button type="button" onClick={() => void submitGrantCredits()} disabled={grantLoading}>
+                  {grantLoading ? 'Granting...' : 'Grant Credits'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 

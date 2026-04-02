@@ -19,7 +19,7 @@ export const pricingPlans: PricingPlan[] = [
     dashboardCta: 'Start Free',
     useCase: 'Best for first-time testing',
     description: 'Try core generation flows before committing to a paid plan.',
-    features: ['2 flat lay types', '1 detail shot', 'ZIP downloads', '1 project'],
+    features: ['2 flat lay types', '1 detail shot', 'ZIP downloads', '3 projects'],
   },
   {
     name: 'Starter',

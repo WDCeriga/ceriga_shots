@@ -15,6 +15,14 @@ type StatsResponse = {
       variableCostPerPaidUser: number
       fixedMonthlyCost: number
       estimatedMonthlyCosts: number
+      generation: {
+        successfulGenerations: number
+        successfulModelCalls: number
+        allBilledModelCalls: number
+        costPerModelCall: number
+        estimatedTotalCost: number
+        estimatedBilledTotalCost: number
+      }
     }
     profitability: { grossProfitMonthly: number; grossMarginPercent: number }
   }
@@ -106,6 +114,44 @@ export default function AdminStatisticsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <div className="space-y-3 pt-2">
+        <h2 className="text-lg font-semibold">Generation Cost Estimates</h2>
+        <p className="text-xs text-muted-foreground">
+          Success metrics include deleted images and exclude localhost/mock outputs. Billed estimate also counts failed/retry model calls.
+        </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="bg-[#0a0a0a] border-border/70">
+          <CardHeader><CardTitle className="text-sm">Successful AI Generations</CardTitle></CardHeader>
+          <CardContent><div className="text-2xl font-bold">{stats?.finance.costs.generation.successfulGenerations ?? '...'}</div></CardContent>
+        </Card>
+        <Card className="bg-[#0a0a0a] border-border/70">
+          <CardHeader><CardTitle className="text-sm">Total Model Calls</CardTitle></CardHeader>
+          <CardContent><div className="text-2xl font-bold">{stats?.finance.costs.generation.successfulModelCalls ?? '...'}</div></CardContent>
+        </Card>
+        <Card className="bg-[#0a0a0a] border-border/70">
+          <CardHeader><CardTitle className="text-sm">Cost / Model Call (est.)</CardTitle></CardHeader>
+          <CardContent><div className="text-2xl font-bold">{stats ? formatMoney(stats.finance.costs.generation.costPerModelCall) : '...'}</div></CardContent>
+        </Card>
+        <Card className="bg-[#0a0a0a] border-border/70">
+          <CardHeader><CardTitle className="text-sm">Total Generation Cost (est.)</CardTitle></CardHeader>
+          <CardContent><div className="text-2xl font-bold">{stats ? formatMoney(stats.finance.costs.generation.estimatedTotalCost) : '...'}</div></CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card className="bg-[#0a0a0a] border-border/70">
+          <CardHeader><CardTitle className="text-sm">All Billed Model Calls</CardTitle></CardHeader>
+          <CardContent><div className="text-2xl font-bold">{stats?.finance.costs.generation.allBilledModelCalls ?? '...'}</div></CardContent>
+        </Card>
+        <Card className="bg-[#0a0a0a] border-border/70">
+          <CardHeader><CardTitle className="text-sm">Total Billed Cost (est.)</CardTitle></CardHeader>
+          <CardContent><div className="text-2xl font-bold">{stats ? formatMoney(stats.finance.costs.generation.estimatedBilledTotalCost) : '...'}</div></CardContent>
+        </Card>
+      </div>
+
     </div>
   )
 }

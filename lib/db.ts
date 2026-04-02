@@ -125,6 +125,21 @@ export async function ensureSchema() {
     await db`alter table generation_jobs add column if not exists editor_brand_name text`
     await db`create index if not exists generation_jobs_status_run_after_idx on generation_jobs(status, run_after, created_at)`
     await db`create index if not exists generation_jobs_project_id_idx on generation_jobs(project_id)`
+
+    await db`
+    create table if not exists credit_grants (
+      id uuid primary key default gen_random_uuid(),
+      admin_user_id text not null,
+      target_user_id text not null,
+      amount integer not null check (amount > 0),
+      reason text,
+      before_credits_used integer not null,
+      after_credits_used integer not null,
+      created_at timestamptz not null default now()
+    )
+  `
+    await db`create index if not exists credit_grants_target_user_created_idx on credit_grants(target_user_id, created_at desc)`
+    await db`create index if not exists credit_grants_admin_user_created_idx on credit_grants(admin_user_id, created_at desc)`
   })()
 
   try {

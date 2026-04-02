@@ -46,7 +46,7 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
     shareLinks: true,
     resolution: 'standard',
     watermark: true,
-    maxProjects: 1,
+    maxProjects: 3,
     generateMore: false,
     priority: false,
     api: false,
