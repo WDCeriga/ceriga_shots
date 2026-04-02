@@ -444,6 +444,8 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
     '- Optics: ~85mm equivalent lens to reduce perspective distortion',
     '- Depth of field: shallow (f/2.8 to f/4); print edges razor sharp, background falls off softly',
     '- Crop & framing: design fills ~80% of the frame; keep a small margin and do not introduce extra background padding beyond the reference crop boundaries',
+    '- Blank-garment rule (anti-hallucination): if the reference shows NO visible print/graphic/text, do NOT invent any. In that case, treat this shot as a blank detail close-up: crop a clean representative blank area of the garment (fabric + stitching/texture only) while preserving the garment’s true material and color.',
+    '- Never add brand names, slogans, logos, or any new typography.',
     '- Detail selection (crop-lock): identify ONE most informative print/graphic region in the reference image; that chosen region defines the crop boundaries',
     '- Apply ONLY a tight crop/zoom to the same chosen region; do NOT drift to a different portion of the garment or re-select a different detail region',
     '- Center the chosen crop region in the output frame, but preserve the chosen region’s internal placement/occlusions exactly as seen in the reference (no re-framing/re-centering that changes what parts of the print are included)',
