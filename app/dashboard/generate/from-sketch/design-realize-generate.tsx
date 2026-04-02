@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Image from 'next/image'
 import { useProjects } from '@/hooks/use-projects'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -14,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import type { RenderStyleLevel } from '@/types/projects'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { uploadOriginalImageToR2 } from '@/lib/original-image-upload-client'
 
 /** Internal job type for queue + meta. ProtoReal uses garment_photo prompt pipeline. */
 const DESIGN_JOB_SHOT = 'flatlay_topdown' as const
@@ -160,6 +160,12 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
   const [creditsSyncing, setCreditsSyncing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
+  useEffect(() => {
+    // Prevent leaking object URLs when the user replaces the file.
+    if (!preview?.startsWith('blob:')) return
+    return () => URL.revokeObjectURL(preview)
+  }, [preview])
+
   const designFlowAllowed = useMemo(() => {
     if (limits.blockedShotTypes.includes(DESIGN_JOB_SHOT)) return false
     if (!limits.presets.includes(DESIGN_JOB_PRESET)) return false
@@ -300,11 +306,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
     }
 
     setFile(selectedFile)
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      setPreview(e.target?.result as string)
-    }
-    reader.readAsDataURL(selectedFile)
+    setPreview(URL.createObjectURL(selectedFile))
   }
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -402,9 +404,11 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
 
       const editInstructions = refinementParts.length ? refinementParts.join(' ') : undefined
 
+      const originalImageUrl = await uploadOriginalImageToR2(file)
+
       const project = await addProject({
         name: file.name.replace(/\.[^/.]+$/, ''),
-        originalImage: preview,
+        originalImage: originalImageUrl,
         originalImageName: file.name,
         generatedImages: [],
         generation: {
@@ -547,12 +551,10 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
                     {preview ? (
                       <div className="w-full max-w-[360px]">
                         <div className="relative mx-auto aspect-square w-full overflow-hidden rounded-md bg-secondary/60 border border-white/15">
-                          <Image
+                          <img
                             src={preview}
                             alt="Uploaded sketch or mockup preview"
-                            fill
-                            className="object-contain"
-                            sizes="(min-width: 1024px) 420px, 100vw"
+                            className="h-full w-full object-contain"
                           />
                         </div>
                         <p className="mt-4 text-center text-xs text-muted-foreground">Select files or drag and drop to replace</p>
