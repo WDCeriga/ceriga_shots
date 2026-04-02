@@ -70,7 +70,7 @@ export async function POST(req: Request) {
   const beforeUsed = Number(target.credits_used ?? 0)
   const updatedRows = (await db`
     update users
-    set credits_used = greatest(0, credits_used - ${amount})
+    set credits_used = credits_used - ${amount}
     where id = ${target.id}
     returning credits_used
   `) as Array<{ credits_used: number }>

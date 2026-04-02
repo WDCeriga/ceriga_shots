@@ -21,6 +21,19 @@ type AdminUser = {
   }
 }
 
+type CreditGrant = {
+  id: string
+  adminUserId: string
+  adminEmail: string | null
+  targetUserId: string
+  targetEmail: string | null
+  amount: number
+  reason: string | null
+  beforeCreditsUsed: number
+  afterCreditsUsed: number
+  createdAt: string
+}
+
 function formatCredits(u: AdminUser): string {
   if (u.credits.unlimited) return 'Unlimited'
   if (u.credits.remaining != null && u.credits.limit != null) {
@@ -45,6 +58,7 @@ function UsageDetails({ u }: { u: AdminUser }) {
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([])
+  const [grants, setGrants] = useState<CreditGrant[]>([])
   const [error, setError] = useState<string | null>(null)
   const [grantUser, setGrantUser] = useState('')
   const [grantAmount, setGrantAmount] = useState('10')
@@ -54,13 +68,22 @@ export default function AdminUsersPage() {
   const [grantError, setGrantError] = useState<string | null>(null)
   const [grantModalOpen, setGrantModalOpen] = useState(false)
 
+  async function loadUsers() {
+    const res = await fetch('/api/admin/users')
+    const data = (await res.json().catch(() => ({}))) as { users?: AdminUser[]; error?: string }
+    if (!res.ok) throw new Error(data.error || 'Failed to load users')
+    setUsers(data.users ?? [])
+  }
+
+  async function loadGrants() {
+    const res = await fetch('/api/admin/credits/grants?limit=50')
+    const data = (await res.json().catch(() => ({}))) as { grants?: CreditGrant[]; error?: string }
+    if (!res.ok) throw new Error(data.error || 'Failed to load credit grants')
+    setGrants(data.grants ?? [])
+  }
+
   useEffect(() => {
-    fetch('/api/admin/users')
-      .then(async (res) => {
-        const data = (await res.json().catch(() => ({}))) as { users?: AdminUser[]; error?: string }
-        if (!res.ok) throw new Error(data.error || 'Failed to load users')
-        setUsers(data.users ?? [])
-      })
+    Promise.all([loadUsers(), loadGrants()])
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load users'))
   }, [])
 
@@ -103,6 +126,7 @@ export default function AdminUsersPage() {
       )
       setGrantUser('')
       setGrantReason('')
+      await Promise.all([loadUsers(), loadGrants()])
     } catch (e) {
       setGrantError(e instanceof Error ? e.message : 'Failed to grant credits')
     } finally {
@@ -257,6 +281,56 @@ export default function AdminUsersPage() {
               <TableRow>
                 <TableCell colSpan={5} className="text-center text-muted-foreground">
                   No users found.
+                </TableCell>
+              </TableRow>
+            ) : null}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="rounded-xl border border-border/70 bg-[#0a0a0a] p-2 sm:p-3 -mx-4 sm:mx-0">
+        <div className="px-2 pb-2">
+          <h2 className="text-sm font-semibold">Recent Credit Grants</h2>
+          <p className="text-xs text-muted-foreground mt-1">
+            Last 50 grants with before/after usage snapshots.
+          </p>
+        </div>
+        <Table className="min-w-[840px]">
+          <TableHeader>
+            <TableRow>
+              <TableHead>When</TableHead>
+              <TableHead>Target</TableHead>
+              <TableHead>Amount</TableHead>
+              <TableHead>Before Used</TableHead>
+              <TableHead>After Used</TableHead>
+              <TableHead>Granted By</TableHead>
+              <TableHead>Reason</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {grants.map((g) => (
+              <TableRow key={g.id}>
+                <TableCell className="text-sm whitespace-nowrap">{new Date(g.createdAt).toLocaleString()}</TableCell>
+                <TableCell className="max-w-[220px] break-words">
+                  <div className="text-sm">{g.targetEmail ?? g.targetUserId}</div>
+                  <div className="text-xs text-muted-foreground font-mono break-all">{g.targetUserId}</div>
+                </TableCell>
+                <TableCell className="text-sm font-medium">+{g.amount}</TableCell>
+                <TableCell className="text-sm">{g.beforeCreditsUsed}</TableCell>
+                <TableCell className="text-sm">{g.afterCreditsUsed}</TableCell>
+                <TableCell className="max-w-[220px] break-words">
+                  <div className="text-sm">{g.adminEmail ?? g.adminUserId}</div>
+                  <div className="text-xs text-muted-foreground font-mono break-all">{g.adminUserId}</div>
+                </TableCell>
+                <TableCell className="max-w-[280px] break-words text-sm text-muted-foreground">
+                  {g.reason || '—'}
+                </TableCell>
+              </TableRow>
+            ))}
+            {grants.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
+                  No credit grants yet.
                 </TableCell>
               </TableRow>
             ) : null}
