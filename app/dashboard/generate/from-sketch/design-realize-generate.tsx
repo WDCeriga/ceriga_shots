@@ -401,8 +401,11 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
         : []
 
       const refinementParts = isProtoRealMode ? protoRealPromptParts : sketchPromptParts
+      const protorealPhotorealDirective = isProtoRealMode
+        ? 'Conversion target: translate mockup/render aesthetics into a true photographed textile product shot; remove CGI/plastic render cues while preserving exact design identity.'
+        : ''
 
-      const editInstructions = refinementParts.length ? refinementParts.join(' ') : undefined
+      const editInstructions = [protorealPhotorealDirective, ...refinementParts].filter(Boolean).join(' ') || undefined
 
       const originalImageUrl = await uploadOriginalImageToR2(file)
       const sourceImageUrl = await uploadGenerationSourceImageToR2(file)

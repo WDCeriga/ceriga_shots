@@ -135,6 +135,20 @@ export default function AdminProjectDetailPage() {
                 <div className="px-3 py-2 border-t border-border">
                   <p className="text-xs text-muted-foreground text-center">{formatViewTitle(img.type)}</p>
                 </div>
+                <div className="border-t border-border px-3 py-2">
+                  <details>
+                    <summary className="cursor-pointer text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                      Prompt used
+                    </summary>
+                    {img.prompt && img.prompt.trim().length > 0 ? (
+                      <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-md border border-border/70 bg-background/60 p-2 text-[11px] leading-relaxed text-foreground">
+                        {img.prompt}
+                      </pre>
+                    ) : (
+                      <p className="mt-2 text-[11px] text-muted-foreground">No prompt stored for this asset.</p>
+                    )}
+                  </details>
+                </div>
               </div>
             ))}
           </div>
