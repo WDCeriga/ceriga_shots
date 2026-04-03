@@ -34,6 +34,7 @@ const featureGroups: FeatureGroup[] = [
   {
     label: 'Generation',
     rows: [
+      { name: 'Credits / month', values: ['8', '100', '300', '750'] },
       { name: 'Flat lay variants', values: ['2', '5', '5', '5'] },
       { name: 'Surface + detail shots', values: [false, false, true, true] },
       { name: 'Advanced presets', values: [false, true, true, true] },
@@ -51,7 +52,7 @@ const featureGroups: FeatureGroup[] = [
   {
     label: 'Storage',
     rows: [
-      { name: 'Projects stored', values: ['1', '20', '100', 'Unlimited'] },
+      { name: 'Projects stored', values: ['3', '20', '100', 'Unlimited'] },
       { name: 'Generate additional views', values: [false, true, true, true] },
       { name: 'Asset history retention', values: ['7 days', '90 days', '1 year', 'Unlimited'] },
     ],

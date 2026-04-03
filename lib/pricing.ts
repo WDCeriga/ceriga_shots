@@ -14,7 +14,7 @@ export const pricingPlans: PricingPlan[] = [
   {
     name: 'Free',
     monthlyPrice: 0,
-    creditsPerMonth: 3,
+    creditsPerMonth: 8,
     landingCta: 'Sign Up Free',
     dashboardCta: 'Start Free',
     useCase: 'Best for first-time testing',
@@ -24,7 +24,7 @@ export const pricingPlans: PricingPlan[] = [
   {
     name: 'Starter',
     monthlyPrice: 19,
-    creditsPerMonth: 50,
+    creditsPerMonth: 100,
     landingCta: 'Get Starter',
     dashboardCta: 'Choose Starter',
     useCase: 'Best for solo founders',
@@ -34,7 +34,7 @@ export const pricingPlans: PricingPlan[] = [
   {
     name: 'Studio',
     monthlyPrice: 49,
-    creditsPerMonth: 200,
+    creditsPerMonth: 300,
     landingCta: 'Try Studio Free',
     dashboardCta: 'Choose Studio',
     highlighted: true,
@@ -45,7 +45,7 @@ export const pricingPlans: PricingPlan[] = [
   {
     name: 'Label',
     monthlyPrice: 99,
-    creditsPerMonth: 500,
+    creditsPerMonth: 750,
     landingCta: 'Go Label',
     dashboardCta: 'Choose Label',
     useCase: 'Best for high-volume teams',

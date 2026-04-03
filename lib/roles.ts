@@ -35,7 +35,7 @@ export interface RoleLimits {
 
 export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
   free: {
-    credits: 3,
+    credits: 8,
     assetHistoryRetentionDays: 7,
     flatLayTypes: 2,
     surfaceShots: false,
@@ -52,7 +52,7 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
     api: false,
   },
   starter: {
-    credits: 50,
+    credits: 100,
     assetHistoryRetentionDays: 90,
     flatLayTypes: 5,
     surfaceShots: false,
@@ -69,7 +69,7 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
     api: false,
   },
   studio: {
-    credits: 200,
+    credits: 300,
     assetHistoryRetentionDays: 365,
     flatLayTypes: 5,
     surfaceShots: true,
@@ -86,7 +86,7 @@ export const ROLE_LIMITS: Record<UserRole, RoleLimits> = {
     api: false,
   },
   label: {
-    credits: 500,
+    credits: 750,
     assetHistoryRetentionDays: -1,
     flatLayTypes: 5,
     surfaceShots: true,
