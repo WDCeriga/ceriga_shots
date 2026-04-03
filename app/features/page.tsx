@@ -6,6 +6,29 @@ import { Navbar } from '@/components/navbar'
 import { Footer } from '@/components/cta-footer'
 import { MockupsPhotorealSlider } from '@/components/mockups-photoreal-slider'
 
+const instantProductShootTiles = {
+  originalInput: {
+    src: '/images/instant-shoot-original-input.jpg',
+    zoom: 100,
+    position: '50% 48%',
+  },
+  lightingVariant: {
+    src: '/images/instant-shoot-lighting-variant.jpg',
+    zoom: 100,
+    position: '50% 50%',
+  },
+  anamorphicVariant: {
+    src: '/images/instant-shoot-anamorphic-variant.jpg',
+    zoom: 100,
+    position: '50% 50%',
+  },
+  dynamicAnglesVariant: {
+    src: '/images/instant-shoot-dynamic-angles-variant.jpg',
+    zoom: 100,
+    position: '50% 55%',
+  },
+} as const
+
 export const metadata: Metadata = {
   title: 'Features',
   description:
@@ -151,16 +174,44 @@ export default function FeaturesPage() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-white/10 bg-[#0f1218] p-4">
-            <div className="grid h-full min-h-[420px] grid-cols-3 grid-rows-2 gap-3">
-              <div className="relative col-span-2 overflow-hidden rounded-lg border border-white/10 bg-[radial-gradient(circle_at_30%_20%,#2f3d4f_0%,#101722_55%,#070b11_100%)]">
+          <div className="overflow-hidden rounded-xl bg-[#0f1218] p-4">
+            <div className="grid h-full min-h-[420px] grid-cols-6 grid-rows-2 gap-3">
+              <div
+                className="relative col-span-3 overflow-hidden bg-cover bg-contain"
+                style={{
+                  backgroundImage: `url('${instantProductShootTiles.originalInput.src}')`,
+                  backgroundSize: `${instantProductShootTiles.originalInput.zoom}%`,
+                  backgroundPosition: instantProductShootTiles.originalInput.position,
+                }}
+              >
                 <span className="absolute left-3 top-3 rounded bg-accent px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-accent-foreground">
                   Original input
                 </span>
               </div>
-              <div className="overflow-hidden rounded-lg border border-white/10 bg-[linear-gradient(160deg,#e9ecef_0%,#d6dbe0_58%,#b9c1ca_100%)]" />
-              <div className="overflow-hidden rounded-lg border border-white/10 bg-[linear-gradient(160deg,#7f5a37_0%,#4f3622_42%,#241812_100%)]" />
-              <div className="relative col-span-2 overflow-hidden rounded-lg border border-white/10 bg-[linear-gradient(160deg,#8fa2a4_0%,#6f8a90_48%,#3f5156_100%)]">
+              <div
+                className="col-span-3 overflow-hidden bg-cover bg-contain"
+                style={{
+                  backgroundImage: `url('${instantProductShootTiles.lightingVariant.src}')`,
+                  backgroundSize: `${instantProductShootTiles.lightingVariant.zoom}%`,
+                  backgroundPosition: instantProductShootTiles.lightingVariant.position,
+                }}
+              />
+              <div
+                className="col-span-2 overflow-hidden bg-cover bg-contain"
+                style={{
+                  backgroundImage: `url('${instantProductShootTiles.anamorphicVariant.src}')`,
+                  backgroundSize: `${instantProductShootTiles.anamorphicVariant.zoom}%`,
+                  backgroundPosition: instantProductShootTiles.anamorphicVariant.position,
+                }}
+              />
+              <div
+                className="relative col-span-4 overflow-hidden bg-cover bg-center"
+                style={{
+                  backgroundImage: `url('${instantProductShootTiles.dynamicAnglesVariant.src}')`,
+                  backgroundSize: `${instantProductShootTiles.dynamicAnglesVariant.zoom}%`,
+                  backgroundPosition: instantProductShootTiles.dynamicAnglesVariant.position,
+                }}
+              >
                 <span className="absolute bottom-3 right-3 rounded bg-black/40 px-2 py-1 text-[9px] font-semibold uppercase tracking-[0.15em] text-white/80">
                   Nano Banana 2
                 </span>
