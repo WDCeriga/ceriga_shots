@@ -145,20 +145,6 @@ function hashStringToInt(input: string) {
   return h >>> 0
 }
 
-function mulberry32(seed: number) {
-  let t = seed >>> 0
-  return () => {
-    t += 0x6d2b79f5
-    let x = Math.imul(t ^ (t >>> 15), 1 | t)
-    x ^= x + Math.imul(x ^ (x >>> 7), 61 | x)
-    return ((x ^ (x >>> 14)) >>> 0) / 4294967296
-  }
-}
-
-function pickOne<T>(rand: () => number, items: readonly T[]): T {
-  return items[Math.floor(rand() * items.length)]!
-}
-
 function categoryForShotType(shotType: ShotType): ShotCategory {
   switch (shotType) {
     case 'flatlay_topdown':
@@ -760,110 +746,26 @@ const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
 }
 
 function buildVariationSeed(
-  preset: Preset,
+  _preset: Preset,
   shotType: ShotType,
-  generationIndex: number,
-  variationSeed: number
+  _generationIndex: number,
+  _variationSeed: number
 ) {
-  const rand = mulberry32(variationSeed)
-
-  const centredBreathingRoom = 'centred with generous breathing room' as const
-  const slightlyOffLeft = 'slightly off-centre to the left (about 5-12% shift)' as const
-  const slightlyOffRight = 'slightly off-centre to the right (about 5-12% shift)' as const
-  const centredTight = 'centred tight — garment fills 80% of frame' as const
-  const centredUrbanConcrete = 'centred with safe framing — garment fills ~72-78% of frame' as const
-  const centredTopdown = 'centred with balanced margins — garment fills ~72-78% of frame' as const
-  const centredSleeves = 'centred with sleeve-safe margins — sleeves fully visible; garment fills ~70-80% of frame' as const
-  const centredFolded = 'centred tight — folded garment fills ~82-86% of frame' as const
-  const centredSurface = 'centred with comfortable margin — garment fills ~72-85% of frame' as const
-  const centredDetail = 'centred tight — chosen detail region fills ~80% of frame' as const
-  const asymmetricNegativeSpace = 'centred with asymmetric negative space' as const
-
-  // Shot prompts often imply strict symmetry/centering (especially top-down/sleeves/folded).
-  // If the variation block suggests asymmetric composition, Gemini may override earlier constraints.
-  // So we restrict allowed composition variants by shotType.
-  let compositions: readonly string[]
-  switch (shotType) {
-    case 'flatlay_topdown': {
-      compositions = [centredTopdown]
-      break
-    }
-    case 'flatlay_sleeves': {
-      compositions = [centredSleeves]
-      break
-    }
-    case 'flatlay_folded': {
-      compositions = [centredFolded]
-      break
-    }
-    case 'flatlay_45deg': {
-      // Steep diagonal overhead looks best when framing stays stable.
-      compositions = [centredUrbanConcrete]
-      break
-    }
-    case 'flatlay_relaxed': {
-      // Keep it candid/off-centre, but avoid “asymmetric negative space” which tends to break the garment layout.
-      compositions = [centredTopdown, slightlyOffLeft, slightlyOffRight]
-      break
-    }
-    case 'surface_draped':
-    case 'surface_hanging': {
-      compositions = [centredSurface]
-      break
-    }
-    case 'detail_print':
-    case 'detail_collar': {
-      compositions = [centredDetail]
-      break
-    }
-    case 'detail_fabric': {
-      // Your shot prompt explicitly allows a slightly off-centre crop for editorial feel.
-      compositions = [centredDetail, slightlyOffLeft, slightlyOffRight]
-      break
-    }
+  // Realism-first mode: keep generation deterministic and avoid stylistic randomization
+  // that can drift fabric appearance away from the source.
+  const realismSafeByShot: Record<ShotType, string> = {
+    flatlay_topdown: 'centred with balanced margins — garment fills ~72-78% of frame',
+    flatlay_45deg: 'centred with safe framing — garment fills ~72-78% of frame',
+    flatlay_sleeves: 'centred with sleeve-safe margins — sleeves fully visible; garment fills ~70-80% of frame',
+    flatlay_relaxed: 'centred with balanced margins — garment fills ~72-78% of frame',
+    flatlay_folded: 'centred tight — folded garment fills ~82-86% of frame',
+    surface_draped: 'centred with comfortable margin — garment fills ~72-85% of frame',
+    surface_hanging: 'centred with comfortable margin — garment fills ~72-85% of frame',
+    detail_print: 'centred tight — chosen detail region fills ~80% of frame',
+    detail_fabric: 'centred tight — chosen detail region fills ~80% of frame',
+    detail_collar: 'centred tight — chosen detail region fills ~80% of frame',
   }
-
-  const surfaces = [
-    'urban concrete',
-    'matte charcoal seamless paper',
-    'dark marble',
-    'aged wood',
-    'matte black powder coat',
-    'washed stone',
-    'dark linen',
-    'brushed steel',
-    'black sand',
-    'volcanic rock',
-  ] as const
-
-  const lightings = [
-    'hard directional studio',
-    'soft diffused overhead',
-    'natural window light',
-    'dual softbox even',
-    'single side key light',
-    'overhead ring diffused',
-  ] as const
-
-  const lenses = ['50mm equivalent', '85mm equivalent'] as const
-  const dof = [
-    'deep depth of field (most of the garment sharp)',
-    'moderate depth of field (subject sharp, background softly blurred)',
-  ] as const
-
-  const lines = [
-    'VARIATION INSTRUCTIONS:',
-    `- Composition: ${pickOne(rand, compositions)}`,
-  ]
-
-  if (preset === 'surprise') {
-    lines.push(`- Surface: ${pickOne(rand, surfaces)}`)
-    lines.push(`- Lighting: ${pickOne(rand, lightings)}`)
-    lines.push(`- Lens: ${pickOne(rand, lenses)}`)
-    lines.push(`- Depth of field: ${pickOne(rand, dof)}`)
-  }
-
-  return lines.join('\n')
+  return ['VARIATION INSTRUCTIONS:', `- Composition: ${realismSafeByShot[shotType]}`].join('\n')
 }
 
 const FIDELITY_REMINDER = [
