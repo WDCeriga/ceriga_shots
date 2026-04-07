@@ -12,6 +12,7 @@ type AdminProject = {
   ownerEmail: string
   name: string
   generatedCount: number
+  hasLocalhostGenerations?: boolean
   visualDirection: string
   pipeline: string
   renderStyleLevel?: string
@@ -140,6 +141,11 @@ export default function AdminProjectsPage() {
                 <Link href={`/dashboard/admin/projects/${p.id}`} className="hover:underline">
                   {p.name}
                 </Link>
+                {p.hasLocalhostGenerations ? (
+                  <span className="ml-2 inline-flex rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-amber-300">
+                    localhost
+                  </span>
+                ) : null}
               </TableCell>
               <TableCell className="capitalize">
                 <Link href={`/dashboard/admin/projects/${p.id}`} className="hover:underline">

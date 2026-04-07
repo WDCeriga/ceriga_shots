@@ -11,6 +11,7 @@ type Row = {
   owner_email: string | null
   name: string
   generated_count: number
+  has_localhost_generations: boolean
   generation: unknown
   created_at: string
   updated_at: string
@@ -35,6 +36,12 @@ export async function GET() {
       u.email as owner_email,
       p.name,
       jsonb_array_length(p.generated_images)::int as generated_count,
+      exists (
+        select 1
+        from jsonb_array_elements(p.generated_images) as gi
+        where lower(coalesce(gi->>'url', '')) like 'http://localhost%'
+           or lower(coalesce(gi->>'url', '')) like 'https://localhost%'
+      ) as has_localhost_generations,
       p.generation,
       p.created_at,
       p.updated_at
@@ -56,6 +63,7 @@ export async function GET() {
         ownerEmail: r.owner_email ?? 'Unknown',
         name: r.name,
         generatedCount: Number(r.generated_count ?? 0),
+        hasLocalhostGenerations: Boolean(r.has_localhost_generations),
         visualDirection: generation?.preset ?? '—',
         pipeline: inferredPipeline,
         renderStyleLevel: generation?.renderStyleLevel ?? undefined,
