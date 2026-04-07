@@ -200,6 +200,10 @@ export async function enqueueGenerationJobs(args: {
       renderStyleLevel: project.generation?.renderStyleLevel,
       aspectRatio: project.generation?.aspectRatio,
       garmentType: args.garmentType,
+      // Preserve original generation references so "generate more" keeps using
+      // all uploaded inputs (multi-reference) instead of dropping to one image.
+      sourceImageUrl: project.generation?.sourceImageUrl,
+      sourceImageUrls: project.generation?.sourceImageUrls,
     },
   })
 }
@@ -283,6 +287,8 @@ export async function completeGenerationJob(args: {
       renderStyleLevel: project.generation?.renderStyleLevel,
       aspectRatio: project.generation?.aspectRatio,
       garmentType: project.generation?.garmentType,
+      sourceImageUrl: project.generation?.sourceImageUrl,
+      sourceImageUrls: project.generation?.sourceImageUrls,
     },
   })
 }
@@ -363,6 +369,8 @@ export async function failGenerationJob(args: {
       renderStyleLevel: project.generation?.renderStyleLevel,
       aspectRatio: project.generation?.aspectRatio,
       garmentType: project.generation?.garmentType,
+      sourceImageUrl: project.generation?.sourceImageUrl,
+      sourceImageUrls: project.generation?.sourceImageUrls,
     },
   })
 }

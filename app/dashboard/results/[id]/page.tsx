@@ -27,6 +27,8 @@ export default function ResultsPage() {
   const { role, limits } = useRole()
   const project = getProject(projectId)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [selectedDownloadIds, setSelectedDownloadIds] = useState<string[]>([])
+  const [isSelectingDownloads, setIsSelectingDownloads] = useState(false)
   const [moreType, setMoreType] = useState<
     | 'flatlay_topdown'
     | 'flatlay_45deg'
@@ -233,6 +235,15 @@ export default function ResultsPage() {
   const canGenerateMore = !isActivelyGenerating && canGenerateMoreFeature
   const isDesignRealizePipeline = project.generation?.pipeline === 'design_realize'
   const canImageEditing = role === 'studio' || role === 'label' || role === 'admin'
+  const generationReferenceImages = (() => {
+    const multi = Array.isArray(project.generation?.sourceImageUrls)
+      ? project.generation.sourceImageUrls.filter((url) => typeof url === 'string' && url.trim().length > 0)
+      : []
+    if (multi.length > 0) return multi
+    const single = project.generation?.sourceImageUrl
+    if (single && single.trim().length > 0) return [single]
+    return [project.originalImage]
+  })()
 
   const startRename = () => {
     setNameDraft(project.name)
@@ -415,6 +426,51 @@ export default function ResultsPage() {
     }
   }
 
+  const toggleDownloadSelection = (assetId: string) => {
+    setSelectedDownloadIds((prev) =>
+      prev.includes(assetId) ? prev.filter((id) => id !== assetId) : [...prev, assetId]
+    )
+  }
+
+  const startDownloadAll = async () => {
+    if (isDownloading) return
+    setIsDownloading(true)
+    try {
+      toast({
+        title: 'Download started',
+        description: 'Preparing your ZIP file…',
+      })
+      window.location.href = `/api/projects/${projectId}/download`
+    } finally {
+      window.setTimeout(() => setIsDownloading(false), 1200)
+    }
+  }
+
+  const downloadSelected = async () => {
+    if (isDownloading) return
+    if (selectedDownloadIds.length === 0) {
+      toast({
+        title: 'No images selected',
+        description: 'Select at least one generated image to download.',
+        variant: 'destructive',
+      })
+      return
+    }
+    setIsDownloading(true)
+    try {
+      const assetIdsQuery = `?assetIds=${encodeURIComponent(selectedDownloadIds.join(','))}`
+      toast({
+        title: 'Download started',
+        description: `Preparing ZIP for ${selectedDownloadIds.length} selected image${selectedDownloadIds.length === 1 ? '' : 's'}…`,
+      })
+      window.location.href = `/api/projects/${projectId}/download${assetIdsQuery}`
+      setIsSelectingDownloads(false)
+      setSelectedDownloadIds([])
+    } finally {
+      window.setTimeout(() => setIsDownloading(false), 1200)
+    }
+  }
+
   return (
     <div className="p-6 lg:p-8">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -498,8 +554,14 @@ export default function ResultsPage() {
         </div>
 
         <div className="flex gap-3 shrink-0">
-          <Button onClick={downloadAll} disabled={isDownloading}>
-            {isDownloading ? 'Preparing…' : 'Download All'}
+          <Button
+            onClick={() => {
+              setIsSelectingDownloads(true)
+              setSelectedDownloadIds([])
+            }}
+            disabled={isDownloading}
+          >
+            {isDownloading ? 'Preparing…' : 'Download'}
           </Button>
           <Button variant="outline" onClick={() => setShareDialogOpen(true)}>
             Share
@@ -519,7 +581,7 @@ export default function ResultsPage() {
             <div className="p-4 border-b border-border">
               <h2 className="text-base font-semibold">Original</h2>
               <p className="text-xs text-muted-foreground mt-1">
-                This is the reference image used for all outputs.
+                This is the primary reference image used for outputs.
               </p>
             </div>
             <div className="p-4">
@@ -547,6 +609,23 @@ export default function ResultsPage() {
                   />
                 )}
               </div>
+              {generationReferenceImages.length > 1 ? (
+                <div className="mt-4">
+                  <p className="text-xs font-medium text-foreground">References used</p>
+                  <div className="mt-2 grid grid-cols-3 gap-2">
+                    {generationReferenceImages.map((refUrl, idx) => (
+                      <div key={`${refUrl}-${idx}`} className="rounded-md overflow-hidden border border-border bg-secondary/40">
+                        <img
+                          src={refUrl}
+                          alt={`Reference ${idx + 1}`}
+                          className="w-full aspect-square object-cover"
+                          loading="lazy"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -706,6 +785,37 @@ export default function ResultsPage() {
 
         {/* Right: responsive gallery */}
         <section className="min-w-0">
+          {isSelectingDownloads ? (
+            <div className="mb-3 rounded-md border border-accent/40 bg-accent/10 px-3 py-2 flex items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">
+                Select assets to download: {selectedDownloadIds.length} selected
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => void startDownloadAll()}
+                  disabled={isDownloading}
+                >
+                  Download all
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setIsSelectingDownloads(false)
+                    setSelectedDownloadIds([])
+                  }}
+                  disabled={isDownloading}
+                >
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={() => void downloadSelected()} disabled={isDownloading}>
+                  {isDownloading ? 'Preparing…' : 'Download selected'}
+                </Button>
+              </div>
+            </div>
+          ) : null}
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold">Generated Content</h2>
             <div className="text-right">
@@ -730,12 +840,21 @@ export default function ResultsPage() {
             {project.generatedImages.map((img) => (
               <div
                 key={img.id}
-                className="rounded-xl overflow-hidden border border-border bg-card hover:border-accent transition-colors"
+                className={`rounded-xl overflow-hidden border bg-card transition-all ${
+                  isSelectingDownloads && selectedDownloadIds.includes(img.id)
+                    ? 'border-accent ring-1 ring-accent/70 shadow-[0_0_18px_rgba(239,68,68,0.35)]'
+                    : 'border-border'
+                }`}
               >
                 <button
                   type="button"
                   className="block w-full text-left"
                   onClick={() => {
+                    if (isSelectingDownloads) {
+                      if (!img.url) return
+                      toggleDownloadSelection(img.id)
+                      return
+                    }
                     const idx = project.generatedImages.findIndex((x) => x.id === img.id)
                     if (idx >= 0) setLightboxIndex(idx)
                   }}

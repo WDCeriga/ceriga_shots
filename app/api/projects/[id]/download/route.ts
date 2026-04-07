@@ -14,6 +14,13 @@ export const runtime = 'nodejs'
 export async function GET(req: Request) {
   const url = new URL(req.url)
   const id = url.pathname.split('/').slice(-2)[0] as string
+  const selectedAssetIdsRaw = url.searchParams.get('assetIds')
+  const selectedAssetIds = new Set(
+    (selectedAssetIdsRaw ?? '')
+      .split(',')
+      .map((v) => v.trim())
+      .filter((v) => v.length > 0)
+  )
   const session = await getServerSession(authOptions)
 
   if (!session?.user?.id) {
@@ -48,7 +55,12 @@ export async function GET(req: Request) {
     zip.file(`original/${base}.${original.ext}`, original.buffer, { binary: true })
   }
 
-  for (const img of project.generatedImages) {
+  const generatedToZip =
+    selectedAssetIds.size > 0
+      ? project.generatedImages.filter((img) => selectedAssetIds.has(img.id))
+      : project.generatedImages
+
+  for (const img of generatedToZip) {
     const data = await bufferFromImageRef(img.url)
     if (!data) continue
     const ts = typeof img.timestamp === 'number' ? img.timestamp : Date.now()
