@@ -370,7 +370,6 @@ export default function BackgroundRemovePage() {
             <div
               className="relative flex flex-1 flex-col items-center justify-center p-5 sm:p-8"
               style={{
-                background: bgRemoveOutput === 'white' ? '#f4f4f5' : undefined,
                 backgroundImage: bgRemoveOutput === 'transparent' ? CHECKER_BG : undefined,
               }}
             >
@@ -388,7 +387,12 @@ export default function BackgroundRemovePage() {
                 <img
                   src={resultDataUrl}
                   alt="Background removed"
-                  className="max-h-[min(52vh,480px)] w-auto max-w-full rounded-lg object-contain shadow-lg ring-1 ring-black/10 dark:ring-white/10"
+                  className={cn(
+                    'max-h-[min(52vh,480px)] w-auto max-w-full object-contain',
+                    bgRemoveOutput === 'white'
+                      ? 'rounded-none shadow-none ring-0'
+                      : 'rounded-lg shadow-lg ring-1 ring-black/10 dark:ring-white/10'
+                  )}
                 />
               ) : (
                 <div className="flex max-w-xs flex-col items-center text-center">
