@@ -74,6 +74,10 @@ function todayDateInputValue(): string {
   return `${yyyy}-${mm}-${dd}`
 }
 
+function formatDateOnly(date: Date): string {
+  return date.toLocaleDateString()
+}
+
 export default function AdminStatisticsPage() {
   const dateInputRef = useRef<HTMLInputElement | null>(null)
   const [range, setRange] = useState<StatsResponse['range']>('30d')
@@ -110,10 +114,10 @@ export default function AdminStatisticsPage() {
   }, [cacheKey, customFromDate, range])
 
   const periodLabel = stats?.range === 'all'
-    ? `All time until ${new Date().toLocaleString()}`
+    ? `All time until ${formatDateOnly(new Date())}`
     : stats?.fromDate
-      ? `${new Date(stats.fromDate).toLocaleString()} → ${new Date().toLocaleString()}`
-      : `Last 30 days until ${new Date().toLocaleString()}`
+      ? `${formatDateOnly(new Date(stats.fromDate))} → ${formatDateOnly(new Date())}`
+      : `Last 30 days until ${formatDateOnly(new Date())}`
 
   const keyMetrics = [
     { title: 'New Users', value: stats?.users ?? '...', tone: 'text-cyan-300 border-cyan-500/30 bg-cyan-500/10' },
@@ -128,8 +132,7 @@ export default function AdminStatisticsPage() {
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Admin Statistics</h1>
-            <p className="text-sm text-muted-foreground mt-1">Simplified KPI view with neon metric grouping.</p>
-          </div>
+           </div>
           <div className="flex items-center gap-2">
             {RANGE_OPTIONS.map((opt) => (
               <Button
@@ -246,12 +249,6 @@ export default function AdminStatisticsPage() {
           </CardContent>
         </Card>
       </div>
-
-      <p className="text-xs text-muted-foreground">
-        Caveats: all metrics are filtered by the selected start date/range. Queue values reflect current statuses of jobs created within that range.
-        {isLoading ? ' Refreshing…' : ''}
-      </p>
-
     </div>
   )
 }
