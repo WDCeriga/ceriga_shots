@@ -61,6 +61,11 @@ export interface GenerationState {
    */
   sourceImageUrl?: string
   /**
+   * Optional multi-reference generation inputs (studio and above).
+   * When present, these are sent to the model as reference images.
+   */
+  sourceImageUrls?: string[]
+  /**
    * Sketch/design realization only.
    * Controls output style family (CGI modes vs photoreal flatlay mode).
    */

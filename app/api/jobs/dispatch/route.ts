@@ -65,12 +65,17 @@ async function processSingle(baseUrl: string, workerId: string) {
       (editedFromAsset?.url && editedFromAsset.url.trim().length > 0 ? editedFromAsset.url : null) ??
       project.generation?.sourceImageUrl ??
       project.originalImage
+    const inputImageUrls =
+      !editedFromAsset?.url && Array.isArray(project.generation?.sourceImageUrls)
+        ? project.generation.sourceImageUrls.filter((url) => typeof url === 'string' && url.trim().length > 0)
+        : []
 
     const res = await fetch(`${baseUrl}/api/mockups`, {
       method: 'POST',
       headers: mockupHeaders,
       body: JSON.stringify({
         imageUrl: inputImageUrl,
+        imageUrls: inputImageUrls.length > 0 ? inputImageUrls : undefined,
         projectId: project.id,
         shotType: job.shot_type,
         preset: job.preset,

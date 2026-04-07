@@ -1169,7 +1169,7 @@ function extractReplicateOutputUrl(output: unknown): string | undefined {
 async function runReplicatePrediction(args: {
   apiKey: string
   prompt: string
-  imageDataUri: string
+  imageDataUris: string[]
   aspectRatio: GenerationAspectRatio
 }): Promise<string> {
   const createRes = await fetch('https://api.replicate.com/v1/models/google/gemini-2.5-flash-image/predictions', {
@@ -1182,7 +1182,7 @@ async function runReplicatePrediction(args: {
     body: JSON.stringify({
       input: {
         prompt: args.prompt,
-        image_input: [args.imageDataUri],
+        image_input: args.imageDataUris,
         aspect_ratio: mapAspectRatioForReplicate(args.aspectRatio),
         output_format: 'png',
       },
@@ -1396,26 +1396,42 @@ export async function POST(req: Request) {
 
   const imageDataUrl = (body as { imageDataUrl?: unknown }).imageDataUrl
   const imageUrl = (body as { imageUrl?: unknown }).imageUrl
+  const imageUrls = (body as { imageUrls?: unknown }).imageUrls
 
-  let parsed: { mimeType: string; base64: string } | null = null
-  if (typeof imageDataUrl === 'string' && imageDataUrl.length >= 32) {
-    parsed = parseDataUrl(imageDataUrl)
+  const parsedInputs: Array<{ mimeType: string; base64: string }> = []
+  if (Array.isArray(imageUrls) && imageUrls.length > 0) {
+    for (const maybeUrl of imageUrls) {
+      if (typeof maybeUrl !== 'string' || maybeUrl.length < 8) continue
+      const parsed = await fetchImageUrlAsBase64(maybeUrl)
+      if (parsed) parsedInputs.push(parsed)
+    }
+    if (parsedInputs.length === 0) {
+      console.warn(`[mockups:${requestId}] imageUrls provided but none were fetchable`)
+      return NextResponse.json({ error: 'imageUrls could not be fetched.' }, { status: 400 })
+    }
+  } else if (typeof imageDataUrl === 'string' && imageDataUrl.length >= 32) {
+    const parsed = parseDataUrl(imageDataUrl)
     if (!parsed) {
       console.warn(`[mockups:${requestId}] imageDataUrl not a base64 data URL`)
       return NextResponse.json({ error: 'imageDataUrl must be a base64 data URL.' }, { status: 400 })
     }
+    parsedInputs.push(parsed)
   } else if (typeof imageUrl === 'string' && imageUrl.length >= 8) {
-    parsed = await fetchImageUrlAsBase64(imageUrl)
+    const parsed = await fetchImageUrlAsBase64(imageUrl)
     if (!parsed) {
       console.warn(`[mockups:${requestId}] Failed to fetch imageUrl`)
       return NextResponse.json({ error: 'imageUrl could not be fetched.' }, { status: 400 })
     }
+    parsedInputs.push(parsed)
   } else {
-    console.warn(`[mockups:${requestId}] Missing/invalid imageDataUrl/imageUrl`)
-    return NextResponse.json({ error: 'imageDataUrl (base64 data URL) or imageUrl is required.' }, { status: 400 })
+    console.warn(`[mockups:${requestId}] Missing/invalid imageDataUrl/imageUrl/imageUrls`)
+    return NextResponse.json({ error: 'imageDataUrl, imageUrl, or imageUrls is required.' }, { status: 400 })
   }
 
-  const inputMime = normalizeInteractionsImageMime(parsed.mimeType)
+  const inputDataUris = parsedInputs.map((parsed) => {
+    const inputMime = normalizeInteractionsImageMime(parsed.mimeType)
+    return `data:${inputMime};base64,${parsed.base64}`
+  })
 
   const shotType = resolveShotTypeFromBody(body)
 
@@ -1497,7 +1513,7 @@ export async function POST(req: Request) {
     let lastErrorMessage = ''
     let modelCalls = 0
     console.debug?.(
-      `[mockups:${requestId}] start shotType=${shotType} preset=${preset} attempts=${maxAttempts} inputMime=${inputMime} generationIndex=${generationIndex}`
+      `[mockups:${requestId}] start shotType=${shotType} preset=${preset} attempts=${maxAttempts} inputCount=${inputDataUris.length} generationIndex=${generationIndex}`
     )
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -1509,7 +1525,7 @@ export async function POST(req: Request) {
         const outputUrl = await runReplicatePrediction({
           apiKey,
           prompt: attemptPrompt,
-          imageDataUri: `data:${inputMime};base64,${parsed.base64}`,
+          imageDataUris: inputDataUris,
           aspectRatio,
         })
         console.debug?.(

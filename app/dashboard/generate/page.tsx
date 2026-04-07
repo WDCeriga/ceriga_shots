@@ -133,8 +133,8 @@ const HEADING_WORD_WIDTH_ANCHOR = HEADING_WORDS.reduce((acc, w) => (w.length > a
 const HEADING_WORD_WIDTH_CHARS = HEADING_WORD_WIDTH_ANCHOR.length
 
 export default function GeneratePage() {
-  const [file, setFile] = useState<File | null>(null)
-  const [preview, setPreview] = useState<string>('')
+  const [files, setFiles] = useState<File[]>([])
+  const [previews, setPreviews] = useState<string[]>([])
   const [isDragging, setIsDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [visualDirection, setVisualDirection] = useState<VisualDirectionKey>('raw')
@@ -153,7 +153,8 @@ export default function GeneratePage() {
   const { addProject, deleteProject, updateProject } = useProjects()
   const router = useRouter()
   const { status } = useSession()
-  const { limits } = useRole()
+  const { role, limits } = useRole()
+  const canUseMultiReference = role === 'studio' || role === 'label' || role === 'admin'
   const isAuthed = status === 'authenticated'
   const isAuthLoading = status === 'loading'
   const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null)
@@ -169,12 +170,15 @@ export default function GeneratePage() {
   const headingWordIndexRef = useRef(0)
   const isHeadingWordRollingRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [activeSlotIndex, setActiveSlotIndex] = useState<number | null>(null)
 
   useEffect(() => {
-    // Prevent leaking object URLs when the user replaces the file.
-    if (!preview?.startsWith('blob:')) return
-    return () => URL.revokeObjectURL(preview)
-  }, [preview])
+    return () => {
+      for (const preview of previews) {
+        if (preview.startsWith('blob:')) URL.revokeObjectURL(preview)
+      }
+    }
+  }, [previews])
 
   useEffect(() => {
     if (!isAuthed) {
@@ -400,15 +404,44 @@ export default function GeneratePage() {
       ? true
       : creditsRemaining >= selectedAllowedCount
   const canGenerateNow =
-    !!preview &&
+    previews.length > 0 &&
     !isLoading &&
     !isAuthLoading &&
     isAuthed &&
     selectedAllowedCount > 0 &&
     hasEnoughCredits
+  const isReferenceSlotsFull = canUseMultiReference && files.length >= 5
 
-  const handleFile = (selectedFile: File) => {
-    if (!selectedFile.type.startsWith('image/')) {
+  const notifyReferenceLimitReached = () => {
+    toast({
+      title: 'Reference limit reached',
+      description: 'You can upload up to 5 reference images. Remove one to add another.',
+    })
+  }
+
+  const handleFiles = (incomingFiles: File[]) => {
+    const imageFiles = incomingFiles.filter((selectedFile) => selectedFile.type.startsWith('image/'))
+    if (imageFiles.length === 0) {
+      toast({
+        title: 'Unsupported file',
+        description: 'Please select an image file.',
+        variant: 'destructive',
+      })
+      return
+    }
+    const nextFiles = canUseMultiReference ? imageFiles.slice(0, 5) : imageFiles.slice(0, 1)
+    const nextPreviews = nextFiles.map((selectedFile) => URL.createObjectURL(selectedFile))
+    for (const preview of previews) {
+      if (preview.startsWith('blob:')) URL.revokeObjectURL(preview)
+    }
+    setFiles(nextFiles)
+    setPreviews(nextPreviews)
+    setActiveSlotIndex(null)
+  }
+
+  const appendFiles = (incomingFiles: File[]) => {
+    const imageFiles = incomingFiles.filter((selectedFile) => selectedFile.type.startsWith('image/'))
+    if (imageFiles.length === 0) {
       toast({
         title: 'Unsupported file',
         description: 'Please select an image file.',
@@ -417,8 +450,69 @@ export default function GeneratePage() {
       return
     }
 
-    setFile(selectedFile)
-    setPreview(URL.createObjectURL(selectedFile))
+    if (!canUseMultiReference) {
+      handleFiles(imageFiles)
+      return
+    }
+
+    const availableSlots = Math.max(0, 5 - files.length)
+    if (availableSlots === 0) {
+      notifyReferenceLimitReached()
+      return
+    }
+
+    const filesToAdd = imageFiles.slice(0, availableSlots)
+    const previewsToAdd = filesToAdd.map((selectedFile) => URL.createObjectURL(selectedFile))
+    setFiles((prev) => [...prev, ...filesToAdd].slice(0, 5))
+    setPreviews((prev) => [...prev, ...previewsToAdd].slice(0, 5))
+    setActiveSlotIndex(null)
+  }
+
+  const handleSelectSlot = (slotIndex: number) => {
+    setActiveSlotIndex(slotIndex)
+    fileInputRef.current?.click()
+  }
+
+  const handleRemoveSlot = (slotIndex: number) => {
+    const existingPreview = previews[slotIndex]
+    if (existingPreview?.startsWith('blob:')) URL.revokeObjectURL(existingPreview)
+    const nextFiles = files.filter((_, idx) => idx !== slotIndex)
+    const nextPreviews = previews.filter((_, idx) => idx !== slotIndex)
+    setFiles(nextFiles)
+    setPreviews(nextPreviews)
+  }
+
+  const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = event.target.files ? Array.from(event.target.files) : []
+    if (selectedFiles.length === 0) return
+
+    if (activeSlotIndex != null && canUseMultiReference) {
+      const selectedFile = selectedFiles[0]
+      if (!selectedFile || !selectedFile.type.startsWith('image/')) {
+        toast({
+          title: 'Unsupported file',
+          description: 'Please select an image file.',
+          variant: 'destructive',
+        })
+        return
+      }
+      const nextFiles = [...files]
+      const nextPreviews = [...previews]
+      const existingPreview = nextPreviews[activeSlotIndex]
+      if (existingPreview?.startsWith('blob:')) URL.revokeObjectURL(existingPreview)
+      nextFiles[activeSlotIndex] = selectedFile
+      nextPreviews[activeSlotIndex] = URL.createObjectURL(selectedFile)
+      setFiles(nextFiles.slice(0, 5))
+      setPreviews(nextPreviews.slice(0, 5))
+      setActiveSlotIndex(null)
+    } else {
+      if (canUseMultiReference && files.length > 0) {
+        appendFiles(selectedFiles)
+      } else {
+        handleFiles(selectedFiles)
+      }
+    }
+    event.target.value = ''
   }
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -433,13 +527,17 @@ export default function GeneratePage() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-    if (e.dataTransfer.files[0]) {
-      handleFile(e.dataTransfer.files[0])
+    if (e.dataTransfer.files.length > 0) {
+      if (canUseMultiReference && files.length > 0) {
+        appendFiles(Array.from(e.dataTransfer.files))
+      } else {
+        handleFiles(Array.from(e.dataTransfer.files))
+      }
     }
   }
 
   const handleGenerate = async () => {
-    if (!file || !preview) return
+    if (files.length === 0 || previews.length === 0) return
 
     if (!isAuthed) {
       toast({
@@ -473,13 +571,18 @@ export default function GeneratePage() {
             ? customProductType.trim() || undefined
             : productType
 
-      const originalImageUrl = await uploadOriginalImageToR2(file)
-      const sourceImageUrl = await uploadGenerationSourceImageToR2(file)
+      const primaryFile = files[0]
+      if (!primaryFile) return
+      const originalImageUrl = await uploadOriginalImageToR2(primaryFile)
+      const sourceImageUrls = await Promise.all(
+        files.map(async (sourceFile) => uploadGenerationSourceImageToR2(sourceFile))
+      )
+      const sourceImageUrl = sourceImageUrls[0]
 
       const project = await addProject({
-        name: file.name.replace(/\.[^/.]+$/, ''),
+        name: primaryFile.name.replace(/\.[^/.]+$/, ''),
         originalImage: originalImageUrl,
-        originalImageName: file.name,
+        originalImageName: primaryFile.name,
         generatedImages: [],
         generation: {
           status: 'idle',
@@ -488,6 +591,7 @@ export default function GeneratePage() {
           preset: visualDirection,
           pipeline: 'garment_photo',
           sourceImageUrl,
+          sourceImageUrls: canUseMultiReference ? sourceImageUrls : [sourceImageUrl],
           aspectRatio,
         },
       })
@@ -637,6 +741,11 @@ export default function GeneratePage() {
             <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground ml-4">
               Product image
             </div>
+            {canUseMultiReference ? (
+              <div className="mx-1 rounded-lg border border-white/10 bg-white/[0.02] px-3 py-2 text-[11px] text-muted-foreground">
+                Multi-reference mode: up to 5 inputs
+              </div>
+            ) : null}
 
             <div
               onDragOver={handleDragOver}
@@ -645,74 +754,159 @@ export default function GeneratePage() {
               role="button"
               tabIndex={0}
               aria-label="Select design file"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                if (isReferenceSlotsFull) {
+                  notifyReferenceLimitReached()
+                  return
+                }
+                setActiveSlotIndex(null)
+                fileInputRef.current?.click()
+              }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click()
+                if (e.key === 'Enter' || e.key === ' ') {
+                  if (isReferenceSlotsFull) {
+                    notifyReferenceLimitReached()
+                    return
+                  }
+                  fileInputRef.current?.click()
+                }
               }}
               className={cn(
-                'group rounded-xl border border-white/15 bg-card/50 shadow-sm transition-colors',
+                'group rounded-xl border border-white/15 bg-card/50 p-5 sm:p-6 shadow-sm transition-all',
                 isDragging
-                  ? 'border-accent/80'
-                  : 'hover:border-red-500/50 hover:shadow-[0_0_18px_rgba(239,68,68,0.25)] hover:bg-red-500/10'
+                  ? 'border-accent/80 bg-accent/5 shadow-[0_0_0_1px_rgba(248,113,113,0.35)]'
+                  : 'hover:border-red-500/50 hover:shadow-[0_0_18px_rgba(239,68,68,0.2)] hover:bg-red-500/5'
               )}
             >
               <input
                 type="file"
                 accept="image/*"
-                onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+                multiple={canUseMultiReference}
+                onChange={handleFileInputChange}
                 className="hidden"
                 id="file-input"
                 ref={fileInputRef}
               />
 
-              <div className="block cursor-pointer p-6 sm:p-8">
-                <div
-                  className={cn(
-                    'rounded-lg border border-dashed p-6 sm:p-8',
-                    isDragging ? 'border-accent/80' : 'border-white/15 group-hover:border-red-500/40 transition-colors'
-                  )}
-                >
-                  <div className="grid place-items-center">
-                    {preview ? (
-                      <div className="w-full max-w-[360px]">
-                        <div className="relative mx-auto aspect-square w-full overflow-hidden rounded-md bg-secondary/60 border border-white/15">
-                          <img
-                            src={preview}
-                            alt="Uploaded design preview"
-                            className="h-full w-full object-contain"
-                          />
-                        </div>
-                        <p className="mt-4 text-center text-xs text-muted-foreground">Select Files or drag & drop to replace</p>
-                        {file?.name && (
-                          <p className="mt-2 text-center text-xs text-muted-foreground truncate">{file.name}</p>
-                        )}
-                        <button
-                          type="button"
-                          className="mt-4 mx-auto block w-auto cursor-pointer rounded-sm border-2 border-red-500 bg-red-500/90 px-5 py-1.5 text-xs font-semibold tracking-wide text-white shadow-[0_0_0_2px_rgba(239,68,68,0.18),0_0_20px_rgba(239,68,68,0.18)] hover:bg-red-500"
-                        >
-                          Select Files
-                        </button>
+              <div className="block cursor-pointer">
+                <div className="grid place-items-center">
+                  {canUseMultiReference ? (
+                    <div className="w-full max-w-[560px]">
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                        {Array.from({ length: 5 }).map((_, idx) => {
+                          const previewUrl = previews[idx]
+                          const fileName = files[idx]?.name
+                          const hasImage = Boolean(previewUrl)
+                          return (
+                            <div
+                              key={`slot-${idx}`}
+                              className={cn(
+                                'rounded-xl p-2 transition-all',
+                                hasImage
+                                  ? 'border border-white/15 bg-secondary/70 shadow-sm'
+                                  : 'border border-dashed border-white/25 bg-white/[0.02] hover:border-red-400/40'
+                              )}
+                            >
+                              <div className="relative aspect-square overflow-hidden rounded-lg bg-black/20">
+                                {hasImage ? (
+                                  <>
+                                    <img
+                                      src={previewUrl}
+                                      alt={`Uploaded reference ${idx + 1}`}
+                                      className="h-full w-full object-contain"
+                                    />
+                                    {idx === 0 ? (
+                                      <span className="absolute left-1.5 top-1.5 rounded-md bg-emerald-500/90 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white shadow-sm">
+                                        Primary
+                                      </span>
+                                    ) : null}
+                                    <button
+                                      type="button"
+                                      aria-label={`Remove image ${idx + 1}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleRemoveSlot(idx)
+                                      }}
+                                      className="absolute right-1.5 top-1.5 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] text-white hover:bg-black/85"
+                                    >
+                                      x
+                                    </button>
+                                  </>
+                                ) : (
+                                  <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      handleSelectSlot(idx)
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault()
+                                        e.stopPropagation()
+                                        handleSelectSlot(idx)
+                                      }
+                                    }}
+                                    className="grid h-full w-full place-items-center text-[10px] uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground"
+                                  >
+                                    + Add image
+                                  </div>
+                                )}
+                              </div>
+                              <p className="mt-2 truncate px-0.5 text-[10px] text-muted-foreground">
+                                {hasImage ? (fileName ?? `Image ${idx + 1}`) : `Slot ${idx + 1}`}
+                              </p>
+                            </div>
+                          )
+                        })}
                       </div>
-                    ) : (
-                      <div className="w-full max-w-[360px]">
+                      <p className="mt-3 text-center text-xs text-muted-foreground">{previews.length} / 5 selected</p>
+                      <p className="mt-1.5 text-center text-xs text-muted-foreground">Drag and drop or click to upload.</p>
+                      <p className="mt-1 text-center text-[11px] text-muted-foreground">
+                        Left to right order. Slot 1 = primary.
+                      </p>
+                      <button
+                        type="button"
+                        className="mt-4 mx-auto block w-auto cursor-pointer rounded-sm border-2 border-red-500 bg-red-500/90 px-5 py-1.5 text-xs font-semibold tracking-wide text-white shadow-[0_0_0_2px_rgba(239,68,68,0.18),0_0_20px_rgba(239,68,68,0.18)] hover:bg-red-500"
+                      >
+                        Select up to 5 images
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="w-full max-w-[360px]">
+                      {previews[0] ? (
+                        <>
+                          <div className="relative mx-auto aspect-square w-full overflow-hidden rounded-md bg-secondary/60 border border-white/15">
+                            <img
+                              src={previews[0]}
+                              alt="Uploaded design preview"
+                              className="h-full w-full object-contain"
+                            />
+                          </div>
+                          <p className="mt-4 text-center text-xs text-muted-foreground">Select file or drag and drop to replace</p>
+                          {files[0]?.name ? (
+                            <p className="mt-2 text-center text-xs text-muted-foreground truncate">{files[0].name}</p>
+                          ) : null}
+                        </>
+                      ) : (
                         <div className="mx-auto grid place-items-center">
                           <div className="mb-5 grid h-14 w-14 place-items-center rounded-md border border-white/15 text-muted-foreground">
                             <Upload className="h-6 w-6" />
                           </div>
                           <p className="text-center text-sm font-medium text-foreground">Upload your design</p>
                           <p className="mt-2 text-center text-xs text-muted-foreground">
-                            Drag and drop your high-res PNG or TIFF files here to begin the process.
+                            Drag and drop your high-res PNG or TIFF file here to begin.
                           </p>
-                          <button
-                            type="button"
-                            className="mt-5 mx-auto block w-auto cursor-pointer rounded-sm border-2 border-red-500 bg-red-500/90 px-5 py-1.5 text-xs font-semibold tracking-wide text-white shadow-[0_0_0_2px_rgba(239,68,68,0.18),0_0_20px_rgba(239,68,68,0.18)] hover:bg-red-500"
-                          >
-                            Select Files
-                          </button>
                         </div>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                      <button
+                        type="button"
+                        className="mt-5 mx-auto block w-auto cursor-pointer rounded-sm border-2 border-red-500 bg-red-500/90 px-5 py-1.5 text-xs font-semibold tracking-wide text-white shadow-[0_0_0_2px_rgba(239,68,68,0.18),0_0_20px_rgba(239,68,68,0.18)] hover:bg-red-500"
+                      >
+                        Select File
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
