@@ -5,6 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 type AdminUser = {
   id: string
@@ -20,6 +21,8 @@ type AdminUser = {
     resetAt: string | null
   }
 }
+
+const ROLE_OPTIONS = ['free', 'starter', 'studio', 'label'] as const
 
 type CreditGrant = {
   id: string
@@ -67,6 +70,7 @@ export default function AdminUsersPage() {
   const [grantFeedback, setGrantFeedback] = useState<string | null>(null)
   const [grantError, setGrantError] = useState<string | null>(null)
   const [grantModalOpen, setGrantModalOpen] = useState(false)
+  const [roleUpdatingUserId, setRoleUpdatingUserId] = useState<string | null>(null)
 
   async function loadUsers() {
     const res = await fetch('/api/admin/users')
@@ -132,6 +136,57 @@ export default function AdminUsersPage() {
     } finally {
       setGrantLoading(false)
     }
+  }
+
+  async function updateRole(userId: string, role: AdminUser['role']) {
+    setGrantError(null)
+    setGrantFeedback(null)
+    setRoleUpdatingUserId(userId)
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, role }),
+      })
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string
+        user?: { id: string; role: string }
+      }
+      if (!res.ok) throw new Error(data.error || 'Failed to update role')
+      setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)))
+      setGrantFeedback('User role updated.')
+      window.location.reload()
+    } catch (e) {
+      setGrantError(e instanceof Error ? e.message : 'Failed to update role')
+      await loadUsers().catch(() => {})
+    } finally {
+      setRoleUpdatingUserId(null)
+    }
+  }
+
+  const RoleEditor = ({ user }: { user: AdminUser }) => {
+    const isUpdating = roleUpdatingUserId === user.id
+    return (
+      <div className="flex items-center gap-2">
+        <Select
+          value={user.role}
+          disabled={isUpdating}
+          onValueChange={(value) => void updateRole(user.id, value as AdminUser['role'])}
+        >
+          <SelectTrigger className="h-9 w-[160px] border-accent/55 bg-accent/10 px-3 text-sm font-semibold capitalize text-foreground shadow-sm transition-colors hover:border-accent/80 hover:bg-accent/15 focus:ring-2 focus:ring-accent/35">
+            <SelectValue placeholder="Change" />
+          </SelectTrigger>
+          <SelectContent className="border-accent/40 bg-[#0a0a0a]">
+            {ROLE_OPTIONS.map((role) => (
+              <SelectItem key={role} value={role} className="capitalize text-sm">
+                {role}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {isUpdating ? <span className="text-[10px] text-muted-foreground">Saving...</span> : null}
+      </div>
+    )
   }
 
   return (
@@ -221,7 +276,7 @@ export default function AdminUsersPage() {
             <dl className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
               <div>
                 <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Role</dt>
-                <dd className="capitalize mt-0.5">{u.role}</dd>
+                <dd className="mt-0.5"><RoleEditor user={u} /></dd>
               </div>
               <div>
                 <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Usage</dt>
@@ -265,7 +320,9 @@ export default function AdminUsersPage() {
                 <TableCell className="max-w-[220px] whitespace-normal break-words align-top">
                   {u.email}
                 </TableCell>
-                <TableCell className="capitalize align-top">{u.role}</TableCell>
+                <TableCell className="align-top">
+                  <RoleEditor user={u} />
+                </TableCell>
                 <TableCell className="align-top">
                   <UsageDetails u={u} />
                 </TableCell>

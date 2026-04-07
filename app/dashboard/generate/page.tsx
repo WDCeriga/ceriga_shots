@@ -761,7 +761,7 @@ export default function GeneratePage() {
               <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">
                 Product type
               </div>
-              <div className="mt-3">
+              <div className="mt-2">
                 <Select
                   value={productType}
                   onValueChange={(v) => setProductType(v as typeof productType)}
@@ -781,7 +781,7 @@ export default function GeneratePage() {
                 </Select>
 
                 {productType === 'custom' ? (
-                  <div className="mt-3">
+                  <div className="mt-2">
                     <Input
                       value={customProductType}
                       onChange={(e) => setCustomProductType(e.target.value)}
@@ -791,12 +791,12 @@ export default function GeneratePage() {
                 ) : null}
               </div>
 
-              <div className="my-7 h-px w-full bg-white/15" />
+              <div className="my-4 h-px w-full bg-white/15" />
 
               <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">
                 Aspect ratio
               </div>
-              <div className="mt-3">
+              <div className="mt-2">
                 <Select value={aspectRatio} onValueChange={(v) => setAspectRatio(v as GenerationAspectRatio)}>
                   <SelectTrigger className="w-full cursor-pointer">
                     <SelectValue placeholder="1:1" />
@@ -811,13 +811,13 @@ export default function GeneratePage() {
                 </Select>
               </div>
 
-              <div className="my-7 h-px w-full bg-white/15" />
+              <div className="my-4 h-px w-full bg-white/15" />
 
               <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">
                 Shot types
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-2.5 flex flex-wrap gap-2">
                 {sortedShotTypes.map((t) => {
                   const selected = shotTypes.has(t.key)
                   const enabled = availableShotTypes.some((s) => s.key === t.key)
@@ -860,13 +860,13 @@ export default function GeneratePage() {
                 })}
               </div>
 
-              <div className="my-7 h-px w-full bg-white/15" />
+              <div className="my-4 h-px w-full bg-white/15" />
 
               <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">
                 Visual direction
               </div>
 
-              <div className="mt-4 grid grid-cols-2 gap-4">
+              <div className="mt-2.5 grid grid-cols-2 gap-3">
                 {VISUAL_DIRECTIONS.map((d) => {
                   const selected = visualDirection === d.key
                   const presetEnabled = limits.presets.includes(d.key)
