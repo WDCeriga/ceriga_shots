@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { ArrowUpDown } from 'lucide-react'
+import { fetchJsonCached } from '@/lib/client-fetch-cache'
 
 type AdminProject = {
   id: string
@@ -30,10 +31,8 @@ export default function AdminProjectsPage() {
   const pageSize = 20
 
   useEffect(() => {
-    fetch('/api/admin/projects')
-      .then(async (res) => {
-        const data = (await res.json().catch(() => ({}))) as { projects?: AdminProject[]; error?: string }
-        if (!res.ok) throw new Error(data.error || 'Failed to load projects')
+    fetchJsonCached<{ projects?: AdminProject[] }>('admin-projects', '/api/admin/projects', { ttlMs: 20_000 })
+      .then((data) => {
         setProjects(data.projects ?? [])
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load projects'))

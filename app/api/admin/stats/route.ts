@@ -84,45 +84,48 @@ export async function GET() {
   const grossProfitMonthly = mrr - estimatedMonthlyCosts
   const grossMarginPercent = mrr > 0 ? (grossProfitMonthly / mrr) * 100 : 0
 
-  return NextResponse.json({
-    users: Number(usersRow?.count ?? 0),
-    projects: Number(projectsRow?.count ?? 0),
-    queue: {
-      queued: Number(jobsQueuedRow?.count ?? 0),
-      processing: Number(jobsProcessingRow?.count ?? 0),
-      failed: Number(jobsFailedRow?.count ?? 0),
-    },
-    shares: {
-      active: Number(sharesActiveRow?.count ?? 0),
-    },
-    finance: {
-      paidSubscribers: {
-        total: activePaidSubscribers,
-        starter: roleCounts.starter,
-        studio: roleCounts.studio,
-        label: roleCounts.label,
+  return NextResponse.json(
+    {
+      users: Number(usersRow?.count ?? 0),
+      projects: Number(projectsRow?.count ?? 0),
+      queue: {
+        queued: Number(jobsQueuedRow?.count ?? 0),
+        processing: Number(jobsProcessingRow?.count ?? 0),
+        failed: Number(jobsFailedRow?.count ?? 0),
       },
-      revenue: {
-        mrr: money(mrr),
-        arr: money(mrr * 12),
+      shares: {
+        active: Number(sharesActiveRow?.count ?? 0),
       },
-      costs: {
-        variableCostPerPaidUser: money(variableCostPerPaidUser),
-        fixedMonthlyCost: money(fixedMonthlyCost),
-        estimatedMonthlyCosts: money(estimatedMonthlyCosts),
-        generation: {
-          successfulGenerations,
-          successfulModelCalls: successfulGenerationModelCalls,
-          allBilledModelCalls,
-          costPerModelCall: money(costPerModelCall),
-          estimatedTotalCost: money(estimatedGenerationCostTotal),
-          estimatedBilledTotalCost: money(estimatedBilledGenerationCostTotal),
+      finance: {
+        paidSubscribers: {
+          total: activePaidSubscribers,
+          starter: roleCounts.starter,
+          studio: roleCounts.studio,
+          label: roleCounts.label,
+        },
+        revenue: {
+          mrr: money(mrr),
+          arr: money(mrr * 12),
+        },
+        costs: {
+          variableCostPerPaidUser: money(variableCostPerPaidUser),
+          fixedMonthlyCost: money(fixedMonthlyCost),
+          estimatedMonthlyCosts: money(estimatedMonthlyCosts),
+          generation: {
+            successfulGenerations,
+            successfulModelCalls: successfulGenerationModelCalls,
+            allBilledModelCalls,
+            costPerModelCall: money(costPerModelCall),
+            estimatedTotalCost: money(estimatedGenerationCostTotal),
+            estimatedBilledTotalCost: money(estimatedBilledGenerationCostTotal),
+          },
+        },
+        profitability: {
+          grossProfitMonthly: money(grossProfitMonthly),
+          grossMarginPercent: money(grossMarginPercent),
         },
       },
-      profitability: {
-        grossProfitMonthly: money(grossProfitMonthly),
-        grossMarginPercent: money(grossMarginPercent),
-      },
     },
-  })
+    { headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=30' } }
+  )
 }

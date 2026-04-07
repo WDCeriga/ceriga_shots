@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { fetchJsonCached } from '@/lib/client-fetch-cache'
 
 type AdminJob = {
   id: string
@@ -23,10 +24,8 @@ export default function AdminJobsPage() {
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/admin/jobs')
-      .then(async (res) => {
-        const data = (await res.json().catch(() => ({}))) as { jobs?: AdminJob[]; error?: string }
-        if (!res.ok) throw new Error(data.error || 'Failed to load jobs')
+    fetchJsonCached<{ jobs?: AdminJob[] }>('admin-jobs', '/api/admin/jobs', { ttlMs: 12_000 })
+      .then((data) => {
         setJobs(data.jobs ?? [])
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load jobs'))

@@ -19,7 +19,10 @@ export async function GET() {
 
   try {
     const count = await getProjectsCountForUser(session.user.id)
-    return NextResponse.json({ count })
+    return NextResponse.json(
+      { count },
+      { headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=30' } }
+    )
   } catch (error) {
     console.error('GET /api/projects/count error', error)
     return NextResponse.json({ error: 'Failed to load project count' }, { status: 500 })

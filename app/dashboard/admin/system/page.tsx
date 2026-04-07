@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { fetchJsonCached, peekJsonCache } from '@/lib/client-fetch-cache'
 
 type StatusResponse = {
   database?: { configured: boolean }
@@ -11,14 +12,13 @@ type StatusResponse = {
 }
 
 export default function AdminSystemPage() {
-  const [status, setStatus] = useState<StatusResponse | null>(null)
+  const cachedStatus = peekJsonCache<StatusResponse>('admin-system-status')
+  const [status, setStatus] = useState<StatusResponse | null>(cachedStatus)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/status')
-      .then(async (res) => {
-        const data = (await res.json().catch(() => ({}))) as StatusResponse
-        if (!res.ok) throw new Error(data.error || `Status check failed (${res.status})`)
+    fetchJsonCached<StatusResponse>('admin-system-status', '/api/status', { ttlMs: 20_000 })
+      .then((data) => {
         setStatus(data)
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load status'))

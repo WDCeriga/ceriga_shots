@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { fetchJsonCached, peekJsonCache } from '@/lib/client-fetch-cache'
 
 type StatsResponse = {
   users: number
@@ -37,14 +38,13 @@ function formatMoney(amount: number) {
 }
 
 export default function AdminStatisticsPage() {
-  const [stats, setStats] = useState<StatsResponse | null>(null)
+  const cachedStats = peekJsonCache<StatsResponse>('admin-stats')
+  const [stats, setStats] = useState<StatsResponse | null>(cachedStats)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch('/api/admin/stats')
-      .then(async (res) => {
-        const data = (await res.json().catch(() => ({}))) as StatsResponse & { error?: string }
-        if (!res.ok) throw new Error(data.error || 'Failed to load stats')
+    fetchJsonCached<StatsResponse>('admin-stats', '/api/admin/stats', { ttlMs: 15_000 })
+      .then((data) => {
         setStats(data)
       })
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load stats'))

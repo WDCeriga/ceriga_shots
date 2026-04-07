@@ -44,8 +44,9 @@ export async function GET() {
     limit 300
   `) as Row[]
 
-  return NextResponse.json({
-    projects: rows.map((r) => {
+  return NextResponse.json(
+    {
+      projects: rows.map((r) => {
       const generation = (r.generation ?? null) as { preset?: string; pipeline?: string; renderStyleLevel?: string } | null
       const inferredPipeline =
         generation?.pipeline ??
@@ -61,6 +62,8 @@ export async function GET() {
         createdAt: r.created_at,
         updatedAt: r.updated_at,
       }
-    }),
-  })
+      }),
+    },
+    { headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=30' } }
+  )
 }

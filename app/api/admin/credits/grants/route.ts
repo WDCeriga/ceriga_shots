@@ -56,8 +56,9 @@ export async function GET(req: Request) {
     limit ${limit}
   `) as GrantRow[]
 
-  return NextResponse.json({
-    grants: rows.map((r) => ({
+  return NextResponse.json(
+    {
+      grants: rows.map((r) => ({
       id: r.id,
       adminUserId: r.admin_user_id,
       adminEmail: r.admin_email,
@@ -68,6 +69,8 @@ export async function GET(req: Request) {
       beforeCreditsUsed: Number(r.before_credits_used ?? 0),
       afterCreditsUsed: Number(r.after_credits_used ?? 0),
       createdAt: r.created_at,
-    })),
-  })
+      })),
+    },
+    { headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=30' } }
+  )
 }

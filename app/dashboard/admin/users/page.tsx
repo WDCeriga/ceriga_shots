@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { fetchJsonCached, invalidateJsonCache } from '@/lib/client-fetch-cache'
 
 type AdminUser = {
   id: string
@@ -23,6 +24,8 @@ type AdminUser = {
 }
 
 const ROLE_OPTIONS = ['free', 'starter', 'studio', 'label'] as const
+const USERS_CACHE_KEY = 'admin-users'
+const GRANTS_CACHE_KEY = 'admin-credit-grants'
 
 type CreditGrant = {
   id: string
@@ -73,16 +76,18 @@ export default function AdminUsersPage() {
   const [roleUpdatingUserId, setRoleUpdatingUserId] = useState<string | null>(null)
 
   async function loadUsers() {
-    const res = await fetch('/api/admin/users')
-    const data = (await res.json().catch(() => ({}))) as { users?: AdminUser[]; error?: string }
-    if (!res.ok) throw new Error(data.error || 'Failed to load users')
+    const data = await fetchJsonCached<{ users?: AdminUser[] }>(USERS_CACHE_KEY, '/api/admin/users', {
+      ttlMs: 20_000,
+    })
     setUsers(data.users ?? [])
   }
 
   async function loadGrants() {
-    const res = await fetch('/api/admin/credits/grants?limit=50')
-    const data = (await res.json().catch(() => ({}))) as { grants?: CreditGrant[]; error?: string }
-    if (!res.ok) throw new Error(data.error || 'Failed to load credit grants')
+    const data = await fetchJsonCached<{ grants?: CreditGrant[] }>(
+      GRANTS_CACHE_KEY,
+      '/api/admin/credits/grants?limit=50',
+      { ttlMs: 20_000 }
+    )
     setGrants(data.grants ?? [])
   }
 
@@ -130,6 +135,8 @@ export default function AdminUsersPage() {
       )
       setGrantUser('')
       setGrantReason('')
+      invalidateJsonCache(USERS_CACHE_KEY)
+      invalidateJsonCache(GRANTS_CACHE_KEY)
       await Promise.all([loadUsers(), loadGrants()])
     } catch (e) {
       setGrantError(e instanceof Error ? e.message : 'Failed to grant credits')
@@ -155,6 +162,8 @@ export default function AdminUsersPage() {
       if (!res.ok) throw new Error(data.error || 'Failed to update role')
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)))
       setGrantFeedback('User role updated.')
+      invalidateJsonCache(USERS_CACHE_KEY)
+      invalidateJsonCache(GRANTS_CACHE_KEY)
       window.location.reload()
     } catch (e) {
       setGrantError(e instanceof Error ? e.message : 'Failed to update role')

@@ -7,6 +7,7 @@ import { Clock3, Image as ImageIcon, MoreVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useProjects } from '@/hooks/use-projects'
 import { toast } from '@/hooks/use-toast'
+import { fetchJsonCached, peekJsonCache } from '@/lib/client-fetch-cache'
 
 function ProjectCardSkeleton() {
   return (
@@ -86,6 +87,17 @@ function formatRelativeTime(timestamp: number) {
 export default function DashboardHome() {
   const { projects, isLoading } = useProjects()
   const searchParams = useSearchParams()
+  const cachedUsage = peekJsonCache<{
+    user?: {
+      role?: string
+      credits?: {
+        used?: number
+        limit?: number
+        remaining?: number
+        resetAt?: string | null
+      } | null
+    }
+  }>('dashboard-me')
   const [usageInfo, setUsageInfo] = useState<{
     role: string
     credits: {
@@ -94,8 +106,22 @@ export default function DashboardHome() {
       remaining: number
       resetAt: string | null
     } | null
-  } | null>(null)
-  const [isUsageLoading, setIsUsageLoading] = useState(true)
+  } | null>(() =>
+    cachedUsage
+      ? {
+          role: cachedUsage.user?.role ?? 'free',
+          credits: cachedUsage.user?.credits
+            ? {
+                used: cachedUsage.user.credits.used ?? 0,
+                limit: cachedUsage.user.credits.limit ?? 0,
+                remaining: cachedUsage.user.credits.remaining ?? 0,
+                resetAt: cachedUsage.user.credits.resetAt ?? null,
+              }
+            : null,
+        }
+      : null
+  )
+  const [isUsageLoading, setIsUsageLoading] = useState(!cachedUsage)
 
   useEffect(() => {
     const verified = searchParams.get('verified')
@@ -122,21 +148,17 @@ export default function DashboardHome() {
   useEffect(() => {
     let cancelled = false
 
-    fetch('/api/me', { method: 'GET' })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`me ${res.status}`)
-        return (await res.json()) as {
-          user?: {
-            role?: string
-            credits?: {
-              used?: number
-              limit?: number
-              remaining?: number
-              resetAt?: string | null
-            } | null
-          }
-        }
-      })
+    fetchJsonCached<{
+      user?: {
+        role?: string
+        credits?: {
+          used?: number
+          limit?: number
+          remaining?: number
+          resetAt?: string | null
+        } | null
+      }
+    }>('dashboard-me', '/api/me', { ttlMs: 20_000, init: { method: 'GET' } })
       .then((data) => {
         if (cancelled) return
         setUsageInfo({

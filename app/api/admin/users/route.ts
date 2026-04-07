@@ -45,8 +45,9 @@ export async function GET() {
     limit 200
   `) as Row[]
 
-  return NextResponse.json({
-    users: rows.map((r) => {
+  return NextResponse.json(
+    {
+      users: rows.map((r) => {
       const role = r.role as UserRole
       const credits = computeCreditsInfoForDisplay(role, r.credits_used, r.credits_reset_at)
       const unlimited = credits.limit < 0
@@ -64,8 +65,10 @@ export async function GET() {
           resetAt: credits.resetAt ? credits.resetAt.toISOString() : null,
         },
       }
-    }),
-  })
+      }),
+    },
+    { headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=30' } }
+  )
 }
 
 export async function PATCH(req: Request) {

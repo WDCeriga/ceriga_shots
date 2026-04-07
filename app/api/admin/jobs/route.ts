@@ -53,8 +53,9 @@ export async function GET() {
     limit 300
   `) as Row[]
 
-  return NextResponse.json({
-    jobs: rows.map((r) => ({
+  return NextResponse.json(
+    {
+      jobs: rows.map((r) => ({
       id: r.id,
       ownerId: r.owner_id,
       projectId: r.project_id,
@@ -67,6 +68,8 @@ export async function GET() {
       errorMessage: r.error_message,
       createdAt: r.created_at,
       updatedAt: r.updated_at,
-    })),
-  })
+      })),
+    },
+    { headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=30' } }
+  )
 }

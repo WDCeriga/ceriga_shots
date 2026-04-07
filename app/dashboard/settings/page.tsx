@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from '@/components/ui/input'
 import { AlertTriangle, CheckCircle2, Infinity, Loader2, LogOut, Sparkles, User, Wrench } from 'lucide-react'
 import { getRoleLimits, type UserRole } from '@/lib/roles'
+import { fetchJsonCached, invalidateJsonCache, peekJsonCache } from '@/lib/client-fetch-cache'
 
 type StatusResponse = {
   database: { configured: boolean }
@@ -20,32 +21,58 @@ type ProjectsCountResponse = {
   count?: number
 }
 
+const SETTINGS_ME_CACHE_KEY = 'settings-me'
+const SETTINGS_PROJECT_COUNT_CACHE_KEY = 'settings-project-count'
+const SETTINGS_STATUS_CACHE_KEY = 'settings-admin-status'
+
 export default function SettingsPage() {
+  const cachedMe = peekJsonCache<{
+    user: {
+      brandName: string | null
+      role?: string
+      billing?: {
+        customerId: string | null
+        subscriptionId: string | null
+        subscriptionStatus: string | null
+        periodEndsAt: string | null
+      } | null
+      credits?: {
+        used: number
+        limit: number
+        remaining: number
+        resetAt: string | null
+      } | null
+    }
+  }>(SETTINGS_ME_CACHE_KEY)
+  const cachedProjectCount = peekJsonCache<ProjectsCountResponse>(SETTINGS_PROJECT_COUNT_CACHE_KEY)
+  const cachedStatus = peekJsonCache<StatusResponse>(SETTINGS_STATUS_CACHE_KEY)
   const { data: session, status: sessionStatus } = useSession()
   const [formData, setFormData] = useState({
     category: 'apparel',
   })
   const [initialData, setInitialData] = useState(formData)
-  const [brandName, setBrandName] = useState<string>('')
-  const [initialBrandName, setInitialBrandName] = useState<string>('')
-  const [brandLoading, setBrandLoading] = useState(true)
+  const [brandName, setBrandName] = useState<string>(cachedMe?.user.brandName ?? '')
+  const [initialBrandName, setInitialBrandName] = useState<string>(cachedMe?.user.brandName ?? '')
+  const [brandLoading, setBrandLoading] = useState(!cachedMe)
   const [brandSaving, setBrandSaving] = useState(false)
-  const [sysStatus, setSysStatus] = useState<StatusResponse | null>(null)
-  const [statusLoading, setStatusLoading] = useState(true)
-  const [accountPlan, setAccountPlan] = useState<string>('free')
+  const [sysStatus, setSysStatus] = useState<StatusResponse | null>(cachedStatus ?? null)
+  const [statusLoading, setStatusLoading] = useState(!cachedStatus)
+  const [accountPlan, setAccountPlan] = useState<string>(cachedMe?.user.role ?? 'free')
   const [billing, setBilling] = useState<{
     customerId: string | null
     subscriptionId: string | null
     subscriptionStatus: string | null
-  } | null>(null)
+  } | null>(cachedMe?.user.billing ?? null)
   const [billingOpening, setBillingOpening] = useState(false)
   const [credits, setCredits] = useState<{
     used: number
     limit: number
     remaining: number
     resetAt: string | null
-  } | null>(null)
-  const [projectsUsed, setProjectsUsed] = useState<number | null>(null)
+  } | null>(cachedMe?.user.credits ?? null)
+  const [projectsUsed, setProjectsUsed] = useState<number | null>(
+    typeof cachedProjectCount?.count === 'number' ? cachedProjectCount.count : null
+  )
   const roleForLimits = (accountPlan as UserRole) ?? 'free'
   const projectLimit = getRoleLimits(roleForLimits).maxProjects
   const projectLimitLabel = projectLimit < 0 ? 'Unlimited' : `${projectLimit}`
@@ -64,28 +91,24 @@ export default function SettingsPage() {
   useEffect(() => {
     let cancelled = false
     setBrandLoading(true)
-    fetch('/api/me', { method: 'GET' })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`me ${res.status}`)
-        return (await res.json()) as {
-          user: {
-            brandName: string | null
-            role?: string
-            billing?: {
-              customerId: string | null
-              subscriptionId: string | null
-              subscriptionStatus: string | null
-              periodEndsAt: string | null
-            } | null
-            credits?: {
-              used: number
-              limit: number
-              remaining: number
-              resetAt: string | null
-            } | null
-          }
-        }
-      })
+    fetchJsonCached<{
+      user: {
+        brandName: string | null
+        role?: string
+        billing?: {
+          customerId: string | null
+          subscriptionId: string | null
+          subscriptionStatus: string | null
+          periodEndsAt: string | null
+        } | null
+        credits?: {
+          used: number
+          limit: number
+          remaining: number
+          resetAt: string | null
+        } | null
+      }
+    }>(SETTINGS_ME_CACHE_KEY, '/api/me', { ttlMs: 20_000, init: { method: 'GET' } })
       .then((data) => {
         if (cancelled) return
         const next = data.user.brandName ?? ''
@@ -103,11 +126,10 @@ export default function SettingsPage() {
         setBrandLoading(false)
       })
 
-    fetch('/api/projects/count', { method: 'GET' })
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`project count ${res.status}`)
-        return (await res.json()) as ProjectsCountResponse
-      })
+    fetchJsonCached<ProjectsCountResponse>(SETTINGS_PROJECT_COUNT_CACHE_KEY, '/api/projects/count', {
+      ttlMs: 20_000,
+      init: { method: 'GET' },
+    })
       .then((data) => {
         if (cancelled) return
         setProjectsUsed(typeof data.count === 'number' ? data.count : 0)
@@ -131,12 +153,7 @@ export default function SettingsPage() {
 
     let cancelled = false
     setStatusLoading(true)
-    fetch('/api/status', { method: 'GET' })
-      .then(async (res) => {
-        if (res.status === 404) return null
-        if (!res.ok) throw new Error(`status ${res.status}`)
-        return (await res.json()) as StatusResponse
-      })
+    fetchJsonCached<StatusResponse>(SETTINGS_STATUS_CACHE_KEY, '/api/status', { ttlMs: 20_000, init: { method: 'GET' } })
       .then((data) => {
         if (cancelled) return
         setSysStatus(data)
@@ -177,6 +194,7 @@ export default function SettingsPage() {
         const next = data.user?.brandName ?? ''
         setBrandName(next)
         setInitialBrandName(next)
+        invalidateJsonCache(SETTINGS_ME_CACHE_KEY)
       } catch (e) {
         toast({
           title: 'Failed to save brand name',

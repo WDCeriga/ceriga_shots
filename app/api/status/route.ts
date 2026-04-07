@@ -37,17 +37,20 @@ export async function GET() {
     return NextResponse.json({ error: 'Not found' }, { status: 404 })
   }
 
-  return NextResponse.json({
-    database: {
-      configured: isDatabaseConfigured(),
+  return NextResponse.json(
+    {
+      database: {
+        configured: isDatabaseConfigured(),
+      },
+      replicate: {
+        configured: hasReplicateToken(),
+      },
+      auth: {
+        googleConfigured: hasGoogleAuth(),
+        secretConfigured: Boolean(process.env.AUTH_SECRET),
+      },
     },
-    replicate: {
-      configured: hasReplicateToken(),
-    },
-    auth: {
-      googleConfigured: hasGoogleAuth(),
-      secretConfigured: Boolean(process.env.AUTH_SECRET),
-    },
-  })
+    { headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=30' } }
+  )
 }
 
