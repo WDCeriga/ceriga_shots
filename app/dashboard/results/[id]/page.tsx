@@ -51,6 +51,8 @@ export default function ResultsPage() {
   const [editDraft, setEditDraft] = useState('')
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false)
   const [pendingEditedFromId, setPendingEditedFromId] = useState<string | null>(null)
+  const [originalImageSrc, setOriginalImageSrc] = useState<string>('')
+  const [originalImageFailed, setOriginalImageFailed] = useState(false)
   const retentionDays = limits.assetHistoryRetentionDays
 
   const getExpiryLabel = (timestamp: number) => {
@@ -202,6 +204,12 @@ export default function ResultsPage() {
     setPendingEditedFromId(null)
     setIsEditingAsset(false)
   }, [pendingEditedFromId, project?.generatedImages])
+
+  useEffect(() => {
+    if (!project) return
+    setOriginalImageSrc(project.originalImage)
+    setOriginalImageFailed(false)
+  }, [project?.id, project?.originalImage])
 
   if (!project) {
     return (
@@ -516,11 +524,28 @@ export default function ResultsPage() {
             </div>
             <div className="p-4">
               <div className="rounded-lg overflow-hidden border border-border">
-                <img
-                  src={project.originalImage}
-                  alt="Original design"
-                  className="w-full aspect-square object-cover"
-                />
+                {originalImageFailed ? (
+                  <div className="w-full aspect-square flex items-center justify-center bg-secondary/40 px-4 text-center">
+                    <p className="text-xs text-muted-foreground">
+                      Original image format is not previewable in this browser.
+                      {project.generation?.sourceImageUrl ? ' Generation will still use your uploaded file.' : ''}
+                    </p>
+                  </div>
+                ) : (
+                  <img
+                    src={originalImageSrc || project.originalImage}
+                    alt="Original design"
+                    className="w-full aspect-square object-cover"
+                    onError={() => {
+                      const fallback = project.generation?.sourceImageUrl
+                      if (fallback && originalImageSrc !== fallback) {
+                        setOriginalImageSrc(fallback)
+                        return
+                      }
+                      setOriginalImageFailed(true)
+                    }}
+                  />
+                )}
               </div>
             </div>
           </div>
