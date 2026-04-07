@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 import { useRole } from '@/hooks/use-role'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import type { RenderStyleLevel } from '@/types/projects'
+import type { GenerationAspectRatio, RenderStyleLevel } from '@/types/projects'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { uploadGenerationSourceImageToR2, uploadOriginalImageToR2 } from '@/lib/original-image-upload-client'
 
@@ -149,6 +149,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
   const [sketchDesignType, setSketchDesignType] = useState<SketchDesignTypeOption>('none')
   const [sketchExtraInstructions, setSketchExtraInstructions] = useState('')
   const [renderStyleLevel, setRenderStyleLevel] = useState<RenderStyleLevel>(fixedRenderStyle ?? 'clean_cgi')
+  const [aspectRatio, setAspectRatio] = useState<GenerationAspectRatio>('1:1')
   const { addProject, deleteProject, updateProject } = useProjects()
   const router = useRouter()
   const { status } = useSession()
@@ -423,6 +424,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
           pipeline: generationPipeline,
           renderStyleLevel,
           sourceImageUrl,
+          aspectRatio,
         },
       })
       createdProjectId = project.id
@@ -436,6 +438,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
           preset: DESIGN_JOB_PRESET,
           pipeline: generationPipeline,
           renderStyleLevel,
+          aspectRatio,
           ...(editInstructions ? { editInstructions } : {}),
           ...(resolvedGarmentType ? { garmentType: resolvedGarmentType } : {}),
         }),
@@ -467,6 +470,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
           preset: DESIGN_JOB_PRESET,
           pipeline: generationPipeline,
           renderStyleLevel,
+          aspectRatio,
         },
       }).catch(() => {})
 
@@ -662,6 +666,24 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
 
               {isProtoRealMode ? (
                 <div className="mt-6 space-y-4">
+                  <div>
+                    <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Aspect ratio</div>
+                    <div className="mt-3">
+                      <Select value={aspectRatio} onValueChange={(v) => setAspectRatio(v as GenerationAspectRatio)}>
+                        <SelectTrigger className="w-full cursor-pointer">
+                          <SelectValue placeholder="1:1" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1:1">1:1</SelectItem>
+                          <SelectItem value="4:5">4:5</SelectItem>
+                          <SelectItem value="3:4">3:4</SelectItem>
+                          <SelectItem value="16:9">16:9</SelectItem>
+                          <SelectItem value="9:16">9:16</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                   {showFitStyle ? (
                     <div>
                       <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Fit / style</div>
@@ -798,6 +820,24 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
                 </div>
               ) : (
                 <div className="mt-6 space-y-4">
+                  <div>
+                    <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Aspect ratio</div>
+                    <div className="mt-3">
+                      <Select value={aspectRatio} onValueChange={(v) => setAspectRatio(v as GenerationAspectRatio)}>
+                        <SelectTrigger className="w-full cursor-pointer">
+                          <SelectValue placeholder="1:1" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1:1">1:1</SelectItem>
+                          <SelectItem value="4:5">4:5</SelectItem>
+                          <SelectItem value="3:4">3:4</SelectItem>
+                          <SelectItem value="16:9">16:9</SelectItem>
+                          <SelectItem value="9:16">9:16</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
                   {showSketchFitStructure ? (
                     <div>
                       <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">Fit / structure</div>

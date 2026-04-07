@@ -5,7 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { isDatabaseConfigured } from '@/lib/db'
 import { getProjectGenerationContextForUser, updateProjectForUser } from '@/lib/projects'
 import { mergeGeneration } from '@/lib/merge-generation'
-import type { GenerationPipeline, RenderStyleLevel } from '@/types/projects'
+import type { GenerationAspectRatio, GenerationPipeline, RenderStyleLevel } from '@/types/projects'
 import { enqueueGenerationJobs, type Preset, type ShotType } from '@/lib/generation-queue'
 import {
   checkCreditsForBatch,
@@ -93,6 +93,15 @@ function parseRenderStyleLevelFromBody(input: unknown): RenderStyleLevel | undef
   return undefined
 }
 
+function parseAspectRatioFromBody(input: unknown): GenerationAspectRatio | undefined {
+  if (input === '1:1') return '1:1'
+  if (input === '4:5') return '4:5'
+  if (input === '3:4') return '3:4'
+  if (input === '16:9') return '16:9'
+  if (input === '9:16') return '9:16'
+  return undefined
+}
+
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
@@ -126,6 +135,7 @@ export async function POST(req: NextRequest) {
   const renderStyleLevelFromBody = parseRenderStyleLevelFromBody(
     (body as { renderStyleLevel?: unknown }).renderStyleLevel
   )
+  const aspectRatioFromBody = parseAspectRatioFromBody((body as { aspectRatio?: unknown }).aspectRatio)
 
   if (!Array.isArray(rawShotTypes) || rawShotTypes.length === 0) {
     return NextResponse.json({ error: 'shotTypes must be a non-empty array' }, { status: 400 })
@@ -241,6 +251,7 @@ export async function POST(req: NextRequest) {
         ...(pipelineFromBody !== undefined ? { pipeline: pipelineFromBody } : {}),
         ...(renderStyleLevelFromBody !== undefined ? { renderStyleLevel: renderStyleLevelFromBody } : {}),
         ...(garmentType !== undefined ? { garmentType } : {}),
+        ...(aspectRatioFromBody !== undefined ? { aspectRatio: aspectRatioFromBody } : {}),
       }),
     })
 

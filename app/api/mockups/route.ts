@@ -4,7 +4,7 @@ import { getServerSession } from 'next-auth'
 import { getInternalQueueSecret } from '@/lib/internal-queue-secret'
 import { authOptions } from '@/lib/auth'
 import { isR2Configured, putObjectToR2 } from '@/lib/r2'
-import type { RenderStyleLevel } from '@/types/projects'
+import type { GenerationAspectRatio, RenderStyleLevel } from '@/types/projects'
 
 type ShotType =
   | 'flatlay_topdown'
@@ -1073,6 +1073,14 @@ function normalizeRenderStyleLevel(input: unknown): RenderStyleLevel {
   return 'clean_cgi'
 }
 
+function normalizeAspectRatio(input: unknown): GenerationAspectRatio {
+  if (input === '4:5') return '4:5'
+  if (input === '3:4') return '3:4'
+  if (input === '16:9') return '16:9'
+  if (input === '9:16') return '9:16'
+  return '1:1'
+}
+
 function buildGarmentTypeAnchor(garmentType: GarmentType): string {
   if (!garmentType) return ''
 
@@ -1111,6 +1119,15 @@ function buildEditInstructionsBlockDesign(editInstructions: string): string {
   ].join('\n')
 }
 
+function buildAspectRatioBlock(aspectRatio: GenerationAspectRatio): string {
+  return [
+    'ASPECT RATIO (strict):',
+    `- Output image ratio must be exactly ${aspectRatio}.`,
+    '- Keep the full subject framed for the selected shot type while honoring this ratio.',
+    '- Never override this ratio with a default square crop.',
+  ].join('\n')
+}
+
 function buildPrompt(args: {
   shotType: ShotType
   preset: Preset
@@ -1120,6 +1137,7 @@ function buildPrompt(args: {
   editInstructions?: string
   pipeline: GenerationPipeline
   renderStyleLevel?: RenderStyleLevel
+  aspectRatio: GenerationAspectRatio
 }) {
   const category = categoryForShotType(args.shotType)
   const isDesign = args.pipeline === 'design_realize'
@@ -1146,7 +1164,15 @@ function buildPrompt(args: {
       : ''
     // Constraint order (design_realize):
     // 1) identity non-negotiables, 2) shot framing + surface/light, 3) negatives, 4) final reminder.
-    return [base, framingBlock, DESIGN_OUTPUT_QUALITY_GUARDRAILS, userEditBlock || undefined, negative, FIDELITY_REMINDER_DESIGN]
+    return [
+      base,
+      framingBlock,
+      DESIGN_OUTPUT_QUALITY_GUARDRAILS,
+      buildAspectRatioBlock(args.aspectRatio),
+      userEditBlock || undefined,
+      negative,
+      FIDELITY_REMINDER_DESIGN,
+    ]
       .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
       .join('\n---\n')
   }
@@ -1173,6 +1199,7 @@ function buildPrompt(args: {
     shotPromptBody,
     preset,
     buildVariationSeed(args.preset, args.shotType, args.generationIndex, args.variationSeed),
+    buildAspectRatioBlock(args.aspectRatio),
     userEditBlock || undefined,
     negative,
     FIDELITY_REMINDER,
@@ -1278,6 +1305,7 @@ export async function POST(req: Request) {
     const garmentType = normalizeGarmentType((body as { garmentType?: unknown }).garmentType)
     const pipeline = normalizePipeline((body as { pipeline?: unknown }).pipeline)
     const renderStyleLevel = normalizeRenderStyleLevel((body as { renderStyleLevel?: unknown }).renderStyleLevel)
+    const aspectRatio = normalizeAspectRatio((body as { aspectRatio?: unknown }).aspectRatio)
 
     const editInstructions = normalizeEditInstructions((body as { editInstructions?: unknown }).editInstructions)
     const editedFromIdRaw = (body as { editedFromId?: unknown }).editedFromId
@@ -1305,6 +1333,7 @@ export async function POST(req: Request) {
       garmentType,
       pipeline,
       renderStyleLevel,
+      aspectRatio,
     }
 
     const prompt = buildPrompt({
@@ -1316,6 +1345,7 @@ export async function POST(req: Request) {
       editInstructions,
       pipeline,
       renderStyleLevel,
+      aspectRatio,
     })
 
     console.warn(`[mockups:${requestId}] Missing API key; returning placeholder for shotType=${shotType}`)
@@ -1424,6 +1454,7 @@ export async function POST(req: Request) {
   const garmentType = normalizeGarmentType((body as { garmentType?: unknown }).garmentType)
   const pipeline = normalizePipeline((body as { pipeline?: unknown }).pipeline)
   const renderStyleLevel = normalizeRenderStyleLevel((body as { renderStyleLevel?: unknown }).renderStyleLevel)
+  const aspectRatio = normalizeAspectRatio((body as { aspectRatio?: unknown }).aspectRatio)
 
   const editInstructions = normalizeEditInstructions((body as { editInstructions?: unknown }).editInstructions)
   const editedFromIdRaw = (body as { editedFromId?: unknown }).editedFromId
@@ -1443,6 +1474,7 @@ export async function POST(req: Request) {
     garmentType,
     pipeline,
     renderStyleLevel,
+    aspectRatio,
   }
 
   try {
@@ -1456,6 +1488,7 @@ export async function POST(req: Request) {
       editInstructions,
       pipeline,
       renderStyleLevel,
+      aspectRatio,
     })
 
     let lastErrorMessage = ''

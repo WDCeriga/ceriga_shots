@@ -198,6 +198,7 @@ export async function enqueueGenerationJobs(args: {
       // Otherwise downstream workers fall back to `garment_photo`.
       pipeline: project.generation?.pipeline,
       renderStyleLevel: project.generation?.renderStyleLevel,
+      aspectRatio: project.generation?.aspectRatio,
       garmentType: args.garmentType,
     },
   })
@@ -280,6 +281,7 @@ export async function completeGenerationJob(args: {
       // the correct "from sketch" UX (design_realize vs garment_photo).
       pipeline: project.generation?.pipeline,
       renderStyleLevel: project.generation?.renderStyleLevel,
+      aspectRatio: project.generation?.aspectRatio,
       garmentType: project.generation?.garmentType,
     },
   })
@@ -359,6 +361,7 @@ export async function failGenerationJob(args: {
       errorMessage: shouldRetry ? undefined : args.errorMessage,
       pipeline: project.generation?.pipeline,
       renderStyleLevel: project.generation?.renderStyleLevel,
+      aspectRatio: project.generation?.aspectRatio,
       garmentType: project.generation?.garmentType,
     },
   })

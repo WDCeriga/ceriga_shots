@@ -547,6 +547,9 @@ export default function ResultsPage() {
                           shotTypes: ['flatlay_topdown'],
                           preset: 'studio',
                           pipeline: 'design_realize',
+                          ...(project.generation?.aspectRatio
+                            ? { aspectRatio: project.generation.aspectRatio }
+                            : {}),
                         }),
                       })
                       const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string }
@@ -623,6 +626,9 @@ export default function ResultsPage() {
                             mode: 'more',
                             shotTypes: [moreType],
                             preset,
+                          ...(project.generation?.aspectRatio
+                            ? { aspectRatio: project.generation.aspectRatio }
+                            : {}),
                             ...(project.generation?.pipeline
                               ? { pipeline: project.generation.pipeline }
                               : {}),

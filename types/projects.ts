@@ -1,6 +1,7 @@
 export type GenerationPipeline = 'garment_photo' | 'design_realize' | 'background_remove'
 
 export type RenderStyleLevel = 'clean_cgi' | 'semi_real_cgi' | 'toon_tech' | 'photoreal_flatlay'
+export type GenerationAspectRatio = '1:1' | '4:5' | '3:4' | '16:9' | '9:16'
 
 export interface GeneratedImage {
   id: string
@@ -31,6 +32,7 @@ export interface GeneratedImage {
     garmentType?: string
     pipeline?: GenerationPipeline
     renderStyleLevel?: RenderStyleLevel
+    aspectRatio?: GenerationAspectRatio
   }
   /**
    * Optional edit attribution + request metadata.
@@ -63,6 +65,7 @@ export interface GenerationState {
    * Controls output style family (CGI modes vs photoreal flatlay mode).
    */
   renderStyleLevel?: RenderStyleLevel
+  aspectRatio?: GenerationAspectRatio
   errorMessage?: string
 }
 

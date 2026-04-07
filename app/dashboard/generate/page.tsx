@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import type { GenerationAspectRatio } from '@/types/projects'
 
 type VisualDirectionKey = 'raw' | 'editorial' | 'luxury' | 'natural' | 'studio' | 'surprise'
 
@@ -91,6 +92,7 @@ const SHOT_TYPES: Array<{ key: ShotTypeKey; label: string }> = [
 ]
 
 const HEADING_WORDS = ['Drop', 'Campaign', 'Vision', 'Standard'] as const
+const ASPECT_RATIOS: GenerationAspectRatio[] = ['1:1', '4:5', '3:4', '16:9', '9:16']
 
 const SURPRISE_SWATCH_CLASS_OPTIONS = [
   'bg-[linear-gradient(135deg,rgba(14,116,144,0.55),rgba(30,58,138,0.45),rgba(244,244,245,0.06))]',
@@ -140,6 +142,7 @@ export default function GeneratePage() {
     'auto'
   )
   const [customProductType, setCustomProductType] = useState('')
+  const [aspectRatio, setAspectRatio] = useState<GenerationAspectRatio>('1:1')
   const [surpriseSwatchClassName, setSurpriseSwatchClassName] = useState<string>(
     SURPRISE_SWATCH_CLASS_OPTIONS[0]
   )
@@ -485,6 +488,7 @@ export default function GeneratePage() {
           preset: visualDirection,
           pipeline: 'garment_photo',
           sourceImageUrl,
+          aspectRatio,
         },
       })
       createdProjectId = project.id
@@ -497,6 +501,7 @@ export default function GeneratePage() {
           shotTypes: allowedShotTypes,
           preset: visualDirection,
           pipeline: 'garment_photo',
+          aspectRatio,
           ...(resolvedGarmentType ? { garmentType: resolvedGarmentType } : {}),
         }),
       })
@@ -524,6 +529,7 @@ export default function GeneratePage() {
           shotTypes: allowedShotTypes,
           preset: visualDirection,
           pipeline: 'garment_photo',
+          aspectRatio,
         },
       }).catch(() => {})
 
@@ -783,6 +789,26 @@ export default function GeneratePage() {
                     />
                   </div>
                 ) : null}
+              </div>
+
+              <div className="my-7 h-px w-full bg-white/15" />
+
+              <div className="text-xs tracking-[0.35em] uppercase text-muted-foreground">
+                Aspect ratio
+              </div>
+              <div className="mt-3">
+                <Select value={aspectRatio} onValueChange={(v) => setAspectRatio(v as GenerationAspectRatio)}>
+                  <SelectTrigger className="w-full cursor-pointer">
+                    <SelectValue placeholder="1:1" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ASPECT_RATIOS.map((ratio) => (
+                      <SelectItem key={ratio} value={ratio}>
+                        {ratio}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="my-7 h-px w-full bg-white/15" />

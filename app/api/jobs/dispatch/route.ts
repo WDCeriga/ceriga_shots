@@ -75,6 +75,7 @@ async function processSingle(baseUrl: string, workerId: string) {
         garmentType: project.generation?.garmentType,
         pipeline: project.generation?.pipeline ?? 'garment_photo',
         renderStyleLevel: project.generation?.renderStyleLevel,
+        aspectRatio: project.generation?.aspectRatio,
       }),
     })
 
