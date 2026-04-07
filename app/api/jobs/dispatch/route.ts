@@ -58,11 +58,19 @@ async function processSingle(baseUrl: string, workerId: string) {
       mockupHeaders.authorization = `Bearer ${process.env.CRON_SECRET}`
     }
 
+    const editedFromAsset = job.edited_from_id
+      ? project.generatedImages.find((img) => img.id === job.edited_from_id)
+      : null
+    const inputImageUrl =
+      (editedFromAsset?.url && editedFromAsset.url.trim().length > 0 ? editedFromAsset.url : null) ??
+      project.generation?.sourceImageUrl ??
+      project.originalImage
+
     const res = await fetch(`${baseUrl}/api/mockups`, {
       method: 'POST',
       headers: mockupHeaders,
       body: JSON.stringify({
-        imageUrl: project.generation?.sourceImageUrl || project.originalImage,
+        imageUrl: inputImageUrl,
         projectId: project.id,
         shotType: job.shot_type,
         preset: job.preset,
