@@ -323,6 +323,8 @@ const NEGATIVE_BY_PRESET: Record<Preset, string> = {
     'NEGATIVE (studio preset anti-fail):',
     '- No visible background texture/grain; seamless white must not look like paper grain or film noise.',
     '- No visible seams/creases; keep the background uniform to the eye with only smooth studio roll-off (no harsh bands).',
+    '- No inset white card/box/panel behind the garment. The white background must fill the entire frame edge-to-edge.',
+    '- No rectangular backdrop edges, no border frame, and no windowed "photo inside photo" look.',
     '- Avoid grey patches/drift that look like uneven lighting; keep tone consistent.',
     '- No vignette/film simulation; keep clean digital capture feel.',
     '- Avoid long streaky shadows; keep shadows soft, minimal, and grounded.',
@@ -701,12 +703,14 @@ const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
     flatlay: [
       'CONTEXT (flat lay):',
       '- White surface is a SINGLE flat plane filling the entire frame — no corners, no horizon line, no curvature.',
+      '- The white background must extend edge-to-edge across the full canvas (no inset white rectangle or boxed stage).',
       '- Background must be pure, even white — no grey gradients, no banding, no visible seams or creases.',
       '- Lighting is even and wrap-around; shadows are minimal and soft — just enough to ground the garment.',
       '- The garment should "pop" against the white with clean edges and natural color reproduction.',
     ].join('\n'),
     surface: [
       'CONTEXT (surface): seamless white background with gentle studio roll-off; garment is hero; soft edge separation only.',
+      '- Background coverage: full-frame seamless white, edge-to-edge; no inset panel, no framed card, no visible background boundary.',
       '- Background tone: neutral studio white with very subtle smooth gradient (no harsh bands), avoid grey patches; keep edges clean and uniform.',
       '- Surface: seamless matte studio background only; no visible seams/creases, no floor horizon, no bent/warped plane.',
       '- Lighting: soft even studio key + fill; neutral daylight-balanced white (~5200K–5600K), no colored gels.',
@@ -715,6 +719,7 @@ const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
     ].join('\n'),
     detail: [
       'CONTEXT (detail): neutral white surround; even illumination reveals true fabric color and texture without color cast.',
+      '- If white background is visible, it must be edge-to-edge full-frame white (no inset box/panel behind the subject).',
       '- Avoid film grain/vignette; keep clean digital capture look.',
       '- Keep highlights controlled; avoid blown highlights on fabric/ink.',
       '- Preserve fabric weave and ink boundaries; avoid turning texture into noise.',

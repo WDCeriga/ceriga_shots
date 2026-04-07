@@ -29,6 +29,7 @@ export default function ResultsPage() {
   const [isDownloading, setIsDownloading] = useState(false)
   const [selectedDownloadIds, setSelectedDownloadIds] = useState<string[]>([])
   const [isSelectingDownloads, setIsSelectingDownloads] = useState(false)
+  const [downloadFormat, setDownloadFormat] = useState<'original' | 'png' | 'jpeg' | 'webp'>('original')
   const [moreType, setMoreType] = useState<
     | 'flatlay_topdown'
     | 'flatlay_45deg'
@@ -440,7 +441,7 @@ export default function ResultsPage() {
         title: 'Download started',
         description: 'Preparing your ZIP file…',
       })
-      window.location.href = `/api/projects/${projectId}/download`
+      window.location.href = `/api/projects/${projectId}/download?format=${downloadFormat}`
     } finally {
       window.setTimeout(() => setIsDownloading(false), 1200)
     }
@@ -458,7 +459,7 @@ export default function ResultsPage() {
     }
     setIsDownloading(true)
     try {
-      const assetIdsQuery = `?assetIds=${encodeURIComponent(selectedDownloadIds.join(','))}`
+      const assetIdsQuery = `?assetIds=${encodeURIComponent(selectedDownloadIds.join(','))}&format=${downloadFormat}`
       toast({
         title: 'Download started',
         description: `Preparing ZIP for ${selectedDownloadIds.length} selected image${selectedDownloadIds.length === 1 ? '' : 's'}…`,
@@ -791,6 +792,17 @@ export default function ResultsPage() {
                 Select assets to download: {selectedDownloadIds.length} selected
               </p>
               <div className="flex items-center gap-2">
+                <Select value={downloadFormat} onValueChange={(v) => setDownloadFormat(v as typeof downloadFormat)}>
+                  <SelectTrigger className="h-8 w-[140px]">
+                    <SelectValue placeholder="Format" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="original">Original</SelectItem>
+                    <SelectItem value="png">PNG</SelectItem>
+                    <SelectItem value="jpeg">JPEG</SelectItem>
+                    <SelectItem value="webp">WEBP</SelectItem>
+                  </SelectContent>
+                </Select>
                 <Button
                   size="sm"
                   variant="outline"

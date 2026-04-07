@@ -14,6 +14,11 @@ export const runtime = 'nodejs'
 export async function GET(req: Request) {
   const url = new URL(req.url)
   const id = url.pathname.split('/').slice(-2)[0] as string
+  const formatParam = (url.searchParams.get('format') ?? 'original').toLowerCase()
+  const requestedFormat: 'original' | 'png' | 'jpeg' | 'webp' =
+    formatParam === 'png' || formatParam === 'jpeg' || formatParam === 'webp'
+      ? formatParam
+      : 'original'
   const selectedAssetIdsRaw = url.searchParams.get('assetIds')
   const selectedAssetIds = new Set(
     (selectedAssetIdsRaw ?? '')
@@ -48,11 +53,21 @@ export async function GET(req: Request) {
     : rawProject
 
   const zip = new JSZip()
+  let filesAdded = 0
+
+  const matchesRequestedFormat = (mime: string): boolean => {
+    if (requestedFormat === 'original') return true
+    const normalized = mime.split(';')[0]?.trim().toLowerCase() ?? ''
+    if (requestedFormat === 'png') return normalized === 'image/png'
+    if (requestedFormat === 'jpeg') return normalized === 'image/jpeg'
+    return normalized === 'image/webp'
+  }
 
   const original = await bufferFromImageRef(project.originalImage)
-  if (original) {
+  if (original && matchesRequestedFormat(original.mime)) {
     const base = safeFilename(project.originalImageName || 'original')
     zip.file(`original/${base}.${original.ext}`, original.buffer, { binary: true })
+    filesAdded += 1
   }
 
   const generatedToZip =
@@ -63,9 +78,18 @@ export async function GET(req: Request) {
   for (const img of generatedToZip) {
     const data = await bufferFromImageRef(img.url)
     if (!data) continue
+    if (!matchesRequestedFormat(data.mime)) continue
     const ts = typeof img.timestamp === 'number' ? img.timestamp : Date.now()
     const label = safeFilename(`${img.type}-${img.id}-${ts}`)
     zip.file(`generated/${label}.${data.ext}`, data.buffer, { binary: true })
+    filesAdded += 1
+  }
+
+  if (filesAdded === 0) {
+    return NextResponse.json(
+      { error: `No downloadable assets found for format "${requestedFormat}".` },
+      { status: 400 }
+    )
   }
 
   const out = await zip.generateAsync({ type: 'nodebuffer', compression: 'DEFLATE' })
