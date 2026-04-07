@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Calendar } from 'lucide-react'
 
 type StatsResponse = {
-  range: '7d' | '30d' | '90d' | 'all' | 'custom'
+  range: '1d' | '7d' | '30d' | 'all' | 'custom'
   fromDate: string | null
   users: number
   projects: number
@@ -52,14 +52,22 @@ function formatMoneyPrecise(amount: number) {
 }
 
 const RANGE_OPTIONS = [
+  { key: '1d', label: '1D' },
   { key: '7d', label: '7D' },
   { key: '30d', label: '30D' },
-  { key: '90d', label: '90D' },
-  { key: 'all', label: 'All Time' },
+  { key: 'all', label: 'ALL' },
 ] as const
 
 function toDateInputValue(daysBack: number): string {
   const d = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000)
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
+function todayDateInputValue(): string {
+  const d = new Date()
   const yyyy = d.getFullYear()
   const mm = String(d.getMonth() + 1).padStart(2, '0')
   const dd = String(d.getDate()).padStart(2, '0')
@@ -130,9 +138,9 @@ export default function AdminStatisticsPage() {
                 variant={range === opt.key ? 'default' : 'outline'}
                 onClick={() => {
                   setRange(opt.key)
-                  if (opt.key === '7d') setCustomFromDate(toDateInputValue(7))
+                  if (opt.key === '1d') setCustomFromDate(todayDateInputValue())
+                  else if (opt.key === '7d') setCustomFromDate(toDateInputValue(7))
                   else if (opt.key === '30d') setCustomFromDate(toDateInputValue(30))
-                  else if (opt.key === '90d') setCustomFromDate(toDateInputValue(90))
                   else setCustomFromDate('')
                 }}
               >

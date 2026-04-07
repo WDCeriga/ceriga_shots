@@ -7,16 +7,21 @@ import { pricingPlans } from '@/lib/pricing'
 
 export const runtime = 'nodejs'
 const ACTIVE_BILLING_STATUSES = ['active', 'trialing', 'past_due'] as const
-type StatsRange = '7d' | '30d' | '90d' | 'all' | 'custom'
+type StatsRange = '1d' | '7d' | '30d' | 'all' | 'custom'
 
 function parseRange(input: string | null): StatsRange {
-  if (input === '7d' || input === '30d' || input === '90d' || input === 'all' || input === 'custom') return input
+  if (input === '1d' || input === '7d' || input === '30d' || input === 'all' || input === 'custom') return input
   return '30d'
 }
 
 function rangeToStart(range: StatsRange): Date | null {
   if (range === 'all' || range === 'custom') return null
-  const days = range === '7d' ? 7 : range === '30d' ? 30 : 90
+  if (range === '1d') {
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    return start
+  }
+  const days = range === '7d' ? 7 : 30
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000)
 }
 
