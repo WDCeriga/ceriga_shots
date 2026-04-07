@@ -12,7 +12,7 @@ import { getRoleLimits, type UserRole } from '@/lib/roles'
 
 type StatusResponse = {
   database: { configured: boolean }
-  gemini: { configured: boolean }
+  replicate: { configured: boolean }
   auth: { googleConfigured: boolean; secretConfigured: boolean }
 }
 
@@ -403,12 +403,12 @@ export default function SettingsPage() {
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-sm font-medium">Gemini image generation</div>
+                    <div className="text-sm font-medium">Replicate image generation</div>
                     <div className="text-xs text-muted-foreground">
                       If missing, we show placeholder tiles instead of failing.
                     </div>
                   </div>
-                  {statusBadge(sysStatus.gemini.configured, 'Enabled', 'Missing API key')}
+                  {statusBadge(sysStatus.replicate.configured, 'Enabled', 'Missing REPLICATE_API_TOKEN')}
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <div>

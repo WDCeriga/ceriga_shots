@@ -5,8 +5,8 @@ import { isDatabaseConfigured } from '@/lib/db'
 
 export const runtime = 'nodejs'
 
-function hasGeminiKey() {
-  return Boolean(process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY)
+function hasReplicateToken() {
+  return Boolean(process.env.REPLICATE_API_TOKEN)
 }
 
 function hasGoogleAuth() {
@@ -41,8 +41,8 @@ export async function GET() {
     database: {
       configured: isDatabaseConfigured(),
     },
-    gemini: {
-      configured: hasGeminiKey(),
+    replicate: {
+      configured: hasReplicateToken(),
     },
     auth: {
       googleConfigured: hasGoogleAuth(),

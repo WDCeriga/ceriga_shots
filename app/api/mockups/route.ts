@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { GoogleGenAI } from '@google/genai'
 import { getServerSession } from 'next-auth'
 import { getInternalQueueSecret } from '@/lib/internal-queue-secret'
 import { authOptions } from '@/lib/auth'
@@ -65,7 +64,7 @@ function resolveShotTypeFromBody(body: unknown): ShotType | undefined {
 }
 
 function getApiKey(): string | undefined {
-  return process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY
+  return process.env.REPLICATE_API_TOKEN
 }
 
 function normalizeGarmentType(input: unknown): GarmentType | undefined {
@@ -1222,6 +1221,93 @@ async function sleep(ms: number) {
   await new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+type ReplicatePrediction = {
+  id?: string
+  status?: string
+  output?: unknown
+  error?: string
+  urls?: { get?: string }
+}
+
+function mapAspectRatioForReplicate(aspectRatio: GenerationAspectRatio): string {
+  if (aspectRatio === '1:1') return '1:1'
+  if (aspectRatio === '4:5') return '4:5'
+  if (aspectRatio === '3:4') return '3:4'
+  if (aspectRatio === '16:9') return '16:9'
+  return '9:16'
+}
+
+function extractReplicateOutputUrl(output: unknown): string | undefined {
+  if (typeof output === 'string' && output.length > 0) return output
+  if (Array.isArray(output)) {
+    for (const item of output) {
+      const nested = extractReplicateOutputUrl(item)
+      if (nested) return nested
+    }
+    return undefined
+  }
+  if (output && typeof output === 'object') {
+    const maybeUrl = output as { url?: unknown }
+    if (typeof maybeUrl.url === 'string' && maybeUrl.url.length > 0) return maybeUrl.url
+  }
+  return undefined
+}
+
+async function runReplicatePrediction(args: {
+  apiKey: string
+  prompt: string
+  imageDataUri: string
+  aspectRatio: GenerationAspectRatio
+}): Promise<string> {
+  const createRes = await fetch('https://api.replicate.com/v1/models/google/gemini-2.5-flash-image/predictions', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${args.apiKey}`,
+      'Content-Type': 'application/json',
+      Prefer: 'wait=60',
+    },
+    body: JSON.stringify({
+      input: {
+        prompt: args.prompt,
+        image_input: [args.imageDataUri],
+        aspect_ratio: mapAspectRatioForReplicate(args.aspectRatio),
+        output_format: 'png',
+      },
+    }),
+  })
+
+  const created = (await createRes.json().catch(() => ({}))) as ReplicatePrediction
+  if (!createRes.ok) {
+    throw new Error(created.error || `Replicate create failed (${createRes.status})`)
+  }
+
+  let prediction = created
+  let pollUrl = created.urls?.get
+  let polls = 0
+  while ((prediction.status === 'starting' || prediction.status === 'processing') && pollUrl && polls < 15) {
+    await sleep(1200)
+    const pollRes = await fetch(pollUrl, {
+      headers: { Authorization: `Bearer ${args.apiKey}` },
+    })
+    prediction = (await pollRes.json().catch(() => ({}))) as ReplicatePrediction
+    if (!pollRes.ok) {
+      throw new Error(prediction.error || `Replicate poll failed (${pollRes.status})`)
+    }
+    pollUrl = prediction.urls?.get ?? pollUrl
+    polls += 1
+  }
+
+  if (prediction.status !== 'succeeded') {
+    throw new Error(prediction.error || `Replicate status: ${prediction.status ?? 'unknown'}`)
+  }
+
+  const outputUrl = extractReplicateOutputUrl(prediction.output)
+  if (!outputUrl) {
+    throw new Error('Replicate returned no output URL.')
+  }
+  return outputUrl
+}
+
 function retryNote(lastErrorMessage: string) {
   return [
     'Retry note:',
@@ -1260,7 +1346,7 @@ export async function POST(req: Request) {
 
   const apiKey = getApiKey()
   if (!apiKey) {
-    // Graceful деградация: when no Gemini key is configured, return a placeholder
+    // Graceful degradation: when no Replicate token is configured, return a placeholder
     // "generated image" so the UI can render empty tiles instead of failing.
     let body: unknown
     try {
@@ -1336,17 +1422,20 @@ export async function POST(req: Request) {
       aspectRatio,
     }
 
-    const prompt = buildPrompt({
-      shotType,
-      preset,
-      generationIndex,
-      variationSeed,
-      garmentType,
-      editInstructions,
-      pipeline,
-      renderStyleLevel,
-      aspectRatio,
-    })
+    const prompt =
+      editInstructions && editedFromId
+        ? editInstructions
+        : buildPrompt({
+            shotType,
+            preset,
+            generationIndex,
+            variationSeed,
+            garmentType,
+            editInstructions,
+            pipeline,
+            renderStyleLevel,
+            aspectRatio,
+          })
 
     console.warn(`[mockups:${requestId}] Missing API key; returning placeholder for shotType=${shotType}`)
     // Store the full prompt for debugging (UI shows asset.prompt even when url is empty).
@@ -1368,7 +1457,7 @@ export async function POST(req: Request) {
       },
       meta,
       placeholder: true,
-      warning: 'Missing API key. Set GOOGLE_API_KEY (preferred) or GEMINI_API_KEY to enable image generation.',
+      warning: 'Missing API key. Set REPLICATE_API_TOKEN to enable image generation.',
       // When generation cannot run, the UI needs the complete prompt for debugging.
       promptPreview: prompt,
     })
@@ -1464,8 +1553,6 @@ export async function POST(req: Request) {
   const editorBrandName =
     typeof editorBrandNameRaw === 'string' && editorBrandNameRaw.trim().length > 0 ? editorBrandNameRaw.trim() : null
 
-  const ai = new GoogleGenAI({ apiKey })
-
   const meta = {
     shotType,
     preset,
@@ -1479,17 +1566,20 @@ export async function POST(req: Request) {
 
   try {
     const maxAttempts = 2
-    const prompt = buildPrompt({
-      shotType,
-      preset,
-      generationIndex,
-      variationSeed,
-      garmentType,
-      editInstructions,
-      pipeline,
-      renderStyleLevel,
-      aspectRatio,
-    })
+    const prompt =
+      editInstructions && editedFromId
+        ? editInstructions
+        : buildPrompt({
+            shotType,
+            preset,
+            generationIndex,
+            variationSeed,
+            garmentType,
+            editInstructions,
+            pipeline,
+            renderStyleLevel,
+            aspectRatio,
+          })
 
     let lastErrorMessage = ''
     let modelCalls = 0
@@ -1501,31 +1591,20 @@ export async function POST(req: Request) {
         const attemptStartedAt = Date.now()
         console.debug?.(`[mockups:${requestId}] attempt ${attempt}/${maxAttempts} generating...`)
         modelCalls += 1
-        const interaction = await ai.interactions.create({
-          model: 'gemini-2.5-flash-image',
-          input: [
-            {
-              role: 'user',
-              content: [
-                { type: 'text', text: prompt },
-                ...(attempt === 1 || !lastErrorMessage
-                  ? []
-                  : [{ type: 'text' as const, text: retryNote(lastErrorMessage) }]),
-                { type: 'image', data: parsed.base64, mime_type: inputMime },
-              ],
-            },
-          ],
-          response_modalities: ['image'],
+        const attemptPrompt =
+          attempt === 1 || !lastErrorMessage ? prompt : `${prompt}\n\n${retryNote(lastErrorMessage)}`
+        const outputUrl = await runReplicatePrediction({
+          apiKey,
+          prompt: attemptPrompt,
+          imageDataUri: `data:${inputMime};base64,${parsed.base64}`,
+          aspectRatio,
         })
         console.debug?.(
           `[mockups:${requestId}] attempt ${attempt} response in ${Date.now() - attemptStartedAt}ms`
         )
-
-        // Gemini SDK output typing is a union; cast to `any` since we only need the
-        // `image` output's `{ data, mime_type }` fields at runtime.
-        const outputImage = (interaction.outputs as any)?.find((o: any) => o.type === 'image')
-        const base64: string | undefined = outputImage?.data
-        const mime: string = outputImage?.mime_type || 'image/png'
+        const resolved = await fetchImageUrlAsBase64(outputUrl)
+        const base64 = resolved?.base64
+        const mime = resolved?.mimeType || 'image/png'
 
         if (base64) {
           console.info?.(

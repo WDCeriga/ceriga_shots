@@ -122,6 +122,7 @@ export default function ResultsPage() {
 
   const generationStatus = project?.generation?.status
   const generationPipeline = project?.generation?.pipeline
+  const generationAspectRatio = project?.generation?.aspectRatio ?? '1:1'
   /** All generated assets in gallery order (includes placeholder rows with empty `url` when API key is missing). */
   const lightboxImages = project?.generatedImages ?? []
   const activeLightboxImage = lightboxIndex == null ? null : lightboxImages[lightboxIndex] ?? null
@@ -312,7 +313,7 @@ export default function ResultsPage() {
     if (!targetAsset.url) {
       toast({
         title: 'Nothing to edit yet',
-        description: 'This slot has no image (for example, no Gemini API key). Configure GOOGLE_API_KEY or GEMINI_API_KEY to generate pixels.',
+        description: 'This slot has no image (for example, no Replicate token). Configure REPLICATE_API_TOKEN to generate pixels.',
         variant: 'destructive',
       })
       return
@@ -477,6 +478,9 @@ export default function ResultsPage() {
               Generation type: <span className="text-foreground">{generationTypeLabel}</span>
             </p>
           ) : null}
+          <p className="text-sm text-muted-foreground mt-1">
+            Aspect ratio: <span className="text-foreground">{generationAspectRatio}</span>
+          </p>
           {generationLabel ? (
             <p className="text-sm text-muted-foreground mt-2">{generationLabel}</p>
           ) : null}

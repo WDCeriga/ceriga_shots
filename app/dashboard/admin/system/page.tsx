@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 type StatusResponse = {
   database?: { configured: boolean }
-  gemini?: { configured: boolean }
+  replicate?: { configured: boolean }
   auth?: { googleConfigured: boolean; secretConfigured: boolean }
   error?: string
 }
@@ -38,8 +38,8 @@ export default function AdminSystemPage() {
           <CardContent><div className="text-lg font-semibold">{status ? (status.database?.configured ? 'Configured' : 'Missing') : '...'}</div></CardContent>
         </Card>
         <Card className="bg-[#0a0a0a] border-border/70">
-          <CardHeader><CardTitle className="text-sm">Gemini Key</CardTitle></CardHeader>
-          <CardContent><div className="text-lg font-semibold">{status ? (status.gemini?.configured ? 'Configured' : 'Missing') : '...'}</div></CardContent>
+          <CardHeader><CardTitle className="text-sm">Replicate Token</CardTitle></CardHeader>
+          <CardContent><div className="text-lg font-semibold">{status ? (status.replicate?.configured ? 'Configured' : 'Missing') : '...'}</div></CardContent>
         </Card>
         <Card className="bg-[#0a0a0a] border-border/70">
           <CardHeader><CardTitle className="text-sm">Google Auth</CardTitle></CardHeader>
