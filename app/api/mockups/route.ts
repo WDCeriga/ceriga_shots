@@ -164,65 +164,98 @@ function categoryForShotType(shotType: ShotType): ShotCategory {
 }
 
 const BASE_FIDELITY = [
-  'You are generating a professional e-commerce product photograph from the provided reference image.',
+  'You are generating a professional product photograph.',
+  'The provided image contains the EXACT physical garment — do not redesign, reinterpret, or alter it in any way.',
   '',
-  'CRITICAL GOAL:',
-  '- Convert the reference into a real camera photo while preserving the exact same physical garment identity.',
+  'SOURCE-TO-PHOTO CONVERSION (critical for mockups/renders):',
+  '- If the input appears as a 3D render, CAD mockup, screenshot, or synthetic image, convert it into a REAL CAMERA product photograph.',
+  '- Keep design identity exact (graphics/colors/placement/silhouette), but replace synthetic rendering cues with real textile capture cues.',
+  '- Remove CGI cues: plastic-like shading, perfectly smooth gradients, unreal edge glow, sterile specular highlights, uniform fake shadows, game-engine look.',
+  '- Rebuild material response as real fabric: weave/knit micro-variation, natural seam relief, realistic ink absorption/print edge behavior, physically plausible fold compression.',
+  '- Lighting must look optically photographed (studio softboxes), not digitally rendered.',
+  '- Output must be unmistakably a real e-commerce photo, not a render pass.',
   '',
-  'PRODUCT IDENTITY LOCK (highest priority, non-negotiable):',
-  '- Preserve the exact garment design: same category, silhouette, colorway, logos, text, zipper path, seam/panel construction, pockets, cuffs, hem, and hood/mask construction.',
-  '- Preserve logo/text exactly as visible, including partial, blurred, or occluded characters. Do NOT clean up, rewrite, or invent missing characters.',
-  '- Keep the same visible face/orientation as the reference image (front/back/side lock).',
-  '- If multiple views appear in the reference, keep the dominant visible face and do NOT invent unseen sides.',
-  '- If any detail is unclear, preserve ambiguity rather than inventing.',
+  'INPUT IMAGE HANDLING (critical — read first):',
+  '- The reference image may NOT be a clean product photo. It may be a phone screenshot, a photo of a screen, a social media save, or a cluttered photo.',
+  '- ISOLATE THE GARMENT ONLY. Extract the clothing item and ignore absolutely everything else in the input image.',
+  '- Discard all of the following if present in the input: phone UI (status bar, battery, signal, dynamic island, home indicator, navigation bar), browser chrome (URL bar, tabs, bookmarks bar), app interfaces (Instagram overlays, e-commerce buttons, price tags, chat bubbles), window frames, taskbars, watermarks, stock photo marks, "SAMPLE" text, device bezels, mock device frames.',
+  '- Discard any solid-colour bars, borders, letterboxing, or padding around the garment.',
+  '- Discard any background clutter: messy surfaces, other objects, accessories, hands, mannequins, retail tags, hangers (unless the shot type requires one).',
+  '- If the garment occupies only a portion of the input image, mentally crop to just the garment before generating.',
+  '- The output must contain ONLY the garment plus any minimal required, unbranded support implied by the shot type (e.g. a simple hook/hanger for hanging shots) AND the required unbranded background surface implied by the preset/shot type — zero trace of the input image context.',
   '',
-  'INPUT ISOLATION (critical):',
-  '- Isolate the garment only from the input image.',
-  '- Remove all source-context artifacts: UI overlays, app/browser chrome, borders/padding/letterboxing, watermarks, device frames, and unrelated clutter.',
-  '- Output must include only the garment plus minimal unbranded support required by the selected shot type and background.',
+  'PRODUCT FIDELITY (non-negotiable):',
+  '- Preserve exact print placement, graphics, logo position, and colorway',
+  '- Preserve typography exactly (letter shapes, spacing, kerning, and partial/blurred/unreadable segments). Do NOT replace unreadable text with a “readable” version.',
+  '- If printed text/letterforms are partially visible, occluded, or cut off in the reference image, keep them partially visible/occluded/cut off exactly (do NOT invent missing characters).',
+  '- Preserve true garment silhouette and construction (design identity: category, panels, zipper path, hood presence) — NOT the reference pose, internal air volume, or “filled by invisible body / ghost mannequin” shape',
+  '- View-orientation lock (mandatory): preserve the same visible garment face as the reference image (front/back/side). If input is back view, output must remain back view unless explicitly requested otherwise.',
+  '- Do NOT rotate/flip/reconstruct the garment to a different face (e.g., back-to-front) unless explicitly requested.',
+  '- If multiple views appear in the reference, keep the dominant/clearest visible face and do NOT invent unseen front/back details.',
+  '- Preserve realistic fabric weight and natural fold behaviour',
+  '- Do NOT reshape, smooth, or make the garment look digitally rendered',
+  '- Do NOT add, remove, or modify any design element',
+  '- Do NOT introduce logos, watermarks, or text not present on the garment itself',
   '',
-  'REALISM + MATERIAL LOCK:',
-  '- Photoreal only: must read as a real camera product photo, never CGI/illustration.',
-  '- Preserve textile microstructure and natural tonal variation; avoid waxy smoothing, plastic sheen, denoised gradients, and texture-map repetition.',
-  '- Keep physically plausible fabric behavior: natural weight, fold memory, seam relief, stitch depth, edge thickness, and contact compression.',
-  '- Do NOT reshape or redesign the garment, and do NOT add/remove design elements.',
+  'POSE, VOLUME, AND SHOT TYPE (critical):',
+  '- If the reference shows the garment puffed out on a ghost mannequin, invisible body, or as a 3D/CGI render with inflated volume, do NOT transfer that volumetric pose into a shot that requires a different real-world layout.',
+  '- Rebuild the garment as it would appear in that shot in real life (e.g. flat lay = unstuffed, lying on a plane with physically plausible flattening). Only natural fabric thickness and folds from gravity and contact with the surface/support — no “worn” or “stuffed” interior volume unless the shot type explicitly matches that presentation.',
   '',
   'PERMITTED REFINEMENTS ONLY:',
-  '- Remove dust/lint/noise, improve lighting consistency, and increase fabric clarity without changing garment identity.',
-  '- Do NOT sharpen/deblur/upscale/reconstruct printed typography or logo letterforms.',
+  '- Remove dust, lint, and sensor noise',
+  '- Improve fabric clarity and thread definition without changing the underlying textile character',
+  '- Correct uneven or poor lighting from the reference image',
+  '- Make the garment look professionally pressed and shoot-ready where appropriate (for relaxed/crumpled styling, preserve natural folds and do NOT over-smooth)',
+  '- Do NOT sharpen, deblur, upscale, or reconstruct printed typography/letterforms; keep printed text exactly as it appears in the reference image.',
   '',
-  'QUALITY GUARDRAILS:',
-  '- Keep full visible garment boundaries for the selected shot type (no cropped hems/sleeves/logo edges when full view is required).',
-  '- Preserve highlight and shadow detail in fabric and print (no clipping or crushed blacks).',
-  '- Keep shadows realistic and grounded; avoid halo/cutout outlines and exaggerated streaking.',
-  '- Zero AI artifacts, surreal distortion, overlays, or added text/watermarks.',
+  'TEXTILE REALISM LOCK (all fabrics, mandatory):',
+  '- Preserve real textile microstructure from the reference (weave/knit/twill/rib/fleece/pile and yarn grain) exactly as material character, not as generic smooth shading.',
+  '- Preserve natural fiber irregularity and tonal micro-variation; avoid uniform denoised gradients across panels.',
+  '- Keep physically plausible fabric response: compression, fold memory, seam puckering, stitch relief, and edge thickness must remain natural.',
+  '- Do NOT apply beauty retouching to fabric: no skin-like smoothing, no waxy finish, no plastic sheen, no painted/airbrushed look.',
+  '- Keep realistic macro-to-micro contrast: avoid over-sharpened halos and avoid over-smoothed blur.',
+  '',
+  'OUTPUT:',
+  '- Aspect ratio: 1:1 square; crop centered on the main subject for this shot type',
+  '- When the shot type requires full garment visibility, ensure no cropped hems/sleeves/logo edges',
+  '- Never crop or cut off printed text/letterforms that are visible in the reference image; keep all visible print boundaries within frame.',
+  '- No clipped highlights on print ink; no crushed shadow detail in dark fabric folds.',
+  '- Shadows must be realistic: grounded, not unnaturally long, and not razor-sharp; avoid shadow streaking/silhouette exaggeration.',
+  '- Avoid “cutout” shadows: no uniform outline/halo that traces the garment silhouette like a sticker or vector path; contact shadow should be slightly irregular and broken by fabric thickness + micro-wrinkles.',
+  '- Must read as a real studio photograph, not a render or illustration',
+  '- Zero AI artifacts, surreal elements, or uncanny fabric distortion',
+  '- No added text, overlays, or watermarks',
 ].join('\n')
 
 const BASE_DETAIL_CARVEOUT = [
   'DETAIL-SHOT CARVE-OUT (important):',
-  '- Do NOT remove micro texture; preserve knit/weave detail, stitch relief, ribbing, and print ink edges.',
-  '- Clarity improvements are allowed, but do NOT invent texture or create plastic/painted fabric.',
+  '- Do NOT “press away” micro texture; preserve knit/weave texture, stitch relief, ribbing, and print ink edges.',
+  '- Clarity/sharpness improvements are allowed, but do NOT invent texture or make fabric look plastic or painted.',
   '- Maintain realistic thread detail, grain, and natural micro-wrinkles.',
 ].join('\n')
 
 const NEGATIVE_GLOBAL = [
   'NEGATIVE (do NOT do any of the following):',
-  '- Output must contain only the garment, minimal unbranded support required by shot type, and the required background surface.',
-  '- Photoreal only: no CGI/CAD/game-engine look, no illustration/painterly style, and no AI-texture artifacts.',
-  '- Do not denoise/airbrush away textile grain; avoid waxy/plastic cloth response and uniform synthetic gradients.',
-  '- No cutout halos, outline glow, sticker-edge compositing, watercolor smearing, or tiled/repeated procedural textures.',
-  '- Do NOT alter garment identity: prints/logos/colors/seams/pockets/zippers/buttons must match the reference exactly.',
-  '- No overlays/watermarks/borders/letterboxing/device frames or added text.',
+  '- Output MUST depict ONLY the garment and any minimal required, unbranded support (e.g., a simple hook/hanger for hanging shots) AND the required unbranded background surface implied by the preset/shot type; no UI, no device frames, and no other surrounding objects.',
+  '- Photoreal only: no CGI/illustration/painterly styles and no “AI texture”.',
+  '- No CGI look, no CAD render look, no game-engine shading, and no plastic material response.',
+  '- No fabric denoising/surface airbrushing that erases textile grain.',
+  '- No waxy/silicone/plastic cloth finish and no fake "perfectly clean" synthetic texture.',
+  '- No perfectly uniform synthetic gradients across garment panels.',
+  '- No fake outline glow, cutout halo, or sticker-edge compositing look.',
+  '- No watercolor-like smearing, tiled texture maps, or repeated procedural cloth patterns.',
+  '- Do NOT alter the garment design: prints/logos/colors/seams/pockets/zippers/buttons must match the reference exactly.',
+  '- Do NOT add or reproduce watermarks, any text overlays, borders, padding, or letterboxing.',
 ].join('\n')
 
 const NEGATIVE_BY_CATEGORY: Record<ShotCategory, string> = {
   flatlay: [
     'NEGATIVE (flat lay specific):',
     '- No hangers, hooks, people, hands, mannequins, or props touching the garment.',
-    '- No ghost/invisible-wearer volume: no upright hood/balaclava/mask reading as a filled head on a flat torso.',
-    '- No inflated torso/sleeves/hood; only natural thickness and folds from lying on the plane.',
-    '- Hoods and integrated masks must be flattened/folded/tucked/collapsed on the surface (not a standing tube/head volume) while preserving zipper lines, eye openings, and print.',
-    '- Do not copy mannequin/CGI inflation into flat layout; re-lay as unstuffed fabric.',
+    '- No ghost mannequin or invisible-wearer volume: no upright hood, balaclava, or face mask that reads as a filled head while the torso lies flat on the surface.',
+    '- No “inflated” torso, sleeves, or hood that imply a body inside when the shot is laid flat / top-down; only natural fabric thickness and real folds from lying on the plane.',
+    '- Hoods and integrated face masks: must be flattened, folded, tucked, or collapsed onto the surface — not a vertical tube or standing head volume; preserve zipper lines, eye openings, and print faithfully while collapsing volume.',
+    '- No copying front-view mannequin or CGI inflation into the flat layout — re-lay the garment as unstuffed fabric.',
     '- No perspective tilt for strict top-down shots; no wide-angle distortion.',
     '- No horizon line, no corners/room edges, no “infinite cyclorama curve”; the surface is a single flat plane.',
     '- No warped/bent background plane; no wavy geometry; no texture stretch/smear; avoid repeating patterns.',
@@ -288,11 +321,12 @@ const NEGATIVE_BY_PRESET: Record<Preset, string> = {
   ].join('\n'),
   studio: [
     'NEGATIVE (studio preset anti-fail):',
-    '- No visible background texture/grain, seams/creases, or harsh banding; seamless white must stay uniform.',
-    '- Avoid grey patching/drift from uneven lighting; keep tone consistent.',
+    '- No visible background texture/grain; seamless white must not look like paper grain or film noise.',
+    '- No visible seams/creases; keep the background uniform to the eye with only smooth studio roll-off (no harsh bands).',
+    '- Avoid grey patches/drift that look like uneven lighting; keep tone consistent.',
     '- No vignette/film simulation; keep clean digital capture feel.',
     '- Avoid long streaky shadows; keep shadows soft, minimal, and grounded.',
-    '- No sticker-outline shadows; perimeter shadow must vary naturally with contact points and fabric thickness.',
+    '- No “sticker” shadow outline: avoid a perfectly uniform perimeter shadow that follows the garment edges; shadows should vary naturally with fabric thickness, contact points, and micro-wrinkles (slightly uneven, not a traced silhouette).',
   ].join('\n'),
   surprise: [
     'NEGATIVE (surprise preset anti-fail):',
@@ -308,12 +342,14 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
   flatlay_topdown: [
     'SHOT TYPE: Top-down flat lay',
     '- Camera setup: perfectly overhead at 90 degrees, no perspective distortion',
-    '- Optics: ~50mm equivalent lens, natural perspective',
-    '- Depth of field: deep (f/8 to f/11 equivalent); entire garment and surface detail sharp',
+    '- Height: approximately 1.5m above the floor',
+    '- Optics: ~50mm equivalent lens (natural perspective, minimal distortion)',
+    '- Depth of field: deep (f/8 to f/11 equivalent); entire garment sharp and surface realism sharp across the full frame',
     '- Garment placement: laid flat with the same visible face as the reference (front/back lock), centered, aligned to frame vertical axis (allow at most +/- 5 degrees rotation)',
     '- Scale & framing: garment fills ~72-78% of the frame with clean breathing room on all edges',
     '- Full garment visible with no cropped hems/sleeves and no cut-off printed edges',
-    '- Fabric must lie directly on the surface (no hovering/float gap).',
+    '- Fabric MUST lie directly on the surface (no hovering/float gap; no detached fabric sections).',
+    '- Perfectly still (no motion blur)',
     '- Sleeves naturally relaxed at sides',
     '- Keep edges straight; avoid any melted/warped fabric',
   ].join('\n'),
@@ -460,9 +496,9 @@ const SHOT_PROMPTS: Record<ShotType, string> = {
 /** Prepended to all flat-lay shot prompts for garment_photo — stops ghost-mannequin/CGI volume from carrying over. */
 const FLATLAYOUT_GHOST_MANNEQUIN_BLOCK = [
   'DE-GHOST / FLAT PHYSICS (mandatory for this shot):',
-  '- Treat the reference as design/construction only; do NOT carry over ghost-mannequin inflation, CGI stuffed volume, or upright hood/balaclava/mask geometry.',
-  '- Full-zip masks/balaclava hoods: keep zipper path, openings, and graphics faithful, but collapse/open flat on the surface (never a vertical tube/filled head).',
-  '- Sleeves and body must be unstuffed with natural thickness/folds from surface contact only (no cylindrical arm-inside illusion).',
+  '- Treat the reference as the garment’s design and construction only; do NOT preserve ghost-mannequin inflation, CGI “stuffed” volume, or upright hood/balaclava/mask geometry from a frontal or worn-style reference.',
+  '- Full-zip masks / balaclava hoods: keep zipper path, openings, and graphics faithful, but the mask region must collapse flat or open and lie flat — never a vertical “tube” or filled head on the surface.',
+  '- Sleeves and body: unstuffed; natural thickness and folds from the garment resting on the plane only — no cylindrical “arm inside” illusion for top-down flat lay.',
 ].join('\n')
 
 /** Prepended to surface (draped + hanging) shot prompts — natural support vs copied mannequin volume. */
@@ -529,13 +565,13 @@ const PRESET_BASE: Record<Preset, string> = {
   studio: [
     'VISUAL DIRECTION: Studio',
     '- Surface: clean white seamless cyclorama/acrylic; matte (no sheen), background luminance slightly off “pure white” (target ~#F7F7F7 to #FFFFFF) for a nicer studio roll-off; no visible seams/creases',
-    '- Surface finish: visually uniform; only imperceptible micro-matte texture (no paper-grain/film-texture look).',
-    '- Prioritize textile fidelity: preserve subtle fabric micro-variation/grain; do NOT over-smooth into synthetic/plastic cloth.',
+    '- Surface finish: uniformly smooth to the eye; allow only imperceptible micro-matte texture (must not look like paper grain or film texture)',
+    '- Texture fidelity priority over cleanliness: preserve subtle fabric micro-variation and textile grain; do NOT over-smooth into a synthetic/plastic look.',
     '- Lighting: professional multi-light studio setup with numeric geometry:',
     '  - Soft key: large softbox/octabox aimed from above-front at ~35–45 degrees to the camera axis; key height ~1.8–2.2m above the floor; key controls exposure',
     '  - Fill: secondary soft light from the opposite side at ~45–60 degrees; fill intensity ~0.55–0.75 of key intensity (tones down shadows without flattening)',
     '  - Edge separation: very low-intensity rim/edge kicker from behind at ~10–25 degrees off the subject silhouette; rim intensity ~3–7% of key (subtle separation only)',
-    '- Lighting character: even exposure, no direct hotspots or colored gels; premium soft studio look (not spotlight-like).',
+    '- Lighting character: even exposure, no direct hotspots, no colored gels; studio lighting feels “premium + soft”, not artificial “spotlight-y”',
     '- Colour temperature: neutral daylight-balanced studio white (~5200K–5600K), keep neutral (no obvious blue or yellow cast)',
     '- Shadows: grounded and soft:',
     '  - Contact shadow: hairline perimeter ~0.5–1.0mm (subtle, slightly irregular — never a traced outline)',
@@ -665,8 +701,8 @@ const PRESET_BY_CATEGORY: Record<Preset, Record<ShotCategory, string>> = {
     flatlay: [
       'CONTEXT (flat lay):',
       '- White surface is a SINGLE flat plane filling the entire frame — no corners, no horizon line, no curvature.',
-      '- Background must be even white — no grey gradients, banding, seams, or creases.',
-      '- Lighting is even and soft; shadows minimal but grounded.',
+      '- Background must be pure, even white — no grey gradients, no banding, no visible seams or creases.',
+      '- Lighting is even and wrap-around; shadows are minimal and soft — just enough to ground the garment.',
       '- The garment should "pop" against the white with clean edges and natural color reproduction.',
     ].join('\n'),
     surface: [
@@ -734,9 +770,13 @@ function buildVariationSeed(
 
 const FIDELITY_REMINDER = [
   'FINAL REMINDER — PRODUCT FIDELITY:',
-  '- The output garment must be IDENTICAL to the input garment in visible identity: category, graphics/logos/text, colorway, construction, and hardware.',
-  '- Preserve visible placement exactly; if a detail is unclear, preserve ambiguity and do NOT invent.',
-  '- Do not improve, restyle, or add design details.',
+  '- The garment in the output must be IDENTICAL to the garment in the input image.',
+  '- Identity means prints, colors, construction, and hardware — not preserving ghost-mannequin volume or reference pose when the shot type requires a different layout (flat lay, drape, hang).',
+  '- STRICT IDENTITY CHECKSUM: same garment category, same visible graphics, same visible placement of all graphics/logos/text.',
+  '- STRICT IDENTITY CHECKSUM (repeat): preserve same garment category + same visible graphics + same visible placement.',
+  '- If any detail is unclear in the reference image, reproduce ambiguity faithfully — do NOT invent or assume.',
+  '- Do not "improve" the design. Do not add details that seem logical. Only reproduce what is visible.',
+  '- If you are uncertain about a design element, keep it simple and faithful rather than creative.',
 ].join('\n')
 
 type GenerationPipeline = 'garment_photo' | 'design_realize'
@@ -991,6 +1031,15 @@ function buildEditInstructionsBlockDesign(editInstructions: string): string {
   ].join('\n')
 }
 
+function buildAspectRatioBlock(aspectRatio: GenerationAspectRatio): string {
+  return [
+    'ASPECT RATIO (strict):',
+    `- Output image ratio must be exactly ${aspectRatio}.`,
+    '- Keep the full subject framed for the selected shot type while honoring this ratio.',
+    '- Never override this ratio with a default square crop.',
+  ].join('\n')
+}
+
 function buildPrompt(args: {
   shotType: ShotType
   preset: Preset
@@ -1025,12 +1074,17 @@ function buildPrompt(args: {
     const userEditBlock = args.editInstructions
       ? buildEditInstructionsBlockDesign(args.editInstructions)
       : ''
-    const coreBlock = [base, framingBlock, DESIGN_OUTPUT_QUALITY_GUARDRAILS].join('\n\n')
-    const safetyBlock = [negative, FIDELITY_REMINDER_DESIGN].join('\n\n')
-
-    // Compact block composition (design_realize):
-    // 1) identity + framing + quality, 2) optional user edits, 3) negatives + fidelity reminder.
-    return [coreBlock, userEditBlock || undefined, safetyBlock]
+    // Constraint order (design_realize):
+    // 1) identity non-negotiables, 2) shot framing + surface/light, 3) negatives, 4) final reminder.
+    return [
+      base,
+      framingBlock,
+      DESIGN_OUTPUT_QUALITY_GUARDRAILS,
+      buildAspectRatioBlock(args.aspectRatio),
+      userEditBlock || undefined,
+      negative,
+      FIDELITY_REMINDER_DESIGN,
+    ]
       .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
       .join('\n---\n')
   }
@@ -1050,16 +1104,18 @@ function buildPrompt(args: {
         ? `${SURFACE_DEGHOST_BLOCK}\n\n${SHOT_PROMPTS[args.shotType]}`
         : SHOT_PROMPTS[args.shotType]
 
-  const sceneBlock = [
+  // Constraint order (garment_photo):
+  // 1) identity non-negotiables, 2) shot framing, 3) surface/light physics, 4) negatives, 5) final reminder.
+  return [
+    base,
     shotPromptBody,
     preset,
     buildVariationSeed(args.preset, args.shotType, args.generationIndex, args.variationSeed),
-  ].join('\n\n')
-  const safetyBlock = [negative, FIDELITY_REMINDER].join('\n\n')
-
-  // Compact block composition (garment_photo):
-  // 1) identity core, 2) shot + preset + variation, 3) optional user edits, 4) negatives + reminder.
-  return [base, sceneBlock, userEditBlock || undefined, safetyBlock]
+    buildAspectRatioBlock(args.aspectRatio),
+    userEditBlock || undefined,
+    negative,
+    FIDELITY_REMINDER,
+  ]
     .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
     .join('\n---\n')
 }
@@ -1574,4 +1630,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: asErrorMessage(e) }, { status: 502 })
   }
 }
-

@@ -45,6 +45,27 @@ function formatViewTitle(t: string) {
   }
 }
 
+function formatPipelineLabel(pipeline?: string) {
+  switch (pipeline) {
+    case 'design_realize':
+      return 'Sketch-to-3D Mockups'
+    case 'background_remove':
+      return 'Background remover'
+    case 'garment_photo':
+      return 'Product Shots'
+    default:
+      return pipeline ?? '—'
+  }
+}
+
+function formatPresetLabel(preset?: string) {
+  if (!preset) return '—'
+  return preset
+    .split('_')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}
+
 export default function AdminProjectDetailPage() {
   const params = useParams()
   const projectId = params.id as string
@@ -79,6 +100,48 @@ export default function AdminProjectDetailPage() {
     )
   }
 
+  const generation = project.generation
+  const generationReferenceImages = (() => {
+    const multi = Array.isArray(generation?.sourceImageUrls)
+      ? generation.sourceImageUrls.filter((url) => typeof url === 'string' && url.trim().length > 0)
+      : []
+    if (multi.length > 0) return multi
+    const single = generation?.sourceImageUrl
+    if (single && single.trim().length > 0) return [single]
+    return [project.originalImage]
+  })()
+
+  const generationDetails: Array<{ label: string; value: string }> = [
+    { label: 'Status', value: generation?.status ?? 'idle' },
+    {
+      label: 'Progress',
+      value:
+        typeof generation?.completed === 'number' && typeof generation?.total === 'number'
+          ? `${generation.completed}/${generation.total}`
+          : '—',
+    },
+    { label: 'Pipeline', value: formatPipelineLabel(generation?.pipeline) },
+    { label: 'Preset', value: formatPresetLabel(generation?.preset) },
+    { label: 'Aspect ratio', value: generation?.aspectRatio ?? '1:1' },
+    { label: 'Render style', value: generation?.renderStyleLevel ?? '—' },
+    { label: 'Garment type', value: generation?.garmentType ?? '—' },
+    {
+      label: 'Shot types',
+      value:
+        Array.isArray(generation?.shotTypes) && generation.shotTypes.length > 0
+          ? generation.shotTypes.map((shot) => formatViewTitle(shot)).join(', ')
+          : '—',
+    },
+    {
+      label: 'Next type',
+      value: generation?.nextType ? formatViewTitle(generation.nextType) : '—',
+    },
+    {
+      label: 'Error message',
+      value: generation?.errorMessage?.trim() ? generation.errorMessage : '—',
+    },
+  ]
+
   return (
     <div className="p-6 lg:p-8">
       <div className="mb-6 flex items-center justify-between gap-4">
@@ -105,6 +168,51 @@ export default function AdminProjectDetailPage() {
             <div className="p-4">
               <div className="rounded-lg overflow-hidden border border-border">
                 <img src={project.originalImage} alt="Original design" className="w-full aspect-square object-cover" />
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border overflow-hidden bg-card">
+            <div className="p-4 border-b border-border">
+              <h2 className="text-base font-semibold">Generation details</h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Full options selected for this generation.
+              </p>
+            </div>
+            <div className="p-4">
+              <dl className="space-y-2">
+                {generationDetails.map((detail) => (
+                  <div key={detail.label} className="flex items-start justify-between gap-3 text-xs">
+                    <dt className="text-muted-foreground">{detail.label}</dt>
+                    <dd className="text-right text-foreground max-w-[62%] break-words">{detail.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border overflow-hidden bg-card">
+            <div className="p-4 border-b border-border">
+              <h2 className="text-base font-semibold">Reference images used</h2>
+              <p className="text-xs text-muted-foreground mt-1">
+                Every image that was sent as generation input.
+              </p>
+            </div>
+            <div className="p-4">
+              <div className="grid grid-cols-3 gap-2">
+                {generationReferenceImages.map((refUrl, idx) => (
+                  <div
+                    key={`${refUrl}-${idx}`}
+                    className="rounded-md overflow-hidden border border-border bg-secondary/40"
+                  >
+                    <img
+                      src={refUrl}
+                      alt={`Generation reference ${idx + 1}`}
+                      className="w-full aspect-square object-cover"
+                      loading="lazy"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           </div>
