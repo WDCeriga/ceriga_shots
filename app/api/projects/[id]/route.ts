@@ -39,6 +39,34 @@ const GeneratedImageSchema = z
     editedByUserId: z.string().optional(),
     editedByBrandName: z.string().nullable().optional(),
     editedAt: z.number().optional(),
+    meta: z
+      .object({
+        shotType: z.enum([
+          'flat-lay',
+          'product-shot',
+          'lifestyle',
+          'detail',
+          'background_remove',
+          'flatlay_topdown',
+          'flatlay_45deg',
+          'flatlay_sleeves',
+          'flatlay_relaxed',
+          'flatlay_folded',
+          'surface_draped',
+          'surface_hanging',
+          'detail_print',
+          'detail_fabric',
+          'detail_collar',
+        ]),
+        preset: z.enum(['raw', 'editorial', 'luxury', 'natural', 'studio', 'surprise']),
+        generationIndex: z.number(),
+        variationSeed: z.number(),
+        garmentType: z.string().optional(),
+        pipeline: z.enum(['garment_photo', 'design_realize', 'background_remove']).optional(),
+        renderStyleLevel: z.enum(['clean_cgi', 'semi_real_cgi', 'toon_tech', 'photoreal_flatlay']).optional(),
+        aspectRatio: z.enum(['1:1', '4:5', '3:4', '16:9', '9:16']).optional(),
+      })
+      .optional(),
   })
   .strict()
 
@@ -90,6 +118,10 @@ const GenerationStateSchema = z
     preset: z.enum(['raw', 'editorial', 'luxury', 'natural', 'studio', 'surprise']).optional(),
     garmentType: z.string().optional(),
     pipeline: z.enum(['garment_photo', 'design_realize', 'background_remove']).optional(),
+    sourceImageUrl: z.string().optional(),
+    sourceImageUrls: z.array(z.string()).optional(),
+    renderStyleLevel: z.enum(['clean_cgi', 'semi_real_cgi', 'toon_tech', 'photoreal_flatlay']).optional(),
+    aspectRatio: z.enum(['1:1', '4:5', '3:4', '16:9', '9:16']).optional(),
     errorMessage: z.string().optional(),
   })
   .strict()
