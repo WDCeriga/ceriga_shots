@@ -1,10 +1,18 @@
 import type { NextAuthOptions } from 'next-auth'
 import Google from 'next-auth/providers/google'
 import Credentials from 'next-auth/providers/credentials'
-import { findUserRoleCached, verifyUser, isEmailVerified } from '@/lib/users'
+import {
+  findUserRoleCached,
+  verifyUser,
+  isEmailVerified,
+  markUserSignedIn,
+  touchUserLastUsed,
+} from '@/lib/users'
 
 const googleProviderConfigured =
   Boolean(process.env.AUTH_GOOGLE_ID) && Boolean(process.env.AUTH_GOOGLE_SECRET)
+const LAST_USED_THROTTLE_MS = 5 * 60 * 1000
+const lastUsedTouchByUserId = new Map<string, number>()
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -28,6 +36,11 @@ export const authOptions: NextAuthOptions = {
         const password = String(credentials.password)
         const user = await verifyUser(email, password)
         if (!user) return null
+        try {
+          await markUserSignedIn(user.id)
+        } catch {
+          // Non-fatal: keep login successful even if tracking update fails.
+        }
         return {
           id: user.id,
           email: user.email,
@@ -75,6 +88,13 @@ export const authOptions: NextAuthOptions = {
             token.emailVerified = resolvedEmailVerified
           } catch {
             // Keep token fallback if DB read fails.
+          }
+          // Best-effort activity tracking with in-memory throttle to reduce write load.
+          const now = Date.now()
+          const lastTouchedAt = lastUsedTouchByUserId.get(userId) ?? 0
+          if (now - lastTouchedAt >= LAST_USED_THROTTLE_MS) {
+            lastUsedTouchByUserId.set(userId, now)
+            void touchUserLastUsed(userId).catch(() => {})
           }
         }
         session.user.role = resolvedRole

@@ -1,18 +1,21 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { fetchJsonCached, invalidateJsonCache } from '@/lib/client-fetch-cache'
+import { ChevronDown, ChevronUp, ChevronsUpDown } from 'lucide-react'
 
 type AdminUser = {
   id: string
   email: string
   role: string
   createdAt: string
+  lastSignInAt: string | null
+  lastUsedAt: string | null
   projectCount: number
   credits: {
     used: number
@@ -23,9 +26,23 @@ type AdminUser = {
   }
 }
 
+function formatDateTimeOrFallback(value?: string | null): string {
+  if (!value) return 'Never'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Never'
+  return date.toLocaleString()
+}
+
+function getLastActivityTimestamp(user: AdminUser): string | null {
+  return user.lastUsedAt ?? user.lastSignInAt ?? null
+}
+
 const ROLE_OPTIONS = ['free', 'starter', 'studio', 'label'] as const
 const USERS_CACHE_KEY = 'admin-users'
 const GRANTS_CACHE_KEY = 'admin-credit-grants'
+type SortField = 'usage' | 'createdAt' | 'lastActivity'
+type SortDirection = 'asc' | 'desc'
+const READ_ONLY_ADMIN_VALUE = 'admin_readonly'
 
 type CreditGrant = {
   id: string
@@ -74,6 +91,10 @@ export default function AdminUsersPage() {
   const [grantError, setGrantError] = useState<string | null>(null)
   const [grantModalOpen, setGrantModalOpen] = useState(false)
   const [roleUpdatingUserId, setRoleUpdatingUserId] = useState<string | null>(null)
+  const [roleFilter, setRoleFilter] = useState<'all' | AdminUser['role']>('all')
+  const [emailQuery, setEmailQuery] = useState('')
+  const [sortField, setSortField] = useState<SortField>('createdAt')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
   async function loadUsers() {
     const data = await fetchJsonCached<{ users?: AdminUser[] }>(USERS_CACHE_KEY, '/api/admin/users', {
@@ -173,19 +194,101 @@ export default function AdminUsersPage() {
     }
   }
 
+  const visibleUsers = useMemo(() => {
+    const normalizedEmailQuery = emailQuery.trim().toLowerCase()
+    const result = users.filter((u) => {
+      if (roleFilter !== 'all' && u.role !== roleFilter) return false
+      if (!normalizedEmailQuery) return true
+      return u.email.toLowerCase().includes(normalizedEmailQuery)
+    })
+    const directionMultiplier = sortDirection === 'asc' ? 1 : -1
+
+    const parseTime = (value: string | null | undefined) => {
+      if (!value) return -1
+      const ts = new Date(value).getTime()
+      return Number.isFinite(ts) ? ts : -1
+    }
+
+    result.sort((a, b) => {
+      if (sortField === 'usage') {
+        const aUsage = a.credits.unlimited ? Number.MAX_SAFE_INTEGER : a.credits.used
+        const bUsage = b.credits.unlimited ? Number.MAX_SAFE_INTEGER : b.credits.used
+        return (aUsage - bUsage) * directionMultiplier
+      }
+      if (sortField === 'lastActivity') {
+        return (parseTime(getLastActivityTimestamp(a)) - parseTime(getLastActivityTimestamp(b))) * directionMultiplier
+      }
+      return (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()) * directionMultiplier
+    })
+
+    return result
+  }, [emailQuery, users, roleFilter, sortDirection, sortField])
+
+  function toggleSort(field: SortField) {
+    if (sortField === field) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+      return
+    }
+    setSortField(field)
+    setSortDirection('desc')
+  }
+
+  function SortHeader({
+    field,
+    label,
+    className,
+  }: {
+    field: SortField
+    label: string
+    className?: string
+  }) {
+    const isActive = sortField === field
+    return (
+      <TableHead className={className}>
+        <button
+          type="button"
+          onClick={() => toggleSort(field)}
+          className="inline-flex items-center gap-1 text-left text-xs font-medium uppercase tracking-wide text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <span>{label}</span>
+          {isActive ? (
+            sortDirection === 'asc' ? (
+              <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+            )
+          ) : (
+            <ChevronsUpDown className="h-3.5 w-3.5 opacity-70" aria-hidden="true" />
+          )}
+        </button>
+      </TableHead>
+    )
+  }
+
   const RoleEditor = ({ user }: { user: AdminUser }) => {
     const isUpdating = roleUpdatingUserId === user.id
+    const selectedRole = ROLE_OPTIONS.includes(user.role as (typeof ROLE_OPTIONS)[number])
+      ? user.role
+      : READ_ONLY_ADMIN_VALUE
     return (
       <div className="flex items-center gap-2">
         <Select
-          value={user.role}
+          value={selectedRole}
           disabled={isUpdating}
-          onValueChange={(value) => void updateRole(user.id, value as AdminUser['role'])}
+          onValueChange={(value) => {
+            if (value === READ_ONLY_ADMIN_VALUE) return
+            void updateRole(user.id, value as AdminUser['role'])
+          }}
         >
           <SelectTrigger className="h-9 w-[160px] border-accent/55 bg-accent/10 px-3 text-sm font-semibold capitalize text-foreground shadow-sm transition-colors hover:border-accent/80 hover:bg-accent/15 focus:ring-2 focus:ring-accent/35">
             <SelectValue placeholder="Change" />
           </SelectTrigger>
           <SelectContent className="border-accent/40 bg-[#0a0a0a]">
+            {selectedRole === READ_ONLY_ADMIN_VALUE ? (
+              <SelectItem value={READ_ONLY_ADMIN_VALUE} className="capitalize text-sm" disabled>
+                admin (locked)
+              </SelectItem>
+            ) : null}
             {ROLE_OPTIONS.map((role) => (
               <SelectItem key={role} value={role} className="capitalize text-sm">
                 {role}
@@ -272,11 +375,47 @@ export default function AdminUsersPage() {
           </Dialog>
         </div>
       </div>
+      <div className="rounded-xl border border-border/60 bg-[#0a0a0a] p-4 sm:p-5">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground">Search email</label>
+            <Input
+              value={emailQuery}
+              onChange={(e) => setEmailQuery(e.target.value)}
+              placeholder="Search by email..."
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs text-muted-foreground">Role filter</label>
+            <Select
+              value={roleFilter}
+              onValueChange={(value) => setRoleFilter(value as 'all' | AdminUser['role'])}
+            >
+              <SelectTrigger className="h-10 w-full border-accent/55 bg-accent/10 px-3 text-sm font-semibold capitalize text-foreground shadow-sm transition-colors hover:border-accent/80 hover:bg-accent/15 focus:ring-2 focus:ring-accent/35">
+                <SelectValue placeholder="Filter role" />
+              </SelectTrigger>
+              <SelectContent className="border-accent/40 bg-[#0a0a0a]">
+                <SelectItem value="all" className="capitalize text-sm">
+                  All roles
+                </SelectItem>
+                {ROLE_OPTIONS.map((role) => (
+                  <SelectItem key={role} value={role} className="capitalize text-sm">
+                    {role}
+                  </SelectItem>
+                ))}
+                <SelectItem value="admin" className="capitalize text-sm">
+                  admin
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
       {/* Mobile: stacked cards */}
       <div className="space-y-3 md:hidden">
-        {users.map((u) => (
+        {visibleUsers.map((u) => (
           <div
             key={u.id}
             className="rounded-xl border border-border/70 bg-[#0a0a0a] p-4 space-y-3 shadow-sm"
@@ -298,13 +437,17 @@ export default function AdminUsersPage() {
                 <dd className="mt-0.5 break-words">{new Date(u.createdAt).toLocaleString()}</dd>
               </div>
               <div className="sm:col-span-2">
+                <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Last Activity</dt>
+                <dd className="mt-0.5 break-words">{formatDateTimeOrFallback(getLastActivityTimestamp(u))}</dd>
+              </div>
+              <div className="sm:col-span-2">
                 <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">User ID</dt>
                 <dd className="mt-0.5 font-mono text-xs text-muted-foreground break-all">{u.id}</dd>
               </div>
             </dl>
           </div>
         ))}
-        {users.length === 0 ? (
+        {visibleUsers.length === 0 ? (
           <div className="rounded-xl border border-border/70 bg-[#0a0a0a] px-4 py-8 text-center text-sm text-muted-foreground">
             No users found.
           </div>
@@ -318,13 +461,14 @@ export default function AdminUsersPage() {
             <TableRow>
               <TableHead className="min-w-[140px]">Email</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead>Usage</TableHead>
-              <TableHead className="min-w-[120px]">Created</TableHead>
+              <SortHeader field="usage" label="Usage" />
+              <SortHeader field="createdAt" label="Created" className="min-w-[120px]" />
+              <SortHeader field="lastActivity" label="Last Activity" className="min-w-[160px]" />
               <TableHead className="min-w-[200px]">User ID</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {users.map((u) => (
+            {visibleUsers.map((u) => (
               <TableRow key={u.id}>
                 <TableCell className="max-w-[220px] whitespace-normal break-words align-top">
                   {u.email}
@@ -338,14 +482,17 @@ export default function AdminUsersPage() {
                 <TableCell className="whitespace-normal align-top text-sm">
                   {new Date(u.createdAt).toLocaleString()}
                 </TableCell>
+                <TableCell className="whitespace-normal align-top text-sm">
+                  {formatDateTimeOrFallback(getLastActivityTimestamp(u))}
+                </TableCell>
                 <TableCell className="max-w-[240px] whitespace-normal break-all text-xs text-muted-foreground align-top font-mono">
                   {u.id}
                 </TableCell>
               </TableRow>
             ))}
-            {users.length === 0 ? (
+            {visibleUsers.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   No users found.
                 </TableCell>
               </TableRow>

@@ -80,7 +80,7 @@ function formatDateOnly(date: Date): string {
 
 export default function AdminStatisticsPage() {
   const dateInputRef = useRef<HTMLInputElement | null>(null)
-  const [range, setRange] = useState<StatsResponse['range']>('30d')
+  const [range, setRange] = useState<StatsResponse['range']>('1d')
   const [customFromDate, setCustomFromDate] = useState('')
   const cacheKey = `admin-stats:${range}:${customFromDate || 'none'}`
   const cachedStats = peekJsonCache<StatsResponse>(cacheKey)
@@ -117,7 +117,7 @@ export default function AdminStatisticsPage() {
     ? `All time until ${formatDateOnly(new Date())}`
     : stats?.fromDate
       ? `${formatDateOnly(new Date(stats.fromDate))} → ${formatDateOnly(new Date())}`
-      : `Last 30 days until ${formatDateOnly(new Date())}`
+      : `Today until ${formatDateOnly(new Date())}`
 
   const keyMetrics = [
     { title: 'New Users', value: stats?.users ?? '...', tone: 'text-cyan-300 border-cyan-500/30 bg-cyan-500/10' },

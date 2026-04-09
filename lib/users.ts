@@ -18,6 +18,8 @@ export type DbUserRow = {
   stripe_price_id: string | null
   stripe_subscription_status: string | null
   billing_period_ends_at: string | null
+  last_sign_in_at: string | null
+  last_used_at: string | null
   created_at: string
 }
 
@@ -102,6 +104,26 @@ export async function verifyUser(email: string, password: string): Promise<DbUse
   if (!user) return null
   const ok = await bcrypt.compare(password, user.password_hash)
   return ok ? user : null
+}
+
+export async function markUserSignedIn(id: string): Promise<void> {
+  await ensureSchema()
+  await db`
+    update users
+    set
+      last_sign_in_at = now(),
+      last_used_at = now()
+    where id = ${id}
+  `
+}
+
+export async function touchUserLastUsed(id: string): Promise<void> {
+  await ensureSchema()
+  await db`
+    update users
+    set last_used_at = now()
+    where id = ${id}
+  `
 }
 
 const VALID_ROLES: UserRole[] = ['free', 'starter', 'studio', 'label', 'admin']

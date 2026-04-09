@@ -16,6 +16,8 @@ type Row = {
   credits_used: number
   credits_reset_at: string | null
   project_count: number
+  last_sign_in_at: string | null
+  last_used_at: string | null
 }
 
 export async function GET() {
@@ -39,6 +41,8 @@ export async function GET() {
       u.created_at,
       u.credits_used,
       u.credits_reset_at,
+      u.last_sign_in_at,
+      u.last_used_at,
       (select count(*)::int from projects pr where pr.owner_id = u.id::text) as project_count
     from users u
     order by u.created_at desc
@@ -56,6 +60,8 @@ export async function GET() {
         email: r.email,
         role: r.role,
         createdAt: r.created_at,
+        lastSignInAt: r.last_sign_in_at,
+        lastUsedAt: r.last_used_at,
         projectCount: Number(r.project_count ?? 0),
         credits: {
           used: credits.used,

@@ -11,7 +11,7 @@ type StatsRange = '1d' | '7d' | '30d' | 'all' | 'custom'
 
 function parseRange(input: string | null): StatsRange {
   if (input === '1d' || input === '7d' || input === '30d' || input === 'all' || input === 'custom') return input
-  return '30d'
+  return '1d'
 }
 
 function rangeToStart(range: StatsRange): Date | null {
