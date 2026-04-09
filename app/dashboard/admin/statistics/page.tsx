@@ -390,29 +390,6 @@ export default function AdminStatisticsPage() {
         ))}
       </div>
 
-      <Card className="border-cyan-500/30 bg-cyan-500/10">
-        <CardHeader>
-          <CardTitle className="text-sm">Daily Trend</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <Skeleton className="h-[280px] w-full bg-cyan-300/20" />
-          ) : (
-            <ChartContainer config={chartConfig} className="h-[280px] w-full">
-              <LineChart data={stats?.charts.daily ?? []} margin={{ left: 8, right: 8, top: 8, bottom: 8 }}>
-                <CartesianGrid vertical={false} />
-                <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} />
-                <YAxis tickLine={false} axisLine={false} tickMargin={8} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line type="monotone" dataKey="users" stroke="var(--color-users)" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="projects" stroke="var(--color-projects)" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="generations" stroke="var(--color-generations)" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ChartContainer>
-          )}
-        </CardContent>
-      </Card>
-
       <Card className="border-violet-500/30 bg-violet-500/10">
         <CardHeader>
           <CardTitle className="text-sm">Queue Snapshot</CardTitle>
@@ -507,6 +484,29 @@ export default function AdminStatisticsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="border-cyan-500/30 bg-cyan-500/10">
+        <CardHeader>
+          <CardTitle className="text-sm">Daily Trend</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <Skeleton className="h-[280px] w-full bg-cyan-300/20" />
+          ) : (
+            <ChartContainer config={chartConfig} className="h-[280px] w-full">
+              <LineChart data={stats?.charts.daily ?? []} margin={{ left: 8, right: 8, top: 8, bottom: 8 }}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} />
+                <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Line type="monotone" dataKey="users" stroke="var(--color-users)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="projects" stroke="var(--color-projects)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="generations" stroke="var(--color-generations)" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ChartContainer>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="border-border/60 bg-[#0a0a0a]">
