@@ -5,9 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { fetchJsonCached, peekJsonCache } from '@/lib/client-fetch-cache'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Calendar, CircleHelp } from 'lucide-react'
+import { Calendar, CircleHelp, Download, RefreshCw } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import { Line, LineChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 
 type StatsResponse = {
   range: '1d' | '7d' | '30d' | 'all' | 'custom'
@@ -34,6 +36,31 @@ type StatsResponse = {
       }
     }
     profitability: { grossProfitMonthly: number; grossMarginPercent: number }
+  }
+  comparisons: {
+    previousWindow: { fromDate: string; toDate: string } | null
+    users: { current: number; previous: number; pctChange: number | null }
+    projects: { current: number; previous: number; pctChange: number | null }
+    successfulGenerations: { current: number; previous: number; pctChange: number | null }
+    mrr: { current: number; previous: number | null; pctChange: number | null }
+  }
+  charts: {
+    daily: Array<{ day: string; users: number; projects: number; generations: number }>
+  }
+  breakdowns: {
+    topUsers: Array<{ userId: string; email: string; projects: number; generated: number }>
+    shotPreset: Array<{
+      shotType: string
+      preset: string
+      total: number
+      done: number
+      failed: number
+      failureRatePct: number
+    }>
+  }
+  meta?: {
+    generatedAt?: string
+    cached?: boolean
   }
 }
 
@@ -81,6 +108,12 @@ function formatDateOnly(date: Date): string {
   return date.toLocaleDateString()
 }
 
+function formatDelta(delta: number | null): string {
+  if (delta == null) return '—'
+  const sign = delta > 0 ? '+' : ''
+  return `${sign}${delta.toFixed(1)}%`
+}
+
 export default function AdminStatisticsPage() {
   const fromDateInputRef = useRef<HTMLInputElement | null>(null)
   const toDateInputRef = useRef<HTMLInputElement | null>(null)
@@ -93,6 +126,18 @@ export default function AdminStatisticsPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(!cachedStats)
   const [rangeWarning, setRangeWarning] = useState<string | null>(null)
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const qRange = params.get('range')
+    const qFrom = params.get('from')
+    const qTo = params.get('to')
+    if (qRange === '1d' || qRange === '7d' || qRange === '30d' || qRange === 'all' || qRange === 'custom') {
+      setRange(qRange)
+    }
+    if (qFrom) setCustomFromDate(qFrom)
+    if (qTo) setCustomToDate(qTo)
+  }, [])
 
   useEffect(() => {
     if (!customFromDate || !customToDate) return
@@ -134,6 +179,15 @@ export default function AdminStatisticsPage() {
     }
   }, [cacheKey, customFromDate, customToDate, range])
 
+  useEffect(() => {
+    const params = new URLSearchParams()
+    params.set('range', range)
+    if (customFromDate) params.set('from', customFromDate)
+    if (customToDate) params.set('to', customToDate)
+    const next = `${window.location.pathname}?${params.toString()}`
+    window.history.replaceState(null, '', next)
+  }, [customFromDate, customToDate, range])
+
   const periodLabel =
     stats?.range === 'all'
       ? `All time until ${formatDateOnly(new Date())}`
@@ -146,11 +200,60 @@ export default function AdminStatisticsPage() {
             : `Today until ${formatDateOnly(new Date())}`
 
   const keyMetrics = [
-    { title: 'New Users', value: stats?.users ?? '...', tone: 'text-cyan-300 border-cyan-500/30 bg-cyan-500/10' },
-    { title: 'New Projects', value: stats?.projects ?? '...', tone: 'text-fuchsia-300 border-fuchsia-500/30 bg-fuchsia-500/10' },
-    { title: 'Successful Generations', value: stats?.finance.costs.generation.successfulGenerations ?? '...', tone: 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10' },
-    { title: 'MRR', value: stats ? formatMoney(stats.finance.revenue.mrr) : '...', tone: 'text-amber-300 border-amber-500/30 bg-amber-500/10' },
+    {
+      title: 'New Users',
+      value: stats?.users ?? '...',
+      delta: stats?.comparisons.users.pctChange ?? null,
+      tone: 'text-cyan-300 border-cyan-500/30 bg-cyan-500/10',
+    },
+    {
+      title: 'New Projects',
+      value: stats?.projects ?? '...',
+      delta: stats?.comparisons.projects.pctChange ?? null,
+      tone: 'text-fuchsia-300 border-fuchsia-500/30 bg-fuchsia-500/10',
+    },
+    {
+      title: 'Successful Generations',
+      value: stats?.finance.costs.generation.successfulGenerations ?? '...',
+      delta: stats?.comparisons.successfulGenerations.pctChange ?? null,
+      tone: 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10',
+    },
+    {
+      title: 'MRR',
+      value: stats ? formatMoney(stats.finance.revenue.mrr) : '...',
+      delta: stats?.comparisons.mrr.pctChange ?? null,
+      tone: 'text-amber-300 border-amber-500/30 bg-amber-500/10',
+    },
   ] as const
+
+  const chartConfig = {
+    users: { label: 'Users', color: '#22d3ee' },
+    projects: { label: 'Projects', color: '#f472b6' },
+    generations: { label: 'Generations', color: '#a78bfa' },
+  } as const
+
+  const handleRefresh = () => {
+    setStats(null)
+    setIsLoading(true)
+    setError(null)
+    window.location.reload()
+  }
+
+  const handleExportCsv = () => {
+    if (!stats) return
+    const rows = [
+      ['date', 'users', 'projects', 'generations'],
+      ...stats.charts.daily.map((r) => [r.day, String(r.users), String(r.projects), String(r.generations)]),
+    ]
+    const csv = rows.map((r) => r.map((c) => `"${String(c).replaceAll('"', '""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `admin-stats-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="p-6 lg:p-8 space-y-6">
@@ -185,6 +288,13 @@ export default function AdminStatisticsPage() {
                 {opt.label}
               </Button>
             ))}
+            <Button size="sm" variant="outline" onClick={handleRefresh}>
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleExportCsv} disabled={!stats}>
+              <Download className="mr-1 h-4 w-4" />
+              CSV
+            </Button>
           </div>
         </div>
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -258,6 +368,10 @@ export default function AdminStatisticsPage() {
           </div>
         </div>
         {rangeWarning ? <p className="mt-2 text-xs text-amber-300">{rangeWarning}</p> : null}
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          {stats?.meta?.cached ? 'Cached' : 'Live'} • Updated{' '}
+          {stats?.meta?.generatedAt ? new Date(stats.meta.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
+        </p>
       </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -270,10 +384,34 @@ export default function AdminStatisticsPage() {
             </CardHeader>
             <CardContent>
               {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-black">{m.value}</div>}
+              <div className="mt-1 text-xs text-muted-foreground">vs prev: {formatDelta(m.delta)}</div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      <Card className="border-cyan-500/30 bg-cyan-500/10">
+        <CardHeader>
+          <CardTitle className="text-sm">Daily Trend</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <Skeleton className="h-[280px] w-full bg-cyan-300/20" />
+          ) : (
+            <ChartContainer config={chartConfig} className="h-[280px] w-full">
+              <LineChart data={stats?.charts.daily ?? []} margin={{ left: 8, right: 8, top: 8, bottom: 8 }}>
+                <CartesianGrid vertical={false} />
+                <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} />
+                <YAxis tickLine={false} axisLine={false} tickMargin={8} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Line type="monotone" dataKey="users" stroke="var(--color-users)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="projects" stroke="var(--color-projects)" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="generations" stroke="var(--color-generations)" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ChartContainer>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="border-violet-500/30 bg-violet-500/10">
         <CardHeader>
@@ -366,6 +504,48 @@ export default function AdminStatisticsPage() {
               <span className="font-semibold">{stats ? formatMoneyPrecise(stats.finance.costs.generation.costPerModelCall) : '...'}</span>
             </div>
             <div className="flex items-center justify-between"><span>Estimated Billable Cost</span><span className="font-semibold">{stats ? formatMoney(stats.finance.costs.generation.estimatedBilledTotalCost) : '...'}</span></div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="border-border/60 bg-[#0a0a0a]">
+          <CardHeader>
+            <CardTitle className="text-sm">Top Users by Generated Output</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {(stats?.breakdowns.topUsers ?? []).map((u) => (
+              <div key={u.userId} className="flex items-center justify-between gap-3 rounded-md border border-border/50 px-3 py-2">
+                <div className="min-w-0">
+                  <p className="truncate">{u.email}</p>
+                  <p className="truncate text-xs text-muted-foreground">{u.userId}</p>
+                </div>
+                <div className="text-right text-xs text-muted-foreground">
+                  <div>Projects: <span className="font-semibold text-foreground">{u.projects}</span></div>
+                  <div>Generated: <span className="font-semibold text-foreground">{u.generated}</span></div>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card className="border-border/60 bg-[#0a0a0a]">
+          <CardHeader>
+            <CardTitle className="text-sm">Shot/Preset Failure Breakdown</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {(stats?.breakdowns.shotPreset ?? []).slice(0, 10).map((r) => (
+              <div key={`${r.shotType}-${r.preset}`} className="flex items-center justify-between rounded-md border border-border/50 px-3 py-2">
+                <div>
+                  <p className="font-medium">{r.shotType}</p>
+                  <p className="text-xs text-muted-foreground">{r.preset}</p>
+                </div>
+                <div className="text-right text-xs text-muted-foreground">
+                  <div>Total: <span className="font-semibold text-foreground">{r.total}</span></div>
+                  <div>Fail: <span className="font-semibold text-rose-300">{r.failureRatePct}%</span></div>
+                </div>
+              </div>
+            ))}
           </CardContent>
         </Card>
       </div>
