@@ -141,7 +141,12 @@ export default function ResultsPage() {
           : 'Product Shots'
 
   useEffect(() => {
-    if (generationStatus !== 'generating') return
+    const hasOutstandingJobs =
+      typeof project?.generation?.total === 'number' &&
+      typeof project?.generation?.completed === 'number' &&
+      project.generation.completed < project.generation.total
+    const shouldNudgeQueue = generationStatus === 'generating' || (generationStatus === 'error' && hasOutstandingJobs)
+    if (!shouldNudgeQueue) return
     if (generationPipeline === 'background_remove') return
     let stopped = false
 
@@ -171,7 +176,7 @@ export default function ResultsPage() {
       window.clearInterval(interval)
       setQueueNudgeStatus('idle')
     }
-  }, [fetchProject, generationPipeline, generationStatus, projectId])
+  }, [fetchProject, generationPipeline, generationStatus, project?.generation?.completed, project?.generation?.total, projectId])
 
   useEffect(() => {
     if (lightboxIndex == null) return

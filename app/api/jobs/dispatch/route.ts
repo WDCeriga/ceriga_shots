@@ -14,6 +14,7 @@ import { getInternalQueueSecret } from '@/lib/internal-queue-secret'
 import type { GeneratedImage } from '@/types/projects'
 
 export const runtime = 'nodejs'
+const DEFAULT_DISPATCH_MAX_JOBS = 4
 
 function canRunWithSecret(req: Request) {
   const explicit = process.env.QUEUE_DISPATCH_SECRET
@@ -80,7 +81,7 @@ async function processSingle(baseUrl: string, workerId: string) {
         shotType: job.shot_type,
         preset: job.preset,
         generationIndex: job.generation_index,
-        attempts: 2,
+        attempts: 1,
         variationSeed: job.variation_seed,
         editInstructions: job.edit_instructions ?? null,
         editedFromId: job.edited_from_id ?? null,
@@ -160,7 +161,10 @@ export async function POST(req: Request) {
       ? crypto.randomUUID()
       : `${Date.now()}`
 
-  const maxJobs = 2
+  const configuredMaxJobs = Number.parseInt(process.env.GENERATION_DISPATCH_MAX_JOBS ?? '', 10)
+  const maxJobs = Number.isFinite(configuredMaxJobs)
+    ? Math.min(Math.max(configuredMaxJobs, 1), 12)
+    : DEFAULT_DISPATCH_MAX_JOBS
   let processed = 0
   for (let i = 0; i < maxJobs; i++) {
     const result = await processSingle(baseUrl, workerId)

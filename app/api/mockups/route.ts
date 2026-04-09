@@ -1494,7 +1494,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    const maxAttempts = 2
+    const requestedAttemptsRaw = (body as { attempts?: unknown }).attempts
+    const maxAttempts = clampInt(requestedAttemptsRaw, 1, 3, 1)
     const prompt =
       editInstructions && editedFromId
         ? editInstructions

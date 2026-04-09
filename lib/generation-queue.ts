@@ -83,6 +83,8 @@ function toJobs(rows: GenerationJobRow[]): GenerationJob[] {
 }
 
 const STALE_PROCESSING_MINUTES = 5
+const DEFAULT_MAX_JOB_ATTEMPTS = 5
+const MAX_RETRY_DELAY_SECONDS = 180
 
 async function requeueStaleProcessingJobs() {
   await db`
@@ -168,7 +170,7 @@ export async function enqueueGenerationJobs(args: {
         ${args.editorBrandName ?? null},
         'queued',
         0,
-        3
+        ${DEFAULT_MAX_JOB_ATTEMPTS}
       )
     `
   }
@@ -317,7 +319,9 @@ export async function failGenerationJob(args: {
 }) {
   await ensureSchema()
   const shouldRetry = args.attempts < args.maxAttempts
-  const delaySeconds = shouldRetry ? Math.min(60, 5 * args.attempts) : 0
+  const baseDelaySeconds = shouldRetry ? Math.min(MAX_RETRY_DELAY_SECONDS, 5 * 2 ** (args.attempts - 1)) : 0
+  const jitterSeconds = shouldRetry ? Math.floor(Math.random() * 4) : 0
+  const delaySeconds = shouldRetry ? Math.min(MAX_RETRY_DELAY_SECONDS, baseDelaySeconds + jitterSeconds) : 0
 
   if (shouldRetry) {
     await db`
@@ -357,14 +361,19 @@ export async function failGenerationJob(args: {
   const pending = Number(pendingRows[0]?.count ?? 0)
 
   const total = project.generatedCount + pending
+  const hasRemainingWork = pending > 0
+  const nextStatus: 'idle' | 'generating' | 'complete' | 'error' =
+    shouldRetry || hasRemainingWork ? 'generating' : 'error'
+  const nextErrorMessage =
+    shouldRetry || hasRemainingWork ? undefined : args.errorMessage
   await updateProjectForUser(args.ownerId, args.projectId, {
     generation: {
-      status: shouldRetry ? 'generating' : 'error',
+      status: nextStatus,
       total,
       completed: project.generatedCount,
       preset: project.generation?.preset,
       nextType: project.generation?.nextType,
-      errorMessage: shouldRetry ? undefined : args.errorMessage,
+      errorMessage: nextErrorMessage,
       pipeline: project.generation?.pipeline,
       renderStyleLevel: project.generation?.renderStyleLevel,
       aspectRatio: project.generation?.aspectRatio,
