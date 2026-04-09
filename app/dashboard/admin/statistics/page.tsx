@@ -5,11 +5,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { fetchJsonCached, peekJsonCache } from '@/lib/client-fetch-cache'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Calendar } from 'lucide-react'
+import { Calendar, CircleHelp } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Skeleton } from '@/components/ui/skeleton'
 
 type StatsResponse = {
   range: '1d' | '7d' | '30d' | 'all' | 'custom'
   fromDate: string | null
+  toDate: string | null
   users: number
   projects: number
   queue: { queued: number; processing: number; failed: number }
@@ -79,20 +82,38 @@ function formatDateOnly(date: Date): string {
 }
 
 export default function AdminStatisticsPage() {
-  const dateInputRef = useRef<HTMLInputElement | null>(null)
+  const fromDateInputRef = useRef<HTMLInputElement | null>(null)
+  const toDateInputRef = useRef<HTMLInputElement | null>(null)
   const [range, setRange] = useState<StatsResponse['range']>('1d')
-  const [customFromDate, setCustomFromDate] = useState('')
-  const cacheKey = `admin-stats:${range}:${customFromDate || 'none'}`
+  const [customFromDate, setCustomFromDate] = useState(todayDateInputValue())
+  const [customToDate, setCustomToDate] = useState(todayDateInputValue())
+  const cacheKey = `admin-stats:${range}:${customFromDate || 'none'}:${customToDate || 'none'}`
   const cachedStats = peekJsonCache<StatsResponse>(cacheKey)
   const [stats, setStats] = useState<StatsResponse | null>(cachedStats)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(!cachedStats)
+  const [rangeWarning, setRangeWarning] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!customFromDate || !customToDate) return
+    const fromMs = new Date(customFromDate).getTime()
+    const toMs = new Date(customToDate).getTime()
+    if (!Number.isFinite(fromMs) || !Number.isFinite(toMs) || fromMs <= toMs) {
+      setRangeWarning(null)
+      return
+    }
+    setCustomFromDate(customToDate)
+    setCustomToDate(customFromDate)
+    setRangeWarning('Start date was after end date. Dates were swapped automatically.')
+  }, [customFromDate, customToDate])
 
   useEffect(() => {
     let cancelled = false
     setIsLoading(!peekJsonCache<StatsResponse>(cacheKey))
-    const query = customFromDate
-      ? `/api/admin/stats?range=custom&from=${encodeURIComponent(customFromDate)}`
+    const query = customFromDate || customToDate
+      ? `/api/admin/stats?range=custom${customFromDate ? `&from=${encodeURIComponent(customFromDate)}` : ''}${
+          customToDate ? `&to=${encodeURIComponent(customToDate)}` : ''
+        }`
       : `/api/admin/stats?range=${range}`
     fetchJsonCached<StatsResponse>(cacheKey, query, { ttlMs: 15_000 })
       .then((data) => {
@@ -111,13 +132,18 @@ export default function AdminStatisticsPage() {
     return () => {
       cancelled = true
     }
-  }, [cacheKey, customFromDate, range])
+  }, [cacheKey, customFromDate, customToDate, range])
 
-  const periodLabel = stats?.range === 'all'
-    ? `All time until ${formatDateOnly(new Date())}`
-    : stats?.fromDate
-      ? `${formatDateOnly(new Date(stats.fromDate))} → ${formatDateOnly(new Date())}`
-      : `Today until ${formatDateOnly(new Date())}`
+  const periodLabel =
+    stats?.range === 'all'
+      ? `All time until ${formatDateOnly(new Date())}`
+      : stats?.fromDate && stats?.toDate
+        ? `${formatDateOnly(new Date(stats.fromDate))} → ${formatDateOnly(new Date(stats.toDate))}`
+        : stats?.fromDate
+          ? `${formatDateOnly(new Date(stats.fromDate))} → ${formatDateOnly(new Date())}`
+          : stats?.toDate
+            ? `Beginning → ${formatDateOnly(new Date(stats.toDate))}`
+            : `Today until ${formatDateOnly(new Date())}`
 
   const keyMetrics = [
     { title: 'New Users', value: stats?.users ?? '...', tone: 'text-cyan-300 border-cyan-500/30 bg-cyan-500/10' },
@@ -141,10 +167,19 @@ export default function AdminStatisticsPage() {
                 variant={range === opt.key ? 'default' : 'outline'}
                 onClick={() => {
                   setRange(opt.key)
-                  if (opt.key === '1d') setCustomFromDate(todayDateInputValue())
-                  else if (opt.key === '7d') setCustomFromDate(toDateInputValue(7))
-                  else if (opt.key === '30d') setCustomFromDate(toDateInputValue(30))
-                  else setCustomFromDate('')
+                  if (opt.key === '1d') {
+                    setCustomFromDate(todayDateInputValue())
+                    setCustomToDate(todayDateInputValue())
+                  } else if (opt.key === '7d') {
+                    setCustomFromDate(toDateInputValue(7))
+                    setCustomToDate(todayDateInputValue())
+                  } else if (opt.key === '30d') {
+                    setCustomFromDate(toDateInputValue(30))
+                    setCustomToDate(todayDateInputValue())
+                  } else {
+                    setCustomFromDate('')
+                    setCustomToDate('')
+                  }
                 }}
               >
                 {opt.label}
@@ -155,26 +190,59 @@ export default function AdminStatisticsPage() {
         <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted-foreground">{periodLabel}</p>
           <div className="flex items-center gap-2">
-            <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Calendar start</span>
+            <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Calendar range</span>
             <div className="relative">
               <Input
-                ref={dateInputRef}
+                ref={fromDateInputRef}
                 type="date"
-                className="h-8 w-[190px] pr-9 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0"
+                className="h-8 w-[170px] pr-9 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0"
                 value={customFromDate}
                 onChange={(e) => {
                   const next = e.target.value
                   setCustomFromDate(next)
                   if (next) setRange('custom')
                 }}
+                max={customToDate || new Date().toISOString().slice(0, 10)}
+              />
+              <button
+                type="button"
+                aria-label="Open start calendar"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-white/90 hover:text-white"
+                onClick={() => {
+                  const input = fromDateInputRef.current
+                  if (!input) return
+                  if ('showPicker' in input && typeof input.showPicker === 'function') {
+                    input.showPicker()
+                  } else {
+                    input.focus()
+                    input.click()
+                  }
+                }}
+              >
+                <Calendar className="h-4 w-4" />
+              </button>
+            </div>
+            <span className="text-xs text-muted-foreground">to</span>
+            <div className="relative">
+              <Input
+                ref={toDateInputRef}
+                type="date"
+                className="h-8 w-[170px] pr-9 [color-scheme:dark] [&::-webkit-calendar-picker-indicator]:opacity-0"
+                value={customToDate}
+                onChange={(e) => {
+                  const next = e.target.value
+                  setCustomToDate(next)
+                  if (next) setRange('custom')
+                }}
+                min={customFromDate || undefined}
                 max={new Date().toISOString().slice(0, 10)}
               />
               <button
                 type="button"
-                aria-label="Open calendar"
+                aria-label="Open end calendar"
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-white/90 hover:text-white"
                 onClick={() => {
-                  const input = dateInputRef.current
+                  const input = toDateInputRef.current
                   if (!input) return
                   if ('showPicker' in input && typeof input.showPicker === 'function') {
                     input.showPicker()
@@ -189,6 +257,7 @@ export default function AdminStatisticsPage() {
             </div>
           </div>
         </div>
+        {rangeWarning ? <p className="mt-2 text-xs text-amber-300">{rangeWarning}</p> : null}
       </div>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -200,7 +269,7 @@ export default function AdminStatisticsPage() {
               <CardTitle className="text-xs uppercase tracking-[0.16em] text-muted-foreground">{m.title}</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-black">{m.value}</div>
+              {isLoading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-black">{m.value}</div>}
             </CardContent>
           </Card>
         ))}
@@ -214,15 +283,27 @@ export default function AdminStatisticsPage() {
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-md border border-cyan-500/30 bg-cyan-500/10 p-3">
               <p className="text-[10px] uppercase tracking-[0.14em] text-cyan-300/90">Queued</p>
-              <p className="mt-1 text-2xl font-black text-cyan-200">{stats?.queue.queued ?? '...'}</p>
+              {isLoading ? (
+                <Skeleton className="mt-1 h-8 w-14 bg-cyan-300/30" />
+              ) : (
+                <p className="mt-1 text-2xl font-black text-cyan-200">{stats?.queue.queued ?? '...'}</p>
+              )}
             </div>
             <div className="rounded-md border border-violet-500/30 bg-violet-500/10 p-3">
               <p className="text-[10px] uppercase tracking-[0.14em] text-violet-300/90">Processing</p>
-              <p className="mt-1 text-2xl font-black text-violet-200">{stats?.queue.processing ?? '...'}</p>
+              {isLoading ? (
+                <Skeleton className="mt-1 h-8 w-14 bg-violet-300/30" />
+              ) : (
+                <p className="mt-1 text-2xl font-black text-violet-200">{stats?.queue.processing ?? '...'}</p>
+              )}
             </div>
             <div className="rounded-md border border-rose-500/30 bg-rose-500/10 p-3">
               <p className="text-[10px] uppercase tracking-[0.14em] text-rose-300/90">Failed</p>
-              <p className="mt-1 text-2xl font-black text-rose-200">{stats?.queue.failed ?? '...'}</p>
+              {isLoading ? (
+                <Skeleton className="mt-1 h-8 w-14 bg-rose-300/30" />
+              ) : (
+                <p className="mt-1 text-2xl font-black text-rose-200">{stats?.queue.failed ?? '...'}</p>
+              )}
             </div>
           </div>
         </CardContent>
@@ -242,9 +323,48 @@ export default function AdminStatisticsPage() {
         <Card className="border-sky-500/30 bg-sky-500/10">
           <CardHeader><CardTitle className="text-sm">Generation Costs</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <div className="flex items-center justify-between"><span>Generation Attempts</span><span className="font-semibold">{stats?.finance.costs.generation.successfulModelCalls ?? '...'}</span></div>
-            <div className="flex items-center justify-between"><span>Billable Images</span><span className="font-semibold">{stats?.finance.costs.generation.allBilledModelCalls ?? '...'}</span></div>
-            <div className="flex items-center justify-between"><span>Cost per Billable Image</span><span className="font-semibold">{stats ? formatMoneyPrecise(stats.finance.costs.generation.costPerModelCall) : '...'}</span></div>
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1">
+                Generation Attempts
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Generation attempts info">
+                      <CircleHelp className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent sideOffset={6}>Successful model calls for completed generation jobs.</TooltipContent>
+                </Tooltip>
+              </span>
+              <span className="font-semibold">{stats?.finance.costs.generation.successfulModelCalls ?? '...'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1">
+                Billable Images
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Billable images info">
+                      <CircleHelp className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent sideOffset={6}>Completed generated outputs counted as billed images.</TooltipContent>
+                </Tooltip>
+              </span>
+              <span className="font-semibold">{stats?.finance.costs.generation.allBilledModelCalls ?? '...'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="inline-flex items-center gap-1">
+                Cost per Billable Image
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="Cost per billable image info">
+                      <CircleHelp className="h-3.5 w-3.5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent sideOffset={6}>Configured unit cost used for billing/cost estimate calculations.</TooltipContent>
+                </Tooltip>
+              </span>
+              <span className="font-semibold">{stats ? formatMoneyPrecise(stats.finance.costs.generation.costPerModelCall) : '...'}</span>
+            </div>
             <div className="flex items-center justify-between"><span>Estimated Billable Cost</span><span className="font-semibold">{stats ? formatMoney(stats.finance.costs.generation.estimatedBilledTotalCost) : '...'}</span></div>
           </CardContent>
         </Card>

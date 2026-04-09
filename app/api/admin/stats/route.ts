@@ -8,6 +8,8 @@ import { pricingPlans } from '@/lib/pricing'
 export const runtime = 'nodejs'
 const ACTIVE_BILLING_STATUSES = ['active', 'trialing', 'past_due'] as const
 type StatsRange = '1d' | '7d' | '30d' | 'all' | 'custom'
+const STATS_CACHE_TTL_MS = 20_000
+const statsResponseCache = new Map<string, { expiresAt: number; payload: unknown }>()
 
 function parseRange(input: string | null): StatsRange {
   if (input === '1d' || input === '7d' || input === '30d' || input === 'all' || input === 'custom') return input
@@ -29,6 +31,15 @@ function parseFromDate(input: string | null): Date | null {
   if (!input) return null
   const parsed = new Date(input)
   if (Number.isNaN(parsed.getTime())) return null
+  parsed.setHours(0, 0, 0, 0)
+  return parsed
+}
+
+function parseToDate(input: string | null): Date | null {
+  if (!input) return null
+  const parsed = new Date(input)
+  if (Number.isNaN(parsed.getTime())) return null
+  parsed.setHours(23, 59, 59, 999)
   return parsed
 }
 
@@ -56,68 +67,124 @@ export async function GET(req: Request) {
   const url = new URL(req.url)
   const rangeParam = parseRange(url.searchParams.get('range'))
   const customFromDate = parseFromDate(url.searchParams.get('from'))
-  const range: StatsRange = customFromDate ? 'custom' : rangeParam
+  const customToDate = parseToDate(url.searchParams.get('to'))
+  const range: StatsRange = customFromDate || customToDate ? 'custom' : rangeParam
+  const fromDateIso = customFromDate?.toISOString()
+  const toDateIso = customToDate?.toISOString()
   const fromDate = customFromDate ?? rangeToStart(range)
+  const toDate = customToDate ?? null
   const fromTimestampMs = fromDate ? fromDate.getTime() : null
+  const toTimestampMs = toDate ? toDate.getTime() : null
+  const cacheKey = `${userId}|${range}|${fromDate?.toISOString() ?? 'none'}|${toDate?.toISOString() ?? 'none'}`
+  const now = Date.now()
+  const cached = statsResponseCache.get(cacheKey)
+  if (cached && cached.expiresAt > now) {
+    return NextResponse.json(cached.payload, {
+      headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=30' },
+    })
+  }
 
-  const [usersRow] = (
-    fromDate
-      ? await db`select count(*)::int as count from users where created_at >= ${fromDate.toISOString()}`
-      : await db`select count(*)::int as count from users`
-  ) as Array<{ count: number }>
-  const [projectsRow] = (
-    fromDate
-      ? await db`select count(*)::int as count from projects where created_at >= ${fromDate.toISOString()}`
-      : await db`select count(*)::int as count from projects`
-  ) as Array<{ count: number }>
-  const [jobsQueuedRow] = (
-    fromDate
-      ? await db`
+  const usersQuery = fromDate && toDate
+    ? db`
         select count(*)::int as count
-        from generation_jobs
-        where status = 'queued'
-          and created_at >= ${fromDate.toISOString()}
+        from users
+        where created_at >= ${fromDateIso!}
+          and created_at <= ${toDateIso!}
       `
-      : await db`select count(*)::int as count from generation_jobs where status = 'queued'`
-  ) as Array<{ count: number }>
-  const [jobsProcessingRow] = (
-    fromDate
-      ? await db`
+    : fromDate
+      ? db`select count(*)::int as count from users where created_at >= ${fromDate.toISOString()}`
+      : toDate
+        ? db`select count(*)::int as count from users where created_at <= ${toDateIso!}`
+        : db`select count(*)::int as count from users`
+  const projectsQuery = fromDate && toDate
+    ? db`
         select count(*)::int as count
-        from generation_jobs
-        where status = 'processing'
-          and created_at >= ${fromDate.toISOString()}
+        from projects
+        where created_at >= ${fromDateIso!}
+          and created_at <= ${toDateIso!}
       `
-      : await db`select count(*)::int as count from generation_jobs where status = 'processing'`
-  ) as Array<{ count: number }>
-  const [jobsFailedRow] = (
-    fromDate
-      ? await db`
+    : fromDate
+      ? db`select count(*)::int as count from projects where created_at >= ${fromDate.toISOString()}`
+      : toDate
+        ? db`select count(*)::int as count from projects where created_at <= ${toDateIso!}`
+        : db`select count(*)::int as count from projects`
+  const queueCountsQuery = fromDate && toDate
+    ? db`
+        select
+          count(*) filter (where status = 'queued')::int as queued,
+          count(*) filter (where status = 'processing')::int as processing,
+          count(*) filter (where status = 'failed')::int as failed
+        from generation_jobs
+        where created_at >= ${fromDateIso!}
+          and created_at <= ${toDateIso!}
+      `
+    : fromDate
+      ? db`
+        select
+          count(*) filter (where status = 'queued')::int as queued,
+          count(*) filter (where status = 'processing')::int as processing,
+          count(*) filter (where status = 'failed')::int as failed
+        from generation_jobs
+        where created_at >= ${fromDate.toISOString()}
+      `
+      : toDate
+        ? db`
+        select
+          count(*) filter (where status = 'queued')::int as queued,
+          count(*) filter (where status = 'processing')::int as processing,
+          count(*) filter (where status = 'failed')::int as failed
+        from generation_jobs
+        where created_at <= ${toDateIso!}
+      `
+        : db`
+        select
+          count(*) filter (where status = 'queued')::int as queued,
+          count(*) filter (where status = 'processing')::int as processing,
+          count(*) filter (where status = 'failed')::int as failed
+        from generation_jobs
+      `
+  const sharesActiveQuery = fromDate && toDate
+    ? db`
         select count(*)::int as count
-        from generation_jobs
-        where status = 'failed'
-          and created_at >= ${fromDate.toISOString()}
+        from project_shares
+        where revoked_at is null
+          and (expires_at is null or expires_at > now())
+          and created_at >= ${fromDateIso!}
+          and created_at <= ${toDateIso!}
       `
-      : await db`select count(*)::int as count from generation_jobs where status = 'failed'`
-  ) as Array<{ count: number }>
-  const [sharesActiveRow] = (
-    fromDate
-      ? await db`
+    : fromDate
+      ? db`
         select count(*)::int as count
         from project_shares
         where revoked_at is null
           and (expires_at is null or expires_at > now())
           and created_at >= ${fromDate.toISOString()}
       `
-      : await db`
+      : toDate
+        ? db`
+        select count(*)::int as count
+        from project_shares
+        where revoked_at is null
+          and (expires_at is null or expires_at > now())
+          and created_at <= ${toDateIso!}
+      `
+        : db`
         select count(*)::int as count
         from project_shares
         where revoked_at is null and (expires_at is null or expires_at > now())
       `
-  ) as Array<{ count: number }>
-  const paidRows = (
-    fromDate
-      ? await db`
+  const paidRowsQuery = fromDate && toDate
+    ? db`
+        select role, count(*)::int as count
+        from users
+        where role in ('starter', 'studio', 'label')
+          and stripe_subscription_status = any(${ACTIVE_BILLING_STATUSES}::text[])
+          and created_at >= ${fromDateIso!}
+          and created_at <= ${toDateIso!}
+        group by role
+      `
+    : fromDate
+      ? db`
         select role, count(*)::int as count
         from users
         where role in ('starter', 'studio', 'label')
@@ -125,15 +192,23 @@ export async function GET(req: Request) {
           and created_at >= ${fromDate.toISOString()}
         group by role
       `
-      : await db`
+      : toDate
+        ? db`
+        select role, count(*)::int as count
+        from users
+        where role in ('starter', 'studio', 'label')
+          and stripe_subscription_status = any(${ACTIVE_BILLING_STATUSES}::text[])
+          and created_at <= ${toDateIso!}
+        group by role
+      `
+        : db`
         select role, count(*)::int as count
         from users
         where role in ('starter', 'studio', 'label')
           and stripe_subscription_status = any(${ACTIVE_BILLING_STATUSES}::text[])
         group by role
       `
-  ) as Array<{ role: 'starter' | 'studio' | 'label'; count: number }>
-  const [successfulGenerationsRow] = (await db`
+  const successfulGenerationsQuery = db`
     select count(*)::int as count
     from projects p
     cross join lateral jsonb_array_elements(p.generated_images) as gi
@@ -144,26 +219,71 @@ export async function GET(req: Request) {
         ${fromTimestampMs}::bigint is null
         or coalesce(nullif(gi->>'timestamp', '')::bigint, 0) >= ${fromTimestampMs}::bigint
       )
-  `) as Array<{ count: number }>
-  const [successfulGenerationModelCallsRow] = (
-    fromDate
-      ? await db`
+      and (
+        ${toTimestampMs}::bigint is null
+        or coalesce(nullif(gi->>'timestamp', '')::bigint, 0) <= ${toTimestampMs}::bigint
+      )
+  `
+  const successfulGenerationModelCallsQuery = fromDate && toDate
+    ? db`
+        select coalesce(sum(model_calls), 0)::int as total
+        from generation_jobs
+        where status = 'done'
+          and model_calls > 0
+          and created_at >= ${fromDateIso!}
+          and created_at <= ${toDateIso!}
+      `
+    : fromDate
+      ? db`
         select coalesce(sum(model_calls), 0)::int as total
         from generation_jobs
         where status = 'done'
           and model_calls > 0
           and created_at >= ${fromDate.toISOString()}
       `
-      : await db`
+      : toDate
+        ? db`
+        select coalesce(sum(model_calls), 0)::int as total
+        from generation_jobs
+        where status = 'done'
+          and model_calls > 0
+          and created_at <= ${toDateIso!}
+      `
+        : db`
         select coalesce(sum(model_calls), 0)::int as total
         from generation_jobs
         where status = 'done'
           and model_calls > 0
       `
-  ) as Array<{ total: number }>
+
+  const [
+    usersRows,
+    projectsRows,
+    queueCountsRows,
+    sharesActiveRows,
+    paidRows,
+    successfulGenerationsRows,
+    successfulGenerationModelCallsRows,
+  ] = await Promise.all([
+    usersQuery,
+    projectsQuery,
+    queueCountsQuery,
+    sharesActiveQuery,
+    paidRowsQuery,
+    successfulGenerationsQuery,
+    successfulGenerationModelCallsQuery,
+  ])
+
+  const usersRow = (usersRows as Array<{ count: number }>)[0]
+  const projectsRow = (projectsRows as Array<{ count: number }>)[0]
+  const queueCountsRow = (queueCountsRows as Array<{ queued: number; processing: number; failed: number }>)[0]
+  const sharesActiveRow = (sharesActiveRows as Array<{ count: number }>)[0]
+  const paidRowsTyped = paidRows as Array<{ role: 'starter' | 'studio' | 'label'; count: number }>
+  const successfulGenerationsRow = (successfulGenerationsRows as Array<{ count: number }>)[0]
+  const successfulGenerationModelCallsRow = (successfulGenerationModelCallsRows as Array<{ total: number }>)[0]
 
   const roleCounts = { starter: 0, studio: 0, label: 0 }
-  for (const row of paidRows) {
+  for (const row of paidRowsTyped) {
     roleCounts[row.role] = Number(row.count ?? 0)
   }
 
@@ -188,50 +308,53 @@ export async function GET(req: Request) {
   const grossProfitMonthly = mrr - estimatedMonthlyCosts
   const grossMarginPercent = mrr > 0 ? (grossProfitMonthly / mrr) * 100 : 0
 
-  return NextResponse.json(
-    {
-      range,
-      fromDate: fromDate ? fromDate.toISOString() : null,
-      users: Number(usersRow?.count ?? 0),
-      projects: Number(projectsRow?.count ?? 0),
-      queue: {
-        queued: Number(jobsQueuedRow?.count ?? 0),
-        processing: Number(jobsProcessingRow?.count ?? 0),
-        failed: Number(jobsFailedRow?.count ?? 0),
+  const payload = {
+    range,
+    fromDate: fromDate ? fromDate.toISOString() : null,
+    toDate: toDate ? toDate.toISOString() : null,
+    users: Number(usersRow?.count ?? 0),
+    projects: Number(projectsRow?.count ?? 0),
+    queue: {
+      queued: Number(queueCountsRow?.queued ?? 0),
+      processing: Number(queueCountsRow?.processing ?? 0),
+      failed: Number(queueCountsRow?.failed ?? 0),
+    },
+    shares: {
+      active: Number(sharesActiveRow?.count ?? 0),
+    },
+    finance: {
+      paidSubscribers: {
+        total: activePaidSubscribers,
+        starter: roleCounts.starter,
+        studio: roleCounts.studio,
+        label: roleCounts.label,
       },
-      shares: {
-        active: Number(sharesActiveRow?.count ?? 0),
+      revenue: {
+        mrr: money(mrr),
+        arr: money(mrr * 12),
       },
-      finance: {
-        paidSubscribers: {
-          total: activePaidSubscribers,
-          starter: roleCounts.starter,
-          studio: roleCounts.studio,
-          label: roleCounts.label,
+      costs: {
+        variableCostPerPaidUser: money(variableCostPerPaidUser),
+        fixedMonthlyCost: money(fixedMonthlyCost),
+        estimatedMonthlyCosts: money(estimatedMonthlyCosts),
+        generation: {
+          successfulGenerations,
+          successfulModelCalls: successfulGenerationModelCalls,
+          allBilledModelCalls,
+          costPerModelCall: moneyPrecise(costPerModelCall, 3),
+          estimatedTotalCost: money(estimatedGenerationCostTotal),
+          estimatedBilledTotalCost: money(estimatedBilledGenerationCostTotal),
         },
-        revenue: {
-          mrr: money(mrr),
-          arr: money(mrr * 12),
-        },
-        costs: {
-          variableCostPerPaidUser: money(variableCostPerPaidUser),
-          fixedMonthlyCost: money(fixedMonthlyCost),
-          estimatedMonthlyCosts: money(estimatedMonthlyCosts),
-          generation: {
-            successfulGenerations,
-            successfulModelCalls: successfulGenerationModelCalls,
-            allBilledModelCalls,
-            costPerModelCall: moneyPrecise(costPerModelCall, 3),
-            estimatedTotalCost: money(estimatedGenerationCostTotal),
-            estimatedBilledTotalCost: money(estimatedBilledGenerationCostTotal),
-          },
-        },
-        profitability: {
-          grossProfitMonthly: money(grossProfitMonthly),
-          grossMarginPercent: money(grossMarginPercent),
-        },
+      },
+      profitability: {
+        grossProfitMonthly: money(grossProfitMonthly),
+        grossMarginPercent: money(grossMarginPercent),
       },
     },
-    { headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=30' } }
-  )
+  }
+
+  statsResponseCache.set(cacheKey, { expiresAt: now + STATS_CACHE_TTL_MS, payload })
+  return NextResponse.json(payload, {
+    headers: { 'Cache-Control': 'private, max-age=10, stale-while-revalidate=30' },
+  })
 }
