@@ -3,8 +3,10 @@
 import { FormEvent, Suspense, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
+import { GoogleSignInButton } from '@/components/google-sign-in-button'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
 import Link from 'next/link'
 import { Eye, EyeOff } from 'lucide-react'
 
@@ -17,13 +19,13 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const resetStatus = searchParams.get('reset')
+  const callbackUrl = searchParams.get('callbackUrl') ?? '/dashboard'
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
 
-    const callbackUrl = searchParams.get('callbackUrl') ?? '/dashboard'
     const res = await signIn('credentials', {
       email,
       password,
@@ -47,8 +49,21 @@ function LoginForm() {
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold">Sign in</h1>
           <p className="text-sm text-muted-foreground">
-            Use your email and password to access Ceriga Shots.
+            Sign in with Google or your email and password.
           </p>
+        </div>
+
+        <div className="space-y-4">
+          <GoogleSignInButton callbackUrl={callbackUrl} />
+
+          <div className="relative py-1">
+            <div className="absolute inset-0 flex items-center">
+              <Separator className="w-full" />
+            </div>
+            <div className="relative flex justify-center text-xs font-medium uppercase tracking-wide">
+              <span className="bg-background text-muted-foreground px-3">Or email</span>
+            </div>
+          </div>
         </div>
 
         <form onSubmit={onSubmit} className="space-y-4">

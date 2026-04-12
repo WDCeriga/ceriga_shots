@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import { db, ensureSchema } from '@/lib/db'
 import type { UserRole } from '@/lib/roles'
 
@@ -72,6 +73,34 @@ export async function updateUserBrandName(id: string, brandName: string | null):
     returning *
   `) as DbUserRow[]
   return rows[0] ?? null
+}
+
+/** Random hash so OAuth-only accounts satisfy `password_hash not null` without a usable password. */
+export async function findOrCreateOAuthUser(email: string): Promise<DbUserRow> {
+  const normalizedEmail = email.trim().toLowerCase()
+  await ensureSchema()
+
+  const existing = await findUserByEmail(normalizedEmail)
+  if (existing) {
+    if (!existing.email_verified) {
+      await db`
+        update users
+        set email_verified = true
+        where id = ${existing.id}
+      `
+      const updated = await findUserById(existing.id)
+      if (updated) return updated
+    }
+    return existing
+  }
+
+  const placeholderHash = await bcrypt.hash(`oauth|${crypto.randomUUID()}`, 12)
+  const rows = (await db`
+    insert into users (email, password_hash, email_verified)
+    values (${normalizedEmail}, ${placeholderHash}, true)
+    returning *
+  `) as DbUserRow[]
+  return rows[0]
 }
 
 export async function createUser(

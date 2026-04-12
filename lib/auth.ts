@@ -3,6 +3,7 @@ import Google from 'next-auth/providers/google'
 import Credentials from 'next-auth/providers/credentials'
 import {
   findUserRoleCached,
+  findOrCreateOAuthUser,
   verifyUser,
   isEmailVerified,
   markUserSignedIn,
@@ -57,12 +58,25 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.AUTH_SECRET ?? 'development-secret',
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
+      if (account?.provider === 'google' && user?.email) {
+        const dbUser = await findOrCreateOAuthUser(user.email)
+        token.id = dbUser.id
+        token.email = dbUser.email
+        token.role = dbUser.role
+        token.emailVerified = dbUser.email_verified
+        try {
+          await markUserSignedIn(dbUser.id)
+        } catch {
+          // Non-fatal
+        }
+        return token
+      }
       if (user) {
         token.id = (user as any).id ?? token.sub
         token.email = user.email ?? token.email
         token.role = (user as any).role ?? 'free'
-        token.emailVerified = false
+        token.emailVerified = (user as any).emailVerified ?? false
       }
       return token
     },
