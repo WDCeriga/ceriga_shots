@@ -5,6 +5,7 @@ import { useEffect, useState } from "react"
 import { useSession } from "next-auth/react"
 import { Check } from "lucide-react"
 import { pricingPlans } from "@/lib/pricing"
+import { getStudioTrialPeriodDays } from "@/lib/studio-trial"
 
 type StripePricingResponse = {
   prices?: {
@@ -15,6 +16,7 @@ type StripePricingResponse = {
 }
 
 export function PricingSection() {
+  const studioTrialDays = getStudioTrialPeriodDays()
   const { status } = useSession()
   const pricingCtaHref = status === "authenticated" ? "/pricing" : "/signup"
   const [stripePrices, setStripePrices] = useState<StripePricingResponse["prices"] | null>(null)
@@ -94,6 +96,11 @@ export function PricingSection() {
                 <p className="text-accent text-xs font-semibold tracking-wide mb-3">
                   {plan.creditsPerMonth} credits / mo
                 </p>
+                {roleName === "studio" && studioTrialDays != null ? (
+                  <p className="text-xs font-semibold text-foreground/90 mb-2">
+                    {studioTrialDays}-day free trial, then €{displayMonthly}/mo
+                  </p>
+                ) : null}
                 <p className="text-muted-foreground text-sm leading-relaxed">
                   {plan.description}
                 </p>

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { pricingPlans } from '@/lib/pricing'
+import { getStudioTrialPeriodDays } from '@/lib/studio-trial'
 import { useSession } from 'next-auth/react'
 import { toast } from '@/hooks/use-toast'
 
@@ -107,6 +108,7 @@ function getDisplayPrice(monthlyPrice: number, billing: BillingCycle) {
 }
 
 export function DashboardPricingClient() {
+  const studioTrialDays = getStudioTrialPeriodDays()
   const { status: authStatus } = useSession()
   const [billing, setBilling] = useState<BillingCycle>('monthly')
   const [currentRole, setCurrentRole] = useState<string>('free')
@@ -281,6 +283,12 @@ export function DashboardPricingClient() {
                 <span className="text-5xl font-black tracking-tight text-foreground">€{displayPrice}</span>
                 <span className="pb-1 text-xs text-muted-foreground">{yearlySuffix}</span>
               </div>
+              {roleName === 'studio' && studioTrialDays != null ? (
+                <p className="text-xs font-semibold text-accent mb-2">
+                  {studioTrialDays}-day free trial, then €{displayPrice}
+                  {yearlySuffix}
+                </p>
+              ) : null}
               <p className="text-sm font-medium text-accent mb-3">{plan.creditsPerMonth} credits / mo</p>
               <p className="text-sm leading-relaxed text-muted-foreground mb-5">{plan.description}</p>
 
@@ -481,6 +489,21 @@ export function DashboardPricingClient() {
             Frequently Asked Questions
           </h2>
           <Accordion type="single" collapsible className="w-full space-y-3 sm:space-y-4">
+            {studioTrialDays != null ? (
+              <AccordionItem
+                value="studio-trial"
+                className="border-0 rounded-xl bg-[#111111] px-5 py-1 sm:px-8 sm:py-2 data-[state=open]:shadow-none"
+              >
+                <AccordionTrigger className="text-left text-base font-semibold text-white hover:no-underline py-5 sm:py-6 [&[data-state=open]]:pb-2">
+                  How does the Studio free trial work?
+                </AccordionTrigger>
+                <AccordionContent className="pb-5 sm:py-6 pt-0 text-sm leading-relaxed text-neutral-400">
+                  New Studio subscriptions include {studioTrialDays} days of full Studio access at no charge. After the
+                  trial, your chosen billing cycle continues automatically unless you cancel from Settings before the
+                  trial ends.
+                </AccordionContent>
+              </AccordionItem>
+            ) : null}
             <AccordionItem
               value="brand-accuracy"
               className="border-0 rounded-xl bg-[#111111] px-5 py-1 sm:px-8 sm:py-2 data-[state=open]:shadow-none"

@@ -4,6 +4,7 @@ import Stripe from 'stripe'
 import { authOptions } from '@/lib/auth'
 import { findUserById, setUserStripeCustomerId } from '@/lib/users'
 import { BillingCycle, BillingPlanRole, getCheckoutUnitAmountCents } from '@/lib/billing'
+import { getStudioTrialPeriodDays } from '@/lib/studio-trial'
 import { getStripe, isStripeConfigured } from '@/lib/stripe'
 
 export const runtime = 'nodejs'
@@ -112,6 +113,7 @@ export async function POST(req: Request) {
   }
 
   const priceId = await findOrCreatePriceId(stripe, plan, cycle)
+  const studioTrialDays = plan === 'studio' ? getStudioTrialPeriodDays() : null
   const origin = new URL(req.url).origin
   const checkoutSession = await stripe.checkout.sessions.create({
     mode: 'subscription',
@@ -122,7 +124,10 @@ export async function POST(req: Request) {
     locale: 'auto',
     custom_text: {
       submit: {
-        message: 'Cancel anytime from Settings > Manage billing.',
+        message:
+          studioTrialDays != null
+            ? `You get ${studioTrialDays} days free, then your plan renews automatically. Cancel anytime from Settings > Manage billing.`
+            : 'Cancel anytime from Settings > Manage billing.',
       },
     },
     success_url: `${origin}/pricing?checkout=success`,
@@ -133,6 +138,7 @@ export async function POST(req: Request) {
       billingCycle: cycle,
     },
     subscription_data: {
+      ...(studioTrialDays != null ? { trial_period_days: studioTrialDays } : {}),
       metadata: {
         userId: user.id,
         targetRole: plan,
