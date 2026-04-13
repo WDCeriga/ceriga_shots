@@ -15,6 +15,7 @@ type Row = {
   created_at: string
   credits_used: number
   credits_reset_at: string | null
+  stripe_subscription_status: string | null
   project_count: number
   last_sign_in_at: string | null
   last_used_at: string | null
@@ -41,6 +42,7 @@ export async function GET() {
       u.created_at,
       u.credits_used,
       u.credits_reset_at,
+      u.stripe_subscription_status,
       u.last_sign_in_at,
       u.last_used_at,
       (select count(*)::int from projects pr where pr.owner_id = u.id::text) as project_count
@@ -53,7 +55,12 @@ export async function GET() {
     {
       users: rows.map((r) => {
       const role = r.role as UserRole
-      const credits = computeCreditsInfoForDisplay(role, r.credits_used, r.credits_reset_at)
+        const credits = computeCreditsInfoForDisplay(
+          role,
+          r.credits_used,
+          r.credits_reset_at,
+          r.stripe_subscription_status
+        )
       const unlimited = credits.limit < 0
       return {
         id: r.id,

@@ -34,7 +34,7 @@ export default function AiFashionVideoGeneratorPage() {
 
             <div className="flex flex-col sm:flex-row gap-4">
               <Link
-                href="/dashboard/generate"
+                href="/dashboard"
                 className="inline-flex items-center justify-center gap-2 bg-foreground text-background text-sm font-semibold tracking-wider uppercase px-8 py-4 hover:bg-accent hover:text-foreground transition-all duration-300"
               >
                 Upload Your Design
@@ -68,7 +68,7 @@ export default function AiFashionVideoGeneratorPage() {
 
             <div className="pt-2 text-sm text-muted-foreground">
               Also generate{' '}
-              <Link className="underline underline-offset-2 text-foreground hover:text-accent" href="/dashboard/generate">
+              <Link className="underline underline-offset-2 text-foreground hover:text-accent" href="/dashboard">
                 flat lays
               </Link>{' '}
               and{' '}

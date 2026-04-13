@@ -65,7 +65,7 @@ export function HowItWorksHero() {
 
           <div className="mt-10 flex flex-col gap-4 sm:flex-row">
             <Link
-              href="/dashboard/generate"
+              href="/dashboard"
               className="inline-flex items-center justify-center gap-2 bg-foreground px-8 py-4 text-sm font-semibold uppercase tracking-wider text-background transition-all duration-300 hover:bg-accent hover:text-foreground"
             >
               Launch studio

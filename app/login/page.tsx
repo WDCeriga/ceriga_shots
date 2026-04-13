@@ -121,7 +121,14 @@ function LoginForm() {
 
         <p className="text-sm text-muted-foreground text-center">
           Don&apos;t have an account?{' '}
-          <Link href="/signup" className="underline underline-offset-2">
+          <Link
+            href={
+              callbackUrl === '/dashboard'
+                ? '/signup'
+                : `/signup?callbackUrl=${encodeURIComponent(callbackUrl)}`
+            }
+            className="underline underline-offset-2"
+          >
             Sign up
           </Link>
         </p>

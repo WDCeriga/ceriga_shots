@@ -14,6 +14,7 @@ type GrantTargetRow = {
   role: string
   credits_used: number
   credits_reset_at: string | null
+  stripe_subscription_status: string | null
 }
 
 function normalizeIdentifier(input: unknown): string {
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
   await ensureSchema()
 
   const targets = (await db`
-    select id, email, role, credits_used, credits_reset_at
+    select id, email, role, credits_used, credits_reset_at, stripe_subscription_status
     from users
     where id::text = ${identifier}
        or lower(email) = lower(${identifier})
@@ -99,8 +100,18 @@ export async function POST(req: Request) {
   `
 
   const role = target.role as UserRole
-  const beforeCredits = computeCreditsInfoForDisplay(role, beforeUsed, target.credits_reset_at)
-  const afterCredits = computeCreditsInfoForDisplay(role, afterUsed, target.credits_reset_at)
+  const beforeCredits = computeCreditsInfoForDisplay(
+    role,
+    beforeUsed,
+    target.credits_reset_at,
+    target.stripe_subscription_status
+  )
+  const afterCredits = computeCreditsInfoForDisplay(
+    role,
+    afterUsed,
+    target.credits_reset_at,
+    target.stripe_subscription_status
+  )
 
   return NextResponse.json({
     ok: true,

@@ -1,7 +1,7 @@
 'use client'
 
-import { FormEvent, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { FormEvent, Suspense, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn } from 'next-auth/react'
 import { GoogleSignInButton } from '@/components/google-sign-in-button'
 import { Button } from '@/components/ui/button'
@@ -10,8 +10,16 @@ import { Separator } from '@/components/ui/separator'
 import Link from 'next/link'
 import { Eye, EyeOff } from 'lucide-react'
 
-export default function SignupPage() {
+function safeCallbackUrl(raw: string | null): string {
+  if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/dashboard'
+  return raw
+}
+
+function SignupForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const callbackUrl = safeCallbackUrl(searchParams.get('callbackUrl'))
+
   const [brandName, setBrandName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -41,7 +49,7 @@ export default function SignupPage() {
       email,
       password,
       redirect: false,
-      callbackUrl: '/dashboard',
+      callbackUrl,
     })
 
     if (loginRes?.error) {
@@ -50,8 +58,11 @@ export default function SignupPage() {
       return
     }
 
-    await router.push(loginRes?.url ?? '/dashboard')
+    await router.push(loginRes?.url ?? callbackUrl)
   }
+
+  const loginHref =
+    callbackUrl === '/dashboard' ? '/login' : `/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
@@ -64,7 +75,7 @@ export default function SignupPage() {
         </div>
 
         <div className="space-y-4">
-          <GoogleSignInButton callbackUrl="/dashboard" label="Sign up with Google" />
+          <GoogleSignInButton callbackUrl={callbackUrl} label="Sign up with Google" />
 
           <div className="relative py-1">
             <div className="absolute inset-0 flex items-center">
@@ -136,7 +147,7 @@ export default function SignupPage() {
 
         <p className="text-sm text-muted-foreground text-center">
           Already have an account?{' '}
-          <Link href="/login" className="underline underline-offset-2">
+          <Link href={loginHref} className="underline underline-offset-2">
             Sign in
           </Link>
         </p>
@@ -145,3 +156,16 @@ export default function SignupPage() {
   )
 }
 
+export default function SignupPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center px-4">
+          <div className="text-sm text-muted-foreground">Loading…</div>
+        </div>
+      }
+    >
+      <SignupForm />
+    </Suspense>
+  )
+}

@@ -55,7 +55,7 @@ export function Navbar() {
               {mobileOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
             </button>
             <Link
-              href="/dashboard/generate"
+              href="/dashboard"
               className="text-[10px] sm:text-xs tracking-widest uppercase bg-foreground text-background px-3 sm:px-5 py-2 sm:py-2.5 hover:bg-accent hover:text-foreground transition-colors duration-300 shrink-0"
               onClick={() => setMobileOpen(false)}
             >

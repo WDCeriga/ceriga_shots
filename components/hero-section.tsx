@@ -163,7 +163,7 @@ export function HeroSection() {
         {/* CTAs */}
         <div className="animate-fade-up animation-delay-300 flex flex-col sm:flex-row gap-4">
           <Link
-            href="/dashboard/generate"
+            href="/dashboard"
             className="inline-flex items-center justify-center gap-2 bg-foreground text-background text-sm font-semibold tracking-wider uppercase px-8 py-4 hover:bg-accent hover:text-foreground transition-all duration-300 group"
           >
             Upload Design

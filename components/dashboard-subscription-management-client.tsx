@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { toast } from '@/hooks/use-toast'
 import { pricingPlans } from '@/lib/pricing'
-import { getStudioTrialPeriodDays } from '@/lib/studio-trial'
+import { getStudioTrialCreditsLimit, getStudioTrialPeriodDays } from '@/lib/studio-trial'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -30,6 +30,7 @@ function getSubscriptionBadgeVariant(subscriptionStatus: string | null) {
 
 export function DashboardSubscriptionManagementClient() {
   const studioTrialDays = getStudioTrialPeriodDays()
+  const studioTrialCredits = getStudioTrialCreditsLimit()
   const { status: authStatus } = useSession()
 
   const [billing, setBilling] = useState<{
@@ -137,11 +138,13 @@ export function DashboardSubscriptionManagementClient() {
                     <div className="pb-1 text-xs text-muted-foreground">/mo</div>
                   </div>
                   <div className="mt-2 text-xs text-muted-foreground">
-                    {plan.creditsPerMonth} credits / month
+                    {planRole === 'studio' && studioTrialDays != null
+                      ? `${studioTrialCredits} credits during trial · ${plan.creditsPerMonth}/mo after`
+                      : `${plan.creditsPerMonth} credits / month`}
                   </div>
                   {planRole === 'studio' && studioTrialDays != null ? (
                     <div className="mt-2 text-xs font-medium text-accent">
-                      {studioTrialDays}-day free trial on new subscriptions
+                      {studioTrialDays}-day free trial with {studioTrialCredits} credits on new subscriptions
                     </div>
                   ) : null}
                 </div>

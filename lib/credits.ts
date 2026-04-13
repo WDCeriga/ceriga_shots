@@ -2,6 +2,7 @@ import { db, ensureSchema } from '@/lib/db'
 import { findUserById } from '@/lib/users'
 import { getRoleLimits } from '@/lib/roles'
 import type { UserRole } from '@/lib/roles'
+import { getStudioTrialCreditsLimit } from '@/lib/studio-trial'
 
 export type CreditsInfo = {
   used: number
@@ -21,15 +22,20 @@ function nextMonthStart(): Date {
 /**
  * Snapshot of monthly credits for a user row — no DB writes.
  * Matches the display logic in {@link getCreditsForUser} (reset window, remaining).
+ * @param subscriptionStatus When `trialing` with role `studio`, uses {@link getStudioTrialCreditsLimit} as the cap.
  */
 export function computeCreditsInfoForDisplay(
   role: UserRole,
   creditsUsed: number,
   creditsResetAtIso: string | null,
+  subscriptionStatus: string | null | undefined = undefined,
   now: Date = new Date()
 ): CreditsInfo {
   const limits = getRoleLimits(role)
-  const limit = limits.credits
+  let limit = limits.credits
+  if (limit >= 0 && role === 'studio' && subscriptionStatus === 'trialing') {
+    limit = getStudioTrialCreditsLimit()
+  }
 
   let used = Number(creditsUsed ?? 0)
   let resetAt: Date | null = creditsResetAtIso ? new Date(creditsResetAtIso) : null
@@ -45,9 +51,16 @@ export function computeCreditsInfoForDisplay(
   return { used, limit, remaining, resetAt }
 }
 
-function limitForRole(role: UserRole): number {
-  const limits = getRoleLimits(role)
-  return limits.credits < 0 ? 2147483647 : limits.credits
+function effectiveCreditsLimit(user: {
+  role: UserRole
+  stripe_subscription_status: string | null
+}): number {
+  const limits = getRoleLimits(user.role)
+  if (limits.credits < 0) return 2147483647
+  if (user.role === 'studio' && user.stripe_subscription_status === 'trialing') {
+    return getStudioTrialCreditsLimit()
+  }
+  return limits.credits
 }
 
 /**
@@ -59,8 +72,10 @@ export async function getCreditsForUser(userId: string): Promise<CreditsInfo | n
   if (!user) return null
 
   const role = user.role as UserRole
-  const limits = getRoleLimits(role)
-  const limit = limits.credits
+  const limit = effectiveCreditsLimit({
+    role,
+    stripe_subscription_status: user.stripe_subscription_status,
+  })
 
   await ensureSchema()
 
@@ -113,7 +128,10 @@ export async function decrementCredits(userId: string, amount: number): Promise<
   if (!user) return false
 
   const role = user.role as UserRole
-  const limit = limitForRole(role)
+  const limit = effectiveCreditsLimit({
+    role,
+    stripe_subscription_status: user.stripe_subscription_status,
+  })
   if (limit >= 2147483647) {
     return true
   }

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { pricingPlans } from '@/lib/pricing'
-import { getStudioTrialPeriodDays } from '@/lib/studio-trial'
+import { getStudioTrialCreditsLimit, getStudioTrialPeriodDays } from '@/lib/studio-trial'
 import { useSession } from 'next-auth/react'
 import { toast } from '@/hooks/use-toast'
 
@@ -109,6 +109,7 @@ function getDisplayPrice(monthlyPrice: number, billing: BillingCycle) {
 
 export function DashboardPricingClient() {
   const studioTrialDays = getStudioTrialPeriodDays()
+  const studioTrialCredits = getStudioTrialCreditsLimit()
   const { status: authStatus } = useSession()
   const [billing, setBilling] = useState<BillingCycle>('monthly')
   const [currentRole, setCurrentRole] = useState<string>('free')
@@ -285,11 +286,15 @@ export function DashboardPricingClient() {
               </div>
               {roleName === 'studio' && studioTrialDays != null ? (
                 <p className="text-xs font-semibold text-accent mb-2">
-                  {studioTrialDays}-day free trial, then €{displayPrice}
+                  {studioTrialDays}-day free trial with {studioTrialCredits} credits, then €{displayPrice}
                   {yearlySuffix}
                 </p>
               ) : null}
-              <p className="text-sm font-medium text-accent mb-3">{plan.creditsPerMonth} credits / mo</p>
+              <p className="text-sm font-medium text-accent mb-3">
+                {roleName === 'studio' && studioTrialDays != null
+                  ? `${studioTrialCredits} credits during trial · ${plan.creditsPerMonth} credits / mo after`
+                  : `${plan.creditsPerMonth} credits / mo`}
+              </p>
               <p className="text-sm leading-relaxed text-muted-foreground mb-5">{plan.description}</p>
 
               <ul className="space-y-2.5 mb-7">
@@ -498,9 +503,9 @@ export function DashboardPricingClient() {
                   How does the Studio free trial work?
                 </AccordionTrigger>
                 <AccordionContent className="pb-5 sm:py-6 pt-0 text-sm leading-relaxed text-neutral-400">
-                  New Studio subscriptions include {studioTrialDays} days of full Studio access at no charge. After the
-                  trial, your chosen billing cycle continues automatically unless you cancel from Settings before the
-                  trial ends.
+                  New Studio subscriptions include {studioTrialDays} days on a free trial with {studioTrialCredits}{' '}
+                  credits to use during that period (full Studio features, capped usage). After the trial, your chosen
+                  billing cycle continues automatically unless you cancel from Settings before the trial ends.
                 </AccordionContent>
               </AccordionItem>
             ) : null}

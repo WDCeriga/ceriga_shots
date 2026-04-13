@@ -4,7 +4,7 @@ import Stripe from 'stripe'
 import { authOptions } from '@/lib/auth'
 import { findUserById, setUserStripeCustomerId } from '@/lib/users'
 import { BillingCycle, BillingPlanRole, getCheckoutUnitAmountCents } from '@/lib/billing'
-import { getStudioTrialPeriodDays } from '@/lib/studio-trial'
+import { getStudioTrialCreditsLimit, getStudioTrialPeriodDays } from '@/lib/studio-trial'
 import { getStripe, isStripeConfigured } from '@/lib/stripe'
 
 export const runtime = 'nodejs'
@@ -114,6 +114,7 @@ export async function POST(req: Request) {
 
   const priceId = await findOrCreatePriceId(stripe, plan, cycle)
   const studioTrialDays = plan === 'studio' ? getStudioTrialPeriodDays() : null
+  const studioTrialCredits = plan === 'studio' && studioTrialDays != null ? getStudioTrialCreditsLimit() : null
   const origin = new URL(req.url).origin
   const checkoutSession = await stripe.checkout.sessions.create({
     mode: 'subscription',
@@ -125,8 +126,8 @@ export async function POST(req: Request) {
     custom_text: {
       submit: {
         message:
-          studioTrialDays != null
-            ? `You get ${studioTrialDays} days free, then your plan renews automatically. Cancel anytime from Settings > Manage billing.`
+          studioTrialDays != null && studioTrialCredits != null
+            ? `You get ${studioTrialDays} days free with ${studioTrialCredits} credits to use during the trial, then your plan renews automatically. Cancel anytime from Settings > Manage billing.`
             : 'Cancel anytime from Settings > Manage billing.',
       },
     },

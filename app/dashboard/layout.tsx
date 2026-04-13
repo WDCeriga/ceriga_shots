@@ -2,6 +2,7 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { TopNav } from '@/components/top-nav'
 import { ProjectsProvider } from '@/components/projects-provider'
 import { VerifyEmailBanner } from '@/components/verify-email-banner'
+import { DashboardStudioUpgradeModal } from '@/components/dashboard-studio-upgrade-modal'
 
 import type { Metadata } from 'next'
 
@@ -22,6 +23,7 @@ export default function DashboardLayout({
           <TopNav />
           <main className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain pt-16 pb-6 md:pt-0 md:pb-0">
             <VerifyEmailBanner />
+            <DashboardStudioUpgradeModal />
             {children}
           </main>
         </div>

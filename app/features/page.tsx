@@ -315,7 +315,7 @@ export default function FeaturesPage() {
 
                 <div className="mt-8 flex flex-col sm:flex-row gap-3">
                   <Link
-                    href="/dashboard/generate"
+                    href="/dashboard"
                     className="inline-flex items-center justify-center gap-2 rounded-md bg-accent px-6 py-3 text-sm font-semibold text-accent-foreground transition-colors hover:bg-accent/90"
                   >
                     Get Started Now
