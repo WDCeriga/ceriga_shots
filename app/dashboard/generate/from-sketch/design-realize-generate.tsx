@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Upload } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
-import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
+import { useRequireAuthForUpload } from '@/hooks/use-require-auth-for-upload'
 import { useRole } from '@/hooks/use-role'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -152,10 +152,8 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
   const [aspectRatio, setAspectRatio] = useState<GenerationAspectRatio>('1:1')
   const { addProject, deleteProject, updateProject } = useProjects()
   const router = useRouter()
-  const { status } = useSession()
+  const { isAuthed, isAuthLoading, uploadBlocked, ensureAuthForUpload } = useRequireAuthForUpload(callbackPath)
   const { limits } = useRole()
-  const isAuthed = status === 'authenticated'
-  const isAuthLoading = status === 'loading'
   const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null)
   const [creditsLimit, setCreditsLimit] = useState<number | null>(null)
   const [creditsSyncing, setCreditsSyncing] = useState(false)
@@ -297,6 +295,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
   }, [isProtoRealMode, productType])
 
   const handleFile = (selectedFile: File) => {
+    if (!ensureAuthForUpload()) return
     if (!selectedFile.type.startsWith('image/')) {
       toast({
         title: 'Unsupported file',
@@ -312,6 +311,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
+    if (uploadBlocked) return
     setIsDragging(true)
   }
 
@@ -515,7 +515,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
               <span className="font-medium text-red-500 [text-shadow:0_0_10px_rgba(239,68,68,0.75)]">
                 Login required to generate.
               </span>{' '}
-              You can browse the dashboard, but generation is locked until you sign in.
+              Sign in to upload files and generate.
             </div>
           )}
         </div>
@@ -531,12 +531,19 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
               role="button"
               tabIndex={0}
               aria-label="Select sketch or mockup image"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                if (!ensureAuthForUpload()) return
+                fileInputRef.current?.click()
+              }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click()
+                if (e.key === 'Enter' || e.key === ' ') {
+                  if (!ensureAuthForUpload()) return
+                  fileInputRef.current?.click()
+                }
               }}
               className={cn(
                 'group rounded-xl border border-white/15 bg-[#0a0a0a] shadow-sm transition-colors',
+                uploadBlocked && 'opacity-75',
                 isDragging ? 'border-accent/80' : 'hover:border-red-500/50 hover:shadow-[0_0_18px_rgba(239,68,68,0.25)] hover:bg-red-500/10'
               )}
             >
@@ -547,6 +554,7 @@ export function DesignRealizeGeneratePage({ mode = 'sketch3d' }: { mode?: Design
                 className="hidden"
                 id="from-sketch-file-input"
                 ref={fileInputRef}
+                disabled={uploadBlocked}
               />
 
               <div className="block cursor-pointer p-6 sm:p-8">

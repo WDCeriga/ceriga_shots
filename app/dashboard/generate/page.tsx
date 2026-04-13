@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Upload } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
-import { useSession } from 'next-auth/react'
 import { cn } from '@/lib/utils'
+import { useRequireAuthForUpload } from '@/hooks/use-require-auth-for-upload'
 import { useRole } from '@/hooks/use-role'
 import { Input } from '@/components/ui/input'
 import { uploadGenerationSourceImageToR2, uploadOriginalImageToR2 } from '@/lib/original-image-upload-client'
@@ -152,11 +152,10 @@ export default function GeneratePage() {
   )
   const { addProject, deleteProject, updateProject } = useProjects()
   const router = useRouter()
-  const { status } = useSession()
+  const { isAuthed, isAuthLoading, uploadBlocked, ensureAuthForUpload } =
+    useRequireAuthForUpload('/dashboard/generate')
   const { role, limits } = useRole()
   const canUseMultiReference = role === 'studio' || role === 'label' || role === 'admin'
-  const isAuthed = status === 'authenticated'
-  const isAuthLoading = status === 'loading'
   const [creditsRemaining, setCreditsRemaining] = useState<number | null>(null)
   const [creditsLimit, setCreditsLimit] = useState<number | null>(null)
   const [creditsSyncing, setCreditsSyncing] = useState(false)
@@ -420,6 +419,7 @@ export default function GeneratePage() {
   }
 
   const handleFiles = (incomingFiles: File[]) => {
+    if (!ensureAuthForUpload()) return
     const imageFiles = incomingFiles.filter((selectedFile) => selectedFile.type.startsWith('image/'))
     if (imageFiles.length === 0) {
       toast({
@@ -440,6 +440,7 @@ export default function GeneratePage() {
   }
 
   const appendFiles = (incomingFiles: File[]) => {
+    if (!ensureAuthForUpload()) return
     const imageFiles = incomingFiles.filter((selectedFile) => selectedFile.type.startsWith('image/'))
     if (imageFiles.length === 0) {
       toast({
@@ -469,6 +470,7 @@ export default function GeneratePage() {
   }
 
   const handleSelectSlot = (slotIndex: number) => {
+    if (!ensureAuthForUpload()) return
     setActiveSlotIndex(slotIndex)
     fileInputRef.current?.click()
   }
@@ -485,6 +487,10 @@ export default function GeneratePage() {
   const handleFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files ? Array.from(event.target.files) : []
     if (selectedFiles.length === 0) return
+    if (!ensureAuthForUpload()) {
+      event.target.value = ''
+      return
+    }
 
     if (activeSlotIndex != null && canUseMultiReference) {
       const selectedFile = selectedFiles[0]
@@ -517,6 +523,7 @@ export default function GeneratePage() {
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
+    if (uploadBlocked) return
     setIsDragging(true)
   }
 
@@ -728,9 +735,9 @@ export default function GeneratePage() {
           {!isAuthLoading && !isAuthed && (
             <div className="mt-6 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
               <span className="font-medium text-red-500 [text-shadow:0_0_10px_rgba(239,68,68,0.75)]">
-                Login required to generate.
+                Sign in required.
               </span>{' '}
-              You can browse the dashboard, but generation is locked until you sign in.
+              Sign in to upload images and generate content.
             </div>
           )}
         </div>
@@ -755,6 +762,7 @@ export default function GeneratePage() {
               tabIndex={0}
               aria-label="Select design file"
               onClick={() => {
+                if (!ensureAuthForUpload()) return
                 if (isReferenceSlotsFull) {
                   notifyReferenceLimitReached()
                   return
@@ -764,6 +772,7 @@ export default function GeneratePage() {
               }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
+                  if (!ensureAuthForUpload()) return
                   if (isReferenceSlotsFull) {
                     notifyReferenceLimitReached()
                     return
@@ -773,6 +782,7 @@ export default function GeneratePage() {
               }}
               className={cn(
                 'group rounded-xl border border-white/15 bg-card/50 p-5 sm:p-6 shadow-sm transition-all',
+                uploadBlocked && 'opacity-75',
                 isDragging
                   ? 'border-accent/80 bg-accent/5 shadow-[0_0_0_1px_rgba(248,113,113,0.35)]'
                   : 'hover:border-red-500/50 hover:shadow-[0_0_18px_rgba(239,68,68,0.2)] hover:bg-red-500/5'
@@ -786,6 +796,7 @@ export default function GeneratePage() {
                 className="hidden"
                 id="file-input"
                 ref={fileInputRef}
+                disabled={uploadBlocked}
               />
 
               <div className="block cursor-pointer">

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Download, ImageIcon, Loader2, RotateCcw, Sparkles, Upload } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
+import { useRequireAuthForUpload } from '@/hooks/use-require-auth-for-upload'
 import {
   preloadBackgroundRemovalAssets,
   removeBackgroundToDataUrl,
@@ -16,6 +17,7 @@ const CHECKER_BG =
   'repeating-conic-gradient(from 0deg, oklch(0.22 0.01 280) 0% 25%, oklch(0.28 0.01 280) 0% 50%) 50% / 14px 14px'
 
 export default function BackgroundRemovePage() {
+  const { uploadBlocked, ensureAuthForUpload } = useRequireAuthForUpload('/dashboard/generate/background-remove')
   const [file, setFile] = useState<File | null>(null)
   const [preview, setPreview] = useState<string>('')
   const [customBgFile, setCustomBgFile] = useState<File | null>(null)
@@ -42,6 +44,7 @@ export default function BackgroundRemovePage() {
   const hasResult = Boolean(resultDataUrl)
 
   const handleFile = (selectedFile: File) => {
+    if (!ensureAuthForUpload()) return
     if (!selectedFile.type.startsWith('image/')) {
       toast({
         title: 'Unsupported file',
@@ -61,6 +64,7 @@ export default function BackgroundRemovePage() {
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
+    if (uploadBlocked) return
     setIsDragging(true)
   }
 
@@ -129,6 +133,7 @@ export default function BackgroundRemovePage() {
   }
 
   const handleCustomBgFile = (selectedFile: File) => {
+    if (!ensureAuthForUpload()) return
     if (!selectedFile.type.startsWith('image/')) {
       toast({
         title: 'Unsupported file',
@@ -166,6 +171,11 @@ export default function BackgroundRemovePage() {
             Drop a product photo, pick transparent, white, or custom background output, and get a PNG instantly.
             Processing stays on your device — nothing is sent to our servers until you use other tools.
           </p>
+          {uploadBlocked ? (
+            <p className="mt-3 text-sm text-muted-foreground">
+              <span className="font-medium text-accent">Sign in</span> to upload images.
+            </p>
+          ) : null}
         </div>
 
         {/* Main grid: source | result */}
@@ -185,12 +195,19 @@ export default function BackgroundRemovePage() {
                 role="button"
                 tabIndex={0}
                 aria-label="Upload product image"
-                onClick={() => fileInputRef.current?.click()}
+                onClick={() => {
+                  if (!ensureAuthForUpload()) return
+                  fileInputRef.current?.click()
+                }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click()
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    if (!ensureAuthForUpload()) return
+                    fileInputRef.current?.click()
+                  }
                 }}
                 className={cn(
-                  'group cursor-pointer rounded-xl border-2 border-dashed transition-all',
+                  'group rounded-xl border-2 border-dashed transition-all',
+                  uploadBlocked ? 'cursor-not-allowed opacity-80' : 'cursor-pointer',
                   isDragging
                     ? 'border-red-400/70 bg-red-500/10'
                     : 'border-white/15 bg-background/30 hover:border-red-500/45 hover:bg-red-500/[0.06]'
@@ -203,6 +220,7 @@ export default function BackgroundRemovePage() {
                   className="hidden"
                   id="bg-remove-file-input"
                   ref={fileInputRef}
+                  disabled={uploadBlocked}
                 />
                 <div className="p-6 sm:p-8">
                   {preview ? (
@@ -283,8 +301,11 @@ export default function BackgroundRemovePage() {
                       size="sm"
                       variant="outline"
                       className="h-8 rounded-lg border-white/15 bg-transparent text-xs"
-                      onClick={() => customBgInputRef.current?.click()}
-                      disabled={isLoading}
+                      onClick={() => {
+                        if (!ensureAuthForUpload()) return
+                        customBgInputRef.current?.click()
+                      }}
+                      disabled={isLoading || uploadBlocked}
                     >
                       <Upload className="mr-1.5 h-3.5 w-3.5" />
                       Upload
@@ -295,6 +316,7 @@ export default function BackgroundRemovePage() {
                     accept="image/*"
                     ref={customBgInputRef}
                     className="hidden"
+                    disabled={uploadBlocked}
                     onChange={(e) => e.target.files?.[0] && handleCustomBgFile(e.target.files[0])}
                   />
                   {customBgPreview ? (
