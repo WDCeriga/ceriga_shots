@@ -8,6 +8,7 @@ import { pricingPlans } from '@/lib/pricing'
 import { getStudioTrialCreditsLimit, getStudioTrialPeriodDays } from '@/lib/studio-trial'
 import { useSession } from 'next-auth/react'
 import { toast } from '@/hooks/use-toast'
+import { StudioTrialUpgradeDialog } from '@/components/studio-trial-upgrade-dialog'
 
 type BillingCycle = 'monthly' | 'yearly'
 
@@ -107,6 +108,13 @@ function getDisplayPrice(monthlyPrice: number, billing: BillingCycle) {
   return Math.round(monthlyPrice * 0.8)
 }
 
+function getDiscountPercent(monthlyPrice: number, yearlyMonthlyPrice: number) {
+  if (!Number.isFinite(monthlyPrice) || monthlyPrice <= 0) return 0
+  if (!Number.isFinite(yearlyMonthlyPrice) || yearlyMonthlyPrice <= 0) return 0
+  if (yearlyMonthlyPrice >= monthlyPrice) return 0
+  return Math.round(((monthlyPrice - yearlyMonthlyPrice) / monthlyPrice) * 100)
+}
+
 export function DashboardPricingClient() {
   const studioTrialDays = getStudioTrialPeriodDays()
   const studioTrialCredits = getStudioTrialCreditsLimit()
@@ -115,6 +123,7 @@ export function DashboardPricingClient() {
   const [currentRole, setCurrentRole] = useState<string>('free')
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
+  const [studioTrialModalOpen, setStudioTrialModalOpen] = useState(false)
   const [stripePrices, setStripePrices] = useState<StripePricingResponse['prices'] | null>(null)
 
   useEffect(() => {
@@ -201,6 +210,35 @@ export function DashboardPricingClient() {
     }
   }
 
+  const handleStudioUpgradeIntent = () => {
+    setStudioTrialModalOpen(true)
+  }
+
+  const continueStudioUpgrade = async () => {
+    setStudioTrialModalOpen(false)
+    if (authStatus !== 'authenticated') {
+      window.location.href = `/signup?plan=studio&billing=${billing}`
+      return
+    }
+    await startCheckout('studio')
+  }
+
+  const yearlyDiscounts = pricingPlans
+    .filter((plan) => plan.name !== 'Free')
+    .map((plan) => {
+      const roleName = plan.name.toLowerCase() as 'starter' | 'studio' | 'label'
+      const monthlyPrice = stripePrices?.[roleName]?.monthly ?? plan.monthlyPrice
+      const yearlyMonthlyPrice = stripePrices?.[roleName]?.yearly ?? getDisplayPrice(monthlyPrice, 'yearly')
+      return getDiscountPercent(monthlyPrice, yearlyMonthlyPrice)
+    })
+    .filter((discount) => discount > 0)
+  const maxYearlyDiscount = yearlyDiscounts.length > 0 ? Math.max(...yearlyDiscounts) : 20
+  const savingsBadgeText =
+    maxYearlyDiscount > 0
+      ? billing === 'yearly'
+        ? `Saving up to ${maxYearlyDiscount}%`
+        : `Save up to ${maxYearlyDiscount}%`
+      : 'No yearly discount'
   return (
     <div className="relative p-10 py-20 max-w-7xl mx-auto">
       <div className="mb-10 text-center">
@@ -213,28 +251,42 @@ export function DashboardPricingClient() {
       </div>
 
       <div className="mb-10 flex items-center justify-center">
-        <div className="inline-flex items-center rounded-lg border border-border p-1 bg-card">
+        <div className="inline-flex items-center gap-2.5">
           <button
             type="button"
             onClick={() => setBilling('monthly')}
-            className={`min-w-[7.5rem] px-4 py-2 text-sm font-semibold rounded-md transition-colors ${
-              billing === 'monthly' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+            className={`text-sm font-semibold leading-none transition-colors md:text-base ${
+              billing === 'monthly' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
             }`}
           >
             Monthly
           </button>
-          <div className="relative">
+          <button
+            type="button"
+            role="switch"
+            aria-label="Toggle yearly billing"
+            aria-checked={billing === 'yearly'}
+            onClick={() => setBilling((prev) => (prev === 'monthly' ? 'yearly' : 'monthly'))}
+            className="relative inline-flex h-8 w-12 items-center rounded-full bg-[#111f3d] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            <span
+              className={`inline-block h-6 w-6 transform rounded-full bg-white shadow-sm transition-transform ${
+                billing === 'yearly' ? 'translate-x-5' : 'translate-x-1'
+              }`}
+            />
+          </button>
+          <div className="inline-flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => setBilling('yearly')}
-              className={`min-w-[7.5rem] px-4 py-2 text-sm font-semibold rounded-md transition-colors ${
-                billing === 'yearly' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+              className={`text-sm font-semibold leading-none transition-colors md:text-base ${
+                billing === 'yearly' ? 'text-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
               Yearly
             </button>
-            <span className="pointer-events-none absolute left-1/2 top-0 -translate-x-1/2 -translate-y-2/3 inline-flex items-center rounded-full border border-accent bg-accent px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-accent-foreground whitespace-nowrap">
-              Save 20%
+            <span className="inline-flex items-center rounded-md border border-[#4f8bd6] bg-transparent px-2 py-0.5 text-[11px] font-semibold text-[#4f8bd6]">
+              {savingsBadgeText}
             </span>
           </div>
         </div>
@@ -285,16 +337,19 @@ export function DashboardPricingClient() {
                 <span className="pb-1 text-xs text-muted-foreground">{yearlySuffix}</span>
               </div>
               {roleName === 'studio' && studioTrialDays != null ? (
-                <p className="text-xs font-semibold text-accent mb-2">
-                  {studioTrialDays}-day free trial with {studioTrialCredits} credits, then €{displayPrice}
-                  {yearlySuffix}
-                </p>
+                <div className="mb-3 space-y-2">
+                  <p className="inline-flex items-center rounded-md border border-accent/50 bg-accent/10 px-2.5 py-1 text-xs font-semibold text-accent">
+                    Free trial: {studioTrialDays} days + {studioTrialCredits} credits
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Then €{displayPrice}
+                    {yearlySuffix} with {plan.creditsPerMonth} credits/month.
+                  </p>
+                </div>
               ) : null}
-              <p className="text-sm font-medium text-accent mb-3">
-                {roleName === 'studio' && studioTrialDays != null
-                  ? `${studioTrialCredits} credits during trial · ${plan.creditsPerMonth} credits / mo after`
-                  : `${plan.creditsPerMonth} credits / mo`}
-              </p>
+              {!(roleName === 'studio' && studioTrialDays != null) ? (
+                <p className="text-sm font-medium text-accent mb-3">{plan.creditsPerMonth} credits / mo</p>
+              ) : null}
               <p className="text-sm leading-relaxed text-muted-foreground mb-5">{plan.description}</p>
 
               <ul className="space-y-2.5 mb-7">
@@ -320,13 +375,21 @@ export function DashboardPricingClient() {
               ) : (
                 <button
                   type="button"
-                  disabled={authStatus !== 'authenticated' || loadingPlan !== null}
+                  disabled={loadingPlan !== null}
                   onClick={() => {
+                    if (authStatus !== 'authenticated') {
+                      window.location.href = `/signup?plan=${roleName}&billing=${billing}`
+                      return
+                    }
                     if (isCurrentPlan && hasActiveSubscription) {
                       void openCustomerPortal()
                       return
                     }
                     if (isCurrentPlan && !hasActiveSubscription) {
+                      return
+                    }
+                    if (roleName === 'studio') {
+                      handleStudioUpgradeIntent()
                       return
                     }
                     if (roleName === 'starter' || roleName === 'studio' || roleName === 'label') {
@@ -548,6 +611,13 @@ export function DashboardPricingClient() {
           </Accordion>
         </div>
       </section>
+
+      <StudioTrialUpgradeDialog
+        open={studioTrialModalOpen}
+        onOpenChange={setStudioTrialModalOpen}
+        onContinue={() => void continueStudioUpgrade()}
+        isAuthenticated={authStatus === 'authenticated'}
+      />
 
     </div>
   )

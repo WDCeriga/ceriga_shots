@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Loader2 } from 'lucide-react'
+import { StudioTrialUpgradeDialog } from '@/components/studio-trial-upgrade-dialog'
 
 
 type MeResponse = {
@@ -39,6 +40,7 @@ export function DashboardSubscriptionManagementClient() {
     periodEndsAt: string | null
   } | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
+  const [studioTrialModalOpen, setStudioTrialModalOpen] = useState(false)
 
   const isFree = billing?.role === 'free'
 
@@ -106,6 +108,15 @@ export function DashboardSubscriptionManagementClient() {
     } finally {
       setActionLoading(false)
     }
+  }
+
+  const openStudioTrialModal = () => {
+    setStudioTrialModalOpen(true)
+  }
+
+  const continueStudioUpgrade = async () => {
+    setStudioTrialModalOpen(false)
+    await startCheckout('studio')
   }
 
   return (
@@ -180,9 +191,13 @@ export function DashboardSubscriptionManagementClient() {
                   <Button
                     type="button"
                     disabled={actionLoading}
-                    onClick={() =>
+                    onClick={() => {
+                      if (planRole === 'studio') {
+                        openStudioTrialModal()
+                        return
+                      }
                       void startCheckout(planRole as 'starter' | 'studio' | 'label')
-                    }
+                    }}
                     className="w-full"
                     variant={buttonVariant}
                   >
@@ -192,7 +207,13 @@ export function DashboardSubscriptionManagementClient() {
                   <Button
                     type="button"
                     disabled={actionLoading}
-                    onClick={() => void openCustomerPortal()}
+                    onClick={() => {
+                      if (planRole === 'studio') {
+                        openStudioTrialModal()
+                        return
+                      }
+                      void openCustomerPortal()
+                    }}
                     className="w-full"
                     variant="outline"
                   >
@@ -228,6 +249,13 @@ export function DashboardSubscriptionManagementClient() {
           </CardContent>
         </Card>
       </div>
+
+      <StudioTrialUpgradeDialog
+        open={studioTrialModalOpen}
+        onOpenChange={setStudioTrialModalOpen}
+        onContinue={() => void continueStudioUpgrade()}
+        isAuthenticated
+      />
     </div>
   )
 }
