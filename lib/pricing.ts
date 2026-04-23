@@ -36,7 +36,7 @@ export const pricingPlans: PricingPlan[] = [
     monthlyPrice: 49,
     creditsPerMonth: 300,
     landingCta: 'Try Studio Free',
-    dashboardCta: 'Choose Studio',
+    dashboardCta: 'Start Studio Trial',
     highlighted: true,
     useCase: 'Best for growing brands',
     description: 'Your main production plan for campaigns, launches, and ad variants.',
