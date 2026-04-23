@@ -73,12 +73,12 @@ export function FeedbackFab() {
     <>
       <Button
         type="button"
-        size="icon"
         onClick={() => setOpen(true)}
-        className="fixed bottom-6 right-6 z-[110] h-14 w-14 rounded-full border border-accent/40 bg-accent text-accent-foreground shadow-lg shadow-accent/25 hover:bg-accent/90"
+        className="fixed bottom-6 right-6 z-[110] flex h-14 w-14 shrink-0 items-center justify-center gap-0 rounded-full border border-accent/40 bg-accent px-0 text-accent-foreground shadow-lg shadow-accent/25 hover:bg-accent/90 md:w-auto md:min-w-0 md:gap-2 md:px-5"
         aria-label="Send feedback"
       >
-        <MessageSquarePlus className="h-6 w-6" aria-hidden />
+        <MessageSquarePlus className="h-6 w-6 shrink-0" aria-hidden />
+        <span className="hidden text-sm font-semibold tracking-wide md:inline">Feedback</span>
       </Button>
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
