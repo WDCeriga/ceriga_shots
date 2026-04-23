@@ -43,6 +43,7 @@ export function AppSidebar({
     { href: '/dashboard/admin/projects', label: 'All Projects' },
     { href: '/dashboard/admin/jobs', label: 'Queue Jobs' },
     { href: '/dashboard/admin/system', label: 'System Status' },
+    { href: '/dashboard/admin/feedback', label: 'Feedback' },
   ]
 
   const isActive = (href: string) => {

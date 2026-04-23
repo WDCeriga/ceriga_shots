@@ -50,6 +50,6 @@ export const pricingPlans: PricingPlan[] = [
     dashboardCta: 'Choose Label',
     useCase: 'Best for high-volume teams',
     description: 'High-throughput plan with priority support for consistent output.',
-    features: ['Everything in Studio', 'Priority generation', 'API access', 'Unlimited projects'],
+    features: ['Everything in Studio', 'Priority generation', 'Unlimited projects'],
   },
 ]

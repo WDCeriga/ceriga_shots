@@ -142,6 +142,18 @@ export async function ensureSchema() {
   `
     await db`create index if not exists credit_grants_target_user_created_idx on credit_grants(target_user_id, created_at desc)`
     await db`create index if not exists credit_grants_admin_user_created_idx on credit_grants(admin_user_id, created_at desc)`
+
+    await db`
+    create table if not exists user_feedback (
+      id uuid primary key default gen_random_uuid(),
+      user_id text,
+      user_email text,
+      page_path text,
+      message text not null,
+      created_at timestamptz not null default now()
+    )
+  `
+    await db`create index if not exists user_feedback_created_at_idx on user_feedback(created_at desc)`
   })()
 
   try {

@@ -27,6 +27,11 @@ const ITEMS = [
     title: 'System Status',
     description: 'Environment and dependency health checks.',
   },
+  {
+    href: '/dashboard/admin/feedback',
+    title: 'Feedback',
+    description: 'User submissions from the floating feedback widget.',
+  },
 ]
 
 export default function AdminIndexPage() {

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
 import { Toaster } from '@/components/ui/toaster'
+import { FeedbackFab } from '@/components/feedback-fab'
 import { AppSessionProvider } from '@/components/session-provider'
 import './globals.css'
 
@@ -74,6 +75,7 @@ export default function RootLayout({
       <body className="antialiased">
         <AppSessionProvider>
           {children}
+          <FeedbackFab />
           <Toaster />
           <Analytics />
         </AppSessionProvider>
