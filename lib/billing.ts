@@ -1,6 +1,11 @@
 import { db, ensureSchema } from '@/lib/db'
 import type { UserRole } from '@/lib/roles'
 import { pricingPlans } from '@/lib/pricing'
+import {
+  LABEL_BASE_CREDITS,
+  getLabelMonthlyPrice,
+  normalizeLabelCredits,
+} from '@/lib/label-pricing'
 
 export type BillingCycle = 'monthly' | 'yearly'
 export type StripeSubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'canceled' | 'incomplete' | 'incomplete_expired' | 'unpaid' | 'paused'
@@ -25,15 +30,23 @@ export function getMonthlyPriceForRole(role: BillingPlanRole): number | null {
   return plan?.monthlyPrice ?? null
 }
 
-export function getDisplayedPriceForRoleCycle(role: BillingPlanRole, cycle: BillingCycle): number | null {
-  const monthly = getMonthlyPriceForRole(role)
+export function getDisplayedPriceForRoleCycle(
+  role: BillingPlanRole,
+  cycle: BillingCycle,
+  labelCredits?: number
+): number | null {
+  const monthly = role === 'label' ? getLabelMonthlyPrice(labelCredits ?? LABEL_BASE_CREDITS) : getMonthlyPriceForRole(role)
   if (monthly == null) return null
   if (cycle === 'monthly') return monthly
   return Math.round(monthly * 0.8)
 }
 
-export function getCheckoutUnitAmountCents(role: BillingPlanRole, cycle: BillingCycle): number | null {
-  const monthly = getMonthlyPriceForRole(role)
+export function getCheckoutUnitAmountCents(
+  role: BillingPlanRole,
+  cycle: BillingCycle,
+  labelCredits?: number
+): number | null {
+  const monthly = role === 'label' ? getLabelMonthlyPrice(labelCredits ?? LABEL_BASE_CREDITS) : getMonthlyPriceForRole(role)
   if (monthly == null) return null
   if (cycle === 'monthly') return Math.round(monthly * 100)
 
@@ -53,12 +66,14 @@ type SubscriptionSyncInput = {
   status: string | null
   periodEndAt: Date | null
   roleOverride?: BillingPlanRole | null
+  labelCreditsOverride?: number | null
 }
 
 type UserBillingRow = {
   id: string
   role: UserRole
   billing_period_ends_at: string | null
+  label_credits_limit: number | null
 }
 
 function toIso(value: Date | null): string | null {
@@ -70,7 +85,7 @@ export async function syncUserSubscriptionByCustomer(input: SubscriptionSyncInpu
   await ensureSchema()
 
   const users = (await db`
-    select id, role, billing_period_ends_at
+    select id, role, billing_period_ends_at, label_credits_limit
     from users
     where stripe_customer_id = ${input.customerId}
     limit 1
@@ -93,6 +108,8 @@ export async function syncUserSubscriptionByCustomer(input: SubscriptionSyncInpu
     !isAdmin &&
     isPaid &&
     (periodChanged || (nextRole !== 'free' && user.role !== nextRole))
+  const nextLabelCreditsLimit =
+    nextRole === 'label' && isPaid ? normalizeLabelCredits(input.labelCreditsOverride ?? user.label_credits_limit ?? LABEL_BASE_CREDITS) : null
 
   if (shouldResetCredits) {
     await db`
@@ -103,6 +120,7 @@ export async function syncUserSubscriptionByCustomer(input: SubscriptionSyncInpu
         stripe_price_id = ${input.priceId},
         stripe_subscription_status = ${input.status},
         billing_period_ends_at = ${toIso(input.periodEndAt)},
+        label_credits_limit = ${nextLabelCreditsLimit},
         credits_used = 0,
         credits_reset_at = ${toIso(input.periodEndAt)}
       where id = ${user.id}
@@ -117,7 +135,8 @@ export async function syncUserSubscriptionByCustomer(input: SubscriptionSyncInpu
       stripe_subscription_id = ${input.subscriptionId},
       stripe_price_id = ${input.priceId},
       stripe_subscription_status = ${input.status},
-      billing_period_ends_at = ${toIso(input.periodEndAt)}
+      billing_period_ends_at = ${toIso(input.periodEndAt)},
+      label_credits_limit = ${nextLabelCreditsLimit}
     where id = ${user.id}
   `
 }

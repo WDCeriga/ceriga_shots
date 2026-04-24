@@ -47,6 +47,7 @@ export async function ensureSchema() {
     await db`alter table users add column if not exists stripe_price_id text`
     await db`alter table users add column if not exists stripe_subscription_status text`
     await db`alter table users add column if not exists billing_period_ends_at timestamptz`
+    await db`alter table users add column if not exists label_credits_limit integer`
 
     await db`alter table users add column if not exists email_verified boolean not null default false`
     await db`alter table users add column if not exists email_verification_token text`

@@ -6,12 +6,14 @@ import { findUserById, setUserStripeCustomerId } from '@/lib/users'
 import { BillingCycle, BillingPlanRole, getCheckoutUnitAmountCents } from '@/lib/billing'
 import { getStudioTrialCreditsLimit, getStudioTrialPeriodDays } from '@/lib/studio-trial'
 import { getStripe, isStripeConfigured } from '@/lib/stripe'
+import { LABEL_BASE_CREDITS, normalizeLabelCredits } from '@/lib/label-pricing'
 
 export const runtime = 'nodejs'
 
 type CheckoutBody = {
   plan?: string
   billingCycle?: BillingCycle
+  labelCredits?: number
 }
 
 function asBillingRole(value: string): BillingPlanRole | null {
@@ -19,8 +21,14 @@ function asBillingRole(value: string): BillingPlanRole | null {
   return null
 }
 
-async function findOrCreatePriceId(stripe: Stripe, role: BillingPlanRole, cycle: BillingCycle): Promise<string> {
-  const amountCents = getCheckoutUnitAmountCents(role, cycle)
+async function findOrCreatePriceId(
+  stripe: Stripe,
+  role: BillingPlanRole,
+  cycle: BillingCycle,
+  labelCredits?: number
+): Promise<string> {
+  const normalizedLabelCredits = role === 'label' ? normalizeLabelCredits(labelCredits ?? LABEL_BASE_CREDITS) : null
+  const amountCents = getCheckoutUnitAmountCents(role, cycle, normalizedLabelCredits ?? undefined)
   if (amountCents == null) throw new Error(`Missing plan amount for ${role}.`)
 
   const interval: Stripe.PriceCreateParams.Recurring.Interval = cycle === 'yearly' ? 'year' : 'month'
@@ -49,7 +57,8 @@ async function findOrCreatePriceId(stripe: Stripe, role: BillingPlanRole, cycle:
       price.unit_amount === amountCents &&
       price.recurring?.interval === interval &&
       price.metadata?.role === role &&
-      price.metadata?.cycle === cycle
+      price.metadata?.cycle === cycle &&
+      (role !== 'label' || Number(price.metadata?.labelCredits ?? 0) === normalizedLabelCredits)
   )
   if (existing) return existing.id
 
@@ -58,7 +67,12 @@ async function findOrCreatePriceId(stripe: Stripe, role: BillingPlanRole, cycle:
     currency: 'eur',
     unit_amount: amountCents,
     recurring: { interval },
-    metadata: { app: 'ceriga-shots', role, cycle },
+    metadata: {
+      app: 'ceriga-shots',
+      role,
+      cycle,
+      ...(normalizedLabelCredits != null ? { labelCredits: String(normalizedLabelCredits) } : {}),
+    },
   })
   return created.id
 }
@@ -83,6 +97,7 @@ export async function POST(req: Request) {
   if (!plan) return NextResponse.json({ error: 'Invalid plan' }, { status: 400 })
 
   const cycle: BillingCycle = body.billingCycle === 'yearly' ? 'yearly' : 'monthly'
+  const labelCredits = plan === 'label' ? normalizeLabelCredits(body.labelCredits ?? LABEL_BASE_CREDITS) : null
 
   const user = await findUserById(userId)
   if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 })
@@ -112,7 +127,7 @@ export async function POST(req: Request) {
     await setUserStripeCustomerId(user.id, customerId)
   }
 
-  const priceId = await findOrCreatePriceId(stripe, plan, cycle)
+  const priceId = await findOrCreatePriceId(stripe, plan, cycle, labelCredits ?? undefined)
   const studioTrialDays = plan === 'studio' ? getStudioTrialPeriodDays() : null
   const studioTrialCredits = plan === 'studio' && studioTrialDays != null ? getStudioTrialCreditsLimit() : null
   const origin = new URL(req.url).origin
@@ -137,6 +152,7 @@ export async function POST(req: Request) {
       userId: user.id,
       targetRole: plan,
       billingCycle: cycle,
+      ...(labelCredits != null ? { labelCredits: String(labelCredits) } : {}),
     },
     subscription_data: {
       ...(studioTrialDays != null ? { trial_period_days: studioTrialDays } : {}),
@@ -144,6 +160,7 @@ export async function POST(req: Request) {
         userId: user.id,
         targetRole: plan,
         billingCycle: cycle,
+        ...(labelCredits != null ? { labelCredits: String(labelCredits) } : {}),
       },
     },
   })

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { getStripe, isStripeConfigured } from '@/lib/stripe'
 import { planNameToRole, syncUserSubscriptionByCustomer } from '@/lib/billing'
+import { normalizeLabelCredits } from '@/lib/label-pricing'
 
 export const runtime = 'nodejs'
 
@@ -13,6 +14,13 @@ function readNumberField(obj: Record<string, unknown>, key: string): number | nu
 function readStringField(obj: Record<string, unknown>, key: string): string | null {
   const value = obj[key]
   return typeof value === 'string' ? value : null
+}
+
+function readLabelCreditsFromMetadata(obj: Record<string, unknown> | undefined): number | null {
+  if (!obj) return null
+  const raw = obj['labelCredits']
+  if (typeof raw !== 'string' && typeof raw !== 'number') return null
+  return normalizeLabelCredits(raw)
 }
 
 function getSubscriptionPayload(subscription: Stripe.Subscription) {
@@ -34,6 +42,9 @@ function getSubscriptionPayload(subscription: Stripe.Subscription) {
           ''
       )
     ),
+    labelCreditsOverride:
+      readLabelCreditsFromMetadata(firstItem?.price?.metadata as Record<string, unknown> | undefined) ??
+      readLabelCreditsFromMetadata((subscriptionObj['metadata'] as Record<string, unknown> | undefined) ?? undefined),
   }
 }
 

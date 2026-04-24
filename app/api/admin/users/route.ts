@@ -16,6 +16,7 @@ type Row = {
   credits_used: number
   credits_reset_at: string | null
   stripe_subscription_status: string | null
+  label_credits_limit: number | null
   project_count: number
   last_sign_in_at: string | null
   last_used_at: string | null
@@ -43,6 +44,7 @@ export async function GET() {
       u.credits_used,
       u.credits_reset_at,
       u.stripe_subscription_status,
+      u.label_credits_limit,
       u.last_sign_in_at,
       u.last_used_at,
       (select count(*)::int from projects pr where pr.owner_id = u.id::text) as project_count
@@ -59,7 +61,8 @@ export async function GET() {
           role,
           r.credits_used,
           r.credits_reset_at,
-          r.stripe_subscription_status
+          r.stripe_subscription_status,
+          r.label_credits_limit
         )
       const unlimited = credits.limit < 0
       return {

@@ -19,6 +19,7 @@ export type DbUserRow = {
   stripe_price_id: string | null
   stripe_subscription_status: string | null
   billing_period_ends_at: string | null
+  label_credits_limit: number | null
   last_sign_in_at: string | null
   last_used_at: string | null
   created_at: string

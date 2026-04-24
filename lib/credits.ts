@@ -3,6 +3,7 @@ import { findUserById } from '@/lib/users'
 import { getRoleLimits } from '@/lib/roles'
 import type { UserRole } from '@/lib/roles'
 import { getStudioTrialCreditsLimit } from '@/lib/studio-trial'
+import { LABEL_BASE_CREDITS, normalizeLabelCredits } from '@/lib/label-pricing'
 
 export type CreditsInfo = {
   used: number
@@ -29,12 +30,15 @@ export function computeCreditsInfoForDisplay(
   creditsUsed: number,
   creditsResetAtIso: string | null,
   subscriptionStatus: string | null | undefined = undefined,
+  labelCreditsLimit: number | null | undefined = undefined,
   now: Date = new Date()
 ): CreditsInfo {
   const limits = getRoleLimits(role)
   let limit = limits.credits
   if (limit >= 0 && role === 'studio' && subscriptionStatus === 'trialing') {
     limit = getStudioTrialCreditsLimit()
+  } else if (limit >= 0 && role === 'label' && typeof labelCreditsLimit === 'number' && labelCreditsLimit > 0) {
+    limit = normalizeLabelCredits(labelCreditsLimit)
   }
 
   let used = Number(creditsUsed ?? 0)
@@ -54,11 +58,15 @@ export function computeCreditsInfoForDisplay(
 function effectiveCreditsLimit(user: {
   role: UserRole
   stripe_subscription_status: string | null
+  label_credits_limit: number | null
 }): number {
   const limits = getRoleLimits(user.role)
   if (limits.credits < 0) return 2147483647
   if (user.role === 'studio' && user.stripe_subscription_status === 'trialing') {
     return getStudioTrialCreditsLimit()
+  }
+  if (user.role === 'label') {
+    return normalizeLabelCredits(user.label_credits_limit ?? LABEL_BASE_CREDITS)
   }
   return limits.credits
 }
@@ -75,6 +83,7 @@ export async function getCreditsForUser(userId: string): Promise<CreditsInfo | n
   const limit = effectiveCreditsLimit({
     role,
     stripe_subscription_status: user.stripe_subscription_status,
+    label_credits_limit: user.label_credits_limit,
   })
 
   await ensureSchema()
@@ -131,6 +140,7 @@ export async function decrementCredits(userId: string, amount: number): Promise<
   const limit = effectiveCreditsLimit({
     role,
     stripe_subscription_status: user.stripe_subscription_status,
+    label_credits_limit: user.label_credits_limit,
   })
   if (limit >= 2147483647) {
     return true

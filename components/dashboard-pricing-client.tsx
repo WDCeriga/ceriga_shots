@@ -4,8 +4,16 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Check } from 'lucide-react'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+import { Slider } from '@/components/ui/slider'
 import { pricingPlans } from '@/lib/pricing'
 import { getStudioTrialCreditsLimit, getStudioTrialPeriodDays } from '@/lib/studio-trial'
+import {
+  LABEL_BASE_CREDITS,
+  LABEL_CREDITS_STEP,
+  LABEL_MAX_CREDITS,
+  LABEL_MIN_CREDITS,
+  getLabelMonthlyPrice,
+} from '@/lib/label-pricing'
 import { useSession } from 'next-auth/react'
 import { toast } from '@/hooks/use-toast'
 import { StudioTrialUpgradeDialog } from '@/components/studio-trial-upgrade-dialog'
@@ -123,6 +131,7 @@ export function DashboardPricingClient() {
   const [currentRole, setCurrentRole] = useState<string>('free')
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
+  const [labelCredits, setLabelCredits] = useState<number>(LABEL_BASE_CREDITS)
   const [studioTrialModalOpen, setStudioTrialModalOpen] = useState(false)
   const [stripePrices, setStripePrices] = useState<StripePricingResponse['prices'] | null>(null)
 
@@ -189,13 +198,17 @@ export function DashboardPricingClient() {
     }
   }
 
-  const startCheckout = async (role: 'starter' | 'studio' | 'label') => {
+  const startCheckout = async (role: 'starter' | 'studio' | 'label', nextLabelCredits?: number) => {
     setLoadingPlan(role)
     try {
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: role, billingCycle: billing }),
+        body: JSON.stringify({
+          plan: role,
+          billingCycle: billing,
+          ...(role === 'label' ? { labelCredits: nextLabelCredits ?? labelCredits } : {}),
+        }),
       })
       const data = (await res.json()) as { url?: string; error?: string }
       if (!res.ok || !data.url) throw new Error(data.error ?? `Checkout failed (${res.status})`)
@@ -307,9 +320,14 @@ export function DashboardPricingClient() {
             roleName === 'starter' || roleName === 'studio' || roleName === 'label'
               ? stripePrices?.[roleName]?.yearly
               : null
-          const monthlyPrice = stripeMonthly ?? plan.monthlyPrice
+          const monthlyPrice =
+            roleName === 'label' ? getLabelMonthlyPrice(labelCredits) : stripeMonthly ?? plan.monthlyPrice
           const displayPrice =
-            billing === 'yearly' ? stripeYearly ?? getDisplayPrice(monthlyPrice, 'yearly') : monthlyPrice
+            billing === 'yearly'
+              ? roleName === 'label'
+                ? getDisplayPrice(monthlyPrice, 'yearly')
+                : stripeYearly ?? getDisplayPrice(monthlyPrice, 'yearly')
+              : monthlyPrice
           const yearlySuffix = billing === 'yearly' ? '/mo (billed yearly)' : '/mo'
 
           return (
@@ -351,6 +369,27 @@ export function DashboardPricingClient() {
                 <p className="text-sm font-medium text-accent mb-3">{plan.creditsPerMonth} credits / mo</p>
               ) : null}
               <p className="text-sm leading-relaxed text-muted-foreground mb-5">{plan.description}</p>
+              {roleName === 'label' ? (
+                <div className="mb-5 rounded-md border border-border/70 bg-background/40 p-3">
+                  <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Label credits / month</span>
+                    <span className="font-semibold text-foreground">{labelCredits}</span>
+                  </div>
+                  <Slider
+                    value={[labelCredits]}
+                    min={LABEL_MIN_CREDITS}
+                    max={LABEL_MAX_CREDITS}
+                    step={LABEL_CREDITS_STEP}
+                    onValueChange={(values) => {
+                      const next = values[0]
+                      if (typeof next === 'number') setLabelCredits(next)
+                    }}
+                  />
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    {LABEL_MIN_CREDITS} to {LABEL_MAX_CREDITS} credits. Price scales with selected credits.
+                  </p>
+                </div>
+              ) : null}
 
               <ul className="space-y-2.5 mb-7">
                 {plan.features.map((feature) => (
@@ -378,7 +417,8 @@ export function DashboardPricingClient() {
                   disabled={loadingPlan !== null}
                   onClick={() => {
                     if (authStatus !== 'authenticated') {
-                      window.location.href = `/signup?plan=${roleName}&billing=${billing}`
+                      const labelCreditsQuery = roleName === 'label' ? `&labelCredits=${labelCredits}` : ''
+                      window.location.href = `/signup?plan=${roleName}&billing=${billing}${labelCreditsQuery}`
                       return
                     }
                     if (isCurrentPlan && hasActiveSubscription) {
@@ -393,7 +433,7 @@ export function DashboardPricingClient() {
                       return
                     }
                     if (roleName === 'starter' || roleName === 'studio' || roleName === 'label') {
-                      void startCheckout(roleName)
+                      void startCheckout(roleName, roleName === 'label' ? labelCredits : undefined)
                     }
                   }}
                   className={`mt-auto inline-flex items-center justify-center rounded-md px-4 py-3 text-xs font-semibold tracking-wider uppercase transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
