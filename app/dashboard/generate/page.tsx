@@ -138,7 +138,20 @@ export default function GeneratePage() {
   const [isDragging, setIsDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [visualDirection, setVisualDirection] = useState<VisualDirectionKey>('raw')
-  const [productType, setProductType] = useState<'auto' | 'hoodie' | 'tshirt' | 'jacket' | 'sweatshirt' | 'pants' | 'custom'>(
+  const [productType, setProductType] = useState<
+    | 'auto'
+    | 'tshirt'
+    | 'hoodie'
+    | 'sweatshirt'
+    | 'jacket'
+    | 'joggers'
+    | 'shorts'
+    | 'cap'
+    | 'beanie'
+    | 'tote_bag'
+    | 'sneakers'
+    | 'other'
+  >(
     'auto'
   )
   const [customProductType, setCustomProductType] = useState('')
@@ -574,7 +587,7 @@ export default function GeneratePage() {
       const resolvedGarmentType =
         productType === 'auto'
           ? undefined
-          : productType === 'custom'
+          : productType === 'other'
             ? customProductType.trim() || undefined
             : productType
 
@@ -975,17 +988,22 @@ export default function GeneratePage() {
                     <SelectValue placeholder="Auto-detect" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="auto">Auto-detect</SelectItem>
-                    <SelectItem value="hoodie">Hoodie</SelectItem>
                     <SelectItem value="tshirt">T-Shirt</SelectItem>
-                    <SelectItem value="jacket">Jacket</SelectItem>
+                    <SelectItem value="hoodie">Hoodie</SelectItem>
                     <SelectItem value="sweatshirt">Sweatshirt</SelectItem>
-                    <SelectItem value="pants">Pants</SelectItem>
-                    <SelectItem value="custom">Other (type)</SelectItem>
+                    <SelectItem value="jacket">Jacket</SelectItem>
+                    <SelectItem value="joggers">Joggers</SelectItem>
+                    <SelectItem value="shorts">Shorts</SelectItem>
+                    <SelectItem value="cap">Cap</SelectItem>
+                    <SelectItem value="beanie">Beanie</SelectItem>
+                    <SelectItem value="tote_bag">Tote Bag</SelectItem>
+                    <SelectItem value="sneakers">Sneakers</SelectItem>
+                    <SelectItem value="auto">Auto</SelectItem>
+                    <SelectItem value="other">Other (type)</SelectItem>
                   </SelectContent>
                 </Select>
 
-                {productType === 'custom' ? (
+                {productType === 'other' ? (
                   <div className="mt-2">
                     <Input
                       value={customProductType}
