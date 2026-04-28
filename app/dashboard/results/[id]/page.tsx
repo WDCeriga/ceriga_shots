@@ -1023,22 +1023,26 @@ export default function ResultsPage() {
                 </>
               ) : null}
 
-              {activeLightboxImage.editRequest && !isEditingAsset && activeLightboxImage.url ? (
-                <div className="absolute left-0 right-0 bottom-0 px-4 pb-3 z-20">
-                  <div className="rounded-md border border-border bg-background/80 backdrop-blur px-3 py-2">
-                    <div className="text-xs text-muted-foreground/80 mb-1">
-                      Edited by {activeLightboxImage.editedByBrandName ?? 'Editor'}
-                    </div>
-                    <pre className="whitespace-pre-wrap break-words max-h-[22vh] overflow-auto rounded-md bg-secondary/30 p-2 text-xs leading-relaxed">
-                      {activeLightboxImage.editRequest}
-                    </pre>
-                  </div>
-                </div>
-              ) : null}
             </div>
           ) : null}
           {activeLightboxImage ? (
             <>
+              {activeLightboxImage.editRequest && !isEditingAsset && activeLightboxImage.url ? (
+                <div className="px-4 py-3 border-t border-border bg-background/60">
+                  <details>
+                    <summary className="cursor-pointer text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                      Edit text used
+                    </summary>
+                    <div className="mt-2 text-xs text-muted-foreground/80">
+                      Edited by {activeLightboxImage.editedByBrandName ?? 'Editor'}
+                    </div>
+                    <pre className="mt-2 whitespace-pre-wrap break-words max-h-[22vh] overflow-auto rounded-md bg-secondary/30 p-2 text-xs leading-relaxed">
+                      {activeLightboxImage.editRequest}
+                    </pre>
+                  </details>
+                </div>
+              ) : null}
+
               {isEditingAsset ? (
                 <div className="px-4 py-3 border-t border-border bg-background/60">
                   <div className="text-sm font-medium">Edit instructions</div>
