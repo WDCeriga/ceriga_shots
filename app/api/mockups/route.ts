@@ -1009,6 +1009,12 @@ function buildEditInstructionsBlock(editInstructions: string): string {
     'USER EDIT INSTRUCTIONS (apply only safe refinements):',
     `- ${editInstructions}`,
     '',
+    'LOCAL EDIT SCOPE (strict):',
+    '- Apply ONLY the explicit changes requested above.',
+    '- Preserve all other regions exactly (composition, framing, garment position, and untouched details).',
+    '- Keep background/environment unchanged unless the instruction explicitly asks to modify background.',
+    '- Do NOT perform global restyling, recoloring, relighting, or scene-wide transformations unless explicitly requested.',
+    '',
     'IMPORTANT RULES:',
     '- Do NOT redesign, reinterpret, or alter the garment design, prints, logos, typography, colors, or print placement.',
     '- Do NOT change the garment silhouette or structure.',
@@ -1021,6 +1027,12 @@ function buildEditInstructionsBlockDesign(editInstructions: string): string {
   return [
     'USER EDIT INSTRUCTIONS (refinements only):',
     `- ${editInstructions}`,
+    '',
+    'LOCAL EDIT SCOPE (strict):',
+    '- Apply ONLY the explicit changes requested above.',
+    '- Preserve all other regions exactly (composition, framing, product position, and untouched details).',
+    '- Keep background/environment unchanged unless the instruction explicitly asks to modify background.',
+    '- Do NOT perform global restyling, recoloring, relighting, or scene-wide transformations unless explicitly requested.',
     '',
     'IMPORTANT RULES:',
     '- Do NOT replace the product concept or swap in new artwork, logos, or a different color story.',
@@ -1040,11 +1052,60 @@ function buildAspectRatioBlock(aspectRatio: GenerationAspectRatio): string {
   ].join('\n')
 }
 
+function pickFromSeed<T>(items: readonly T[], seed: number, fallback: T): T {
+  if (!items.length) return fallback
+  const idx = Math.abs(seed) % items.length
+  return items[idx] ?? fallback
+}
+
+function buildProjectBackgroundLockBlock(projectId: string): string {
+  const seed = hashStringToInt(projectId || 'default-project')
+  const tone = pickFromSeed(
+    ['neutral-light', 'neutral-mid', 'neutral-dark', 'cool-neutral', 'warm-neutral'] as const,
+    seed,
+    'neutral-mid'
+  )
+  const textureProfile = pickFromSeed(
+    ['ultra-clean', 'micro-texture', 'fine-grain-matte'] as const,
+    seed >> 3,
+    'micro-texture'
+  )
+  const lightDirection = pickFromSeed(
+    ['10-o-clock', '11-o-clock', '12-o-clock', '1-o-clock', '2-o-clock'] as const,
+    seed >> 5,
+    '11-o-clock'
+  )
+  const shadowSoftness = pickFromSeed(
+    ['soft', 'soft-plus', 'medium-soft'] as const,
+    seed >> 7,
+    'soft'
+  )
+  const contrast = pickFromSeed(
+    ['low-contrast', 'balanced-contrast', 'slightly-rich-contrast'] as const,
+    seed >> 9,
+    'balanced-contrast'
+  )
+
+  return [
+    'PROJECT BACKGROUND LOCK (strict, project-wide):',
+    '- Keep the same background/environment identity for ALL generations in this project, regardless of shot type.',
+    '- The following background DNA is fixed and must not drift between outputs unless explicitly requested by the user:',
+    `  - background_tone: ${tone}`,
+    `  - surface_texture_profile: ${textureProfile}`,
+    `  - key_light_direction: ${lightDirection}`,
+    `  - shadow_softness: ${shadowSoftness}`,
+    `  - global_contrast_signature: ${contrast}`,
+    '- Shot type may change framing/camera/pose only; background identity must remain consistent.',
+    '- Do NOT switch to a different surface family, hue family, lighting family, or shadow style between images in this project.',
+  ].join('\n')
+}
+
 function buildPrompt(args: {
   shotType: ShotType
   preset: Preset
   generationIndex: number
   variationSeed: number
+  projectId: string
   garmentType?: GarmentType
   editInstructions?: string
   pipeline: GenerationPipeline
@@ -1053,6 +1114,7 @@ function buildPrompt(args: {
 }) {
   const category = categoryForShotType(args.shotType)
   const isDesign = args.pipeline === 'design_realize'
+  const projectBackgroundLock = buildProjectBackgroundLockBlock(args.projectId)
 
   const garmentTypeAnchor = buildGarmentTypeAnchor(args.garmentType ?? '')
 
@@ -1078,6 +1140,7 @@ function buildPrompt(args: {
     // 1) identity non-negotiables, 2) shot framing + surface/light, 3) negatives, 4) final reminder.
     return [
       base,
+      projectBackgroundLock,
       framingBlock,
       DESIGN_OUTPUT_QUALITY_GUARDRAILS,
       buildAspectRatioBlock(args.aspectRatio),
@@ -1108,6 +1171,7 @@ function buildPrompt(args: {
   // 1) identity non-negotiables, 2) shot framing, 3) surface/light physics, 4) negatives, 5) final reminder.
   return [
     base,
+    projectBackgroundLock,
     shotPromptBody,
     preset,
     buildVariationSeed(args.preset, args.shotType, args.generationIndex, args.variationSeed),
@@ -1302,6 +1366,9 @@ export async function POST(req: Request) {
     )
 
     const garmentType = normalizeGarmentType((body as { garmentType?: unknown }).garmentType)
+    const rawProjectId = (body as { projectId?: unknown }).projectId
+    const projectId =
+      typeof rawProjectId === 'string' && rawProjectId.trim().length > 0 ? rawProjectId.trim() : 'unknown'
     const pipeline = normalizePipeline((body as { pipeline?: unknown }).pipeline)
     const renderStyleLevel = normalizeRenderStyleLevel((body as { renderStyleLevel?: unknown }).renderStyleLevel)
     const aspectRatio = normalizeAspectRatio((body as { aspectRatio?: unknown }).aspectRatio)
@@ -1336,19 +1403,18 @@ export async function POST(req: Request) {
     }
 
     const prompt =
-      editInstructions && editedFromId
-        ? editInstructions
-        : buildPrompt({
-            shotType,
-            preset,
-            generationIndex,
-            variationSeed,
-            garmentType,
-            editInstructions,
-            pipeline,
-            renderStyleLevel,
-            aspectRatio,
-          })
+      buildPrompt({
+        shotType,
+        preset,
+        generationIndex,
+        variationSeed,
+        projectId,
+        garmentType,
+        editInstructions,
+        pipeline,
+        renderStyleLevel,
+        aspectRatio,
+      })
 
     console.warn(`[mockups:${requestId}] Missing API key; returning placeholder for shotType=${shotType}`)
     // Store the full prompt for debugging (UI shows asset.prompt even when url is empty).
@@ -1470,6 +1536,9 @@ export async function POST(req: Request) {
   const variationSeed = clampInt(providedVariationSeed, 1, 2_147_483_647, derivedSeed || Date.now())
 
   const garmentType = normalizeGarmentType((body as { garmentType?: unknown }).garmentType)
+  const rawProjectId = (body as { projectId?: unknown }).projectId
+  const projectId =
+    typeof rawProjectId === 'string' && rawProjectId.trim().length > 0 ? rawProjectId.trim() : 'unknown'
   const pipeline = normalizePipeline((body as { pipeline?: unknown }).pipeline)
   const renderStyleLevel = normalizeRenderStyleLevel((body as { renderStyleLevel?: unknown }).renderStyleLevel)
   const aspectRatio = normalizeAspectRatio((body as { aspectRatio?: unknown }).aspectRatio)
@@ -1497,19 +1566,18 @@ export async function POST(req: Request) {
     const requestedAttemptsRaw = (body as { attempts?: unknown }).attempts
     const maxAttempts = clampInt(requestedAttemptsRaw, 1, 3, 1)
     const prompt =
-      editInstructions && editedFromId
-        ? editInstructions
-        : buildPrompt({
-            shotType,
-            preset,
-            generationIndex,
-            variationSeed,
-            garmentType,
-            editInstructions,
-            pipeline,
-            renderStyleLevel,
-            aspectRatio,
-          })
+      buildPrompt({
+        shotType,
+        preset,
+        generationIndex,
+        variationSeed,
+        projectId,
+        garmentType,
+        editInstructions,
+        pipeline,
+        renderStyleLevel,
+        aspectRatio,
+      })
 
     let lastErrorMessage = ''
     let modelCalls = 0

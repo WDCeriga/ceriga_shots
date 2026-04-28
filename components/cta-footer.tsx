@@ -37,6 +37,13 @@ export function CtaSection() {
 }
 
 export function Footer() {
+  const legalLinks = [
+    { label: 'Privacy', href: '/privacy' },
+    { label: 'Terms', href: '/terms' },
+    { label: 'Cookies', href: '/cookies' },
+    { label: 'Refunds', href: '/refunds' },
+  ] as const
+
   return (
     <footer className="mt-auto border-t border-border py-12">
       <div className="max-w-7xl mx-auto px-6 lg:px-12 flex flex-col sm:flex-row items-center justify-between gap-6">
@@ -44,11 +51,23 @@ export function Footer() {
           Ceriga Shots<span className="text-accent">.</span>
         </Link>
 
-        <div className="w-full sm:w-auto flex items-center justify-center sm:justify-end gap-4">
+        <div className="w-full sm:w-auto flex flex-col items-center sm:items-end gap-2">
+         
           <Link href="#" aria-label="Instagram" className="text-muted-foreground hover:text-foreground transition-colors">
             <Instagram className="w-4 h-4" />
           </Link>
           <span className="text-xs text-muted-foreground">© 2025 Ceriga</span>
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-3 gap-y-1">
+            {legalLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
     </footer>

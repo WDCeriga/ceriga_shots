@@ -47,7 +47,7 @@ export function HowItWorksHero() {
     <section className="relative overflow-hidden border-t border-border">
       <div className="pointer-events-none absolute inset-0 opacity-[0.1] [background-image:linear-gradient(var(--color-foreground)_1px,transparent_1px),linear-gradient(90deg,var(--color-foreground)_1px,transparent_1px)] [background-size:80px_80px]" />
 
-      <div className="relative mx-auto grid w-full max-w-7xl gap-14 px-6 pb-20 pt-16 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-10 lg:px-12 lg:pt-24">
+      <div className="relative mx-auto grid w-full max-w-6xl gap-14 px-6 pb-20 pt-16 lg:grid-cols-[1.05fr_1fr] lg:items-center lg:gap-10 lg:px-1 lg:pt-24">
         <div>
           <div className="mb-8 flex items-center gap-3">
             <span className="h-px w-6 bg-accent" />
@@ -107,8 +107,8 @@ export function HowItWorksHero() {
                 <RawMockVisual />
               </div>
 
-              <div className="absolute inset-y-0 left-0 overflow-hidden" style={{ width: afterWidth }}>
-                <div className="absolute inset-0 w-[100cqw]">
+              <div className="absolute inset-0 overflow-hidden" style={{ clipPath: `inset(0 ${100 - sliderValue}% 0 0)` }}>
+                <div className="absolute inset-0">
                   <GeneratedMockVisual />
                 </div>
               </div>
@@ -147,7 +147,7 @@ function RawMockVisual() {
   return (
     <div className="relative h-full w-full">
       <Image
-        src="/images/protoreal-before.jpg"
+        src="/images/hiw2.png"
         alt="Digital mockup before conversion"
         fill
         className="object-cover"
@@ -159,13 +159,14 @@ function RawMockVisual() {
 
 function GeneratedMockVisual() {
   return (
-    <div className="relative h-full w-full">
-      <div className="absolute inset-0 bg-[linear-gradient(160deg,#c9dee4_0%,#d4c5bf_55%,#b8a59c_100%)]" />
-      <div className="absolute left-[10%] top-[10%] h-[74%] w-[36%] rounded-xl bg-white/70 shadow-[0_12px_30px_rgba(0,0,0,0.22)]" />
-      <div className="absolute right-[14%] top-[12%] h-[72%] w-[31%] rounded-xl bg-[#1d2532] shadow-[0_12px_30px_rgba(0,0,0,0.35)]" />
-      <div className="absolute bottom-6 left-6 rounded border border-black/10 bg-white/80 px-3 py-2 text-xs font-medium text-[#1c1f26] backdrop-blur">
-        Styled, color-corrected, export-ready.
-      </div>
+    <div className="relative h-full w-full bg-[#0b0b0f]">
+      <Image
+        src="/images/hiw1.jpg"
+        alt="AI generated polished product output"
+        fill
+        sizes="(max-width: 1024px) 100vw, 900px"
+        className="object-contain object-center scale-150 -translate-y-[-8%]"
+      />
     </div>
   )
 }
