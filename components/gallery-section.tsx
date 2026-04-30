@@ -31,7 +31,7 @@ export function GallerySection() {
         </div>
 
         {/* Masonry-like grid */}
-        <div className="grid grid-cols-4 gap-1 auto-rows-[220px]">
+        <div className="grid grid-cols-4 gap-1 auto-rows-[270px]">
           {galleryItems.map((item, i) => (
             <div
               key={i}
@@ -41,7 +41,7 @@ export function GallerySection() {
                 src={item.src}
                 alt={item.label}
                 fill
-                className="object-cover group-hover:scale-105 transition-transform duration-700"
+                className="object-cover object-center"
                 sizes={
                   item.span.includes("col-span-2")
                     ? "(min-width: 1024px) 50vw, (min-width: 640px) 100vw, 100vw"

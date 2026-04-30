@@ -58,7 +58,7 @@ export function ProjectsProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false
     ;(async () => {
       try {
-        const res = await fetch('/api/projects', { method: 'GET' })
+        const res = await fetch('/api/projects', { method: 'GET', cache: 'no-store' })
         if (!res.ok) throw new Error(`Failed to load projects: ${res.status}`)
         const data = (await res.json()) as { projects: Project[] }
         if (!cancelled) setProjects(data.projects ?? [])
@@ -158,7 +158,7 @@ export function ProjectsProvider({ children }: { children: React.ReactNode }) {
   const fetchProject = useCallback(
     async (id: string): Promise<Project | null> => {
       try {
-        const res = await fetch(`/api/projects/${id}`, { method: 'GET' })
+        const res = await fetch(`/api/projects/${id}`, { method: 'GET', cache: 'no-store' })
         if (res.status === 404) return null
         if (!res.ok) throw new Error(`Failed to load project: ${res.status}`)
         const data = (await res.json()) as { project: Project }

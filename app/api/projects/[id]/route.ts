@@ -159,12 +159,18 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
     const role = (user?.role ?? 'free') as UserRole
     const retained = applyAssetRetentionToProject(project, role)
     if (!retained.changed) {
-      return NextResponse.json({ project })
+      return NextResponse.json(
+        { project },
+        { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0' } }
+      )
     }
     const persisted = await updateProjectForUser(session.user.id, id, {
       generatedImages: retained.project.generatedImages,
     })
-    return NextResponse.json({ project: persisted ?? retained.project })
+    return NextResponse.json(
+      { project: persisted ?? retained.project },
+      { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0' } }
+    )
   } catch (error) {
     console.error('GET /api/projects/[id] error', error)
     return NextResponse.json({ error: 'Failed to load project' }, { status: 500 })
