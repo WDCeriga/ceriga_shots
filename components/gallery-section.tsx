@@ -1,11 +1,11 @@
 import Image from "next/image"
 
 const galleryItems = [
-  { src: "/images/gallery-1.jpg", span: "col-span-2 row-span-2", label: "Campaign — SS25" },
+  { src: "/images/gallery-1.jpg", span: "col-span-2 row-span-2", label: "Campaign — SS26" },
   { src: "/images/hoodie-lifestyle.jpg", span: "col-span-1", label: "Lookbook" },
   { src: "/images/gallery-2.jpg", span: "col-span-1", label: "Flat Lay" },
-  { src: "/images/gallery-3.jpg", span: "col-span-2", label: "Editorial" },
-  { src: "/images/gallery-4.jpg", span: "col-span-1", label: "Campaign" },
+  { src: "/images/gallery-3.jpg", span: "col-span-2", label: "Spread" },
+  { src: "/images/gallery-4.jpg", span: "col-span-1", label: "Flat Lay" },
   { src: "/images/hoodie-angle.jpg", span: "col-span-1", label: "Product Shot" },
 ]
 
