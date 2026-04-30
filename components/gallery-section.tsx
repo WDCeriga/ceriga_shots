@@ -1,12 +1,12 @@
 import Image from "next/image"
 
 const galleryItems = [
-  { src: "/images/gallery-1.jpg", span: "col-span-2 row-span-2", label: "Campaign — SS26" },
-  { src: "/images/hoodie-lifestyle.jpg", span: "col-span-1", label: "Lookbook" },
-  { src: "/images/gallery-2.jpg", span: "col-span-1", label: "Flat Lay" },
-  { src: "/images/gallery-3.jpg", span: "col-span-2", label: "Spread" },
-  { src: "/images/gallery-4.jpg", span: "col-span-1", label: "Flat Lay" },
-  { src: "/images/hoodie-angle.jpg", span: "col-span-1", label: "Product Shot" },
+  { src: "/images/gallery-1.jpg?v=2", span: "col-span-2 row-span-2", label: "Campaign — SS26" },
+  { src: "/images/hoodie-lifestyle.jpg?v=2", span: "col-span-1", label: "Lookbook" },
+  { src: "/images/gallery-2.jpg?v=2", span: "col-span-1", label: "Flat Lay" },
+  { src: "/images/gallery-3.jpg?v=2", span: "col-span-2", label: "Spread" },
+  { src: "/images/gallery-4.jpg?v=2", span: "col-span-1", label: "Flat Lay" },
+  { src: "/images/hoodie-angle.jpg?v=2", span: "col-span-1", label: "Product Shot" },
 ]
 
 export function GallerySection() {
@@ -35,13 +35,13 @@ export function GallerySection() {
           {galleryItems.map((item, i) => (
             <div
               key={i}
-              className={`relative overflow-hidden group cursor-pointer ${item.span}`}
+              className={`relative overflow-hidden group cursor-pointer ${item.span} ${item.tileClassName ?? ""}`}
             >
               <Image
                 src={item.src}
                 alt={item.label}
                 fill
-                className="object-cover object-center"
+                className={`object-cover object-center ${item.imageClassName ?? ""}`}
                 sizes={
                   item.span.includes("col-span-2")
                     ? "(min-width: 1024px) 50vw, (min-width: 640px) 100vw, 100vw"

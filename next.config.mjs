@@ -9,6 +9,17 @@ const nextConfig = {
     // Avoid Turbopack inferring an outer workspace root.
     root: projectRoot,
   },
+  images: {
+    localPatterns: [
+      {
+        pathname: '/images/**',
+      },
+      {
+        pathname: '/images/**',
+        search: '?v=*',
+      },
+    ],
+  },
   typescript: {
     ignoreBuildErrors: false,
   },
