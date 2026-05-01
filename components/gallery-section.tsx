@@ -1,6 +1,14 @@
 import Image from "next/image"
 
-const galleryItems = [
+type GalleryItem = {
+  src: string
+  span: string
+  label: string
+  tileClassName?: string
+  imageClassName?: string
+}
+
+const galleryItems: GalleryItem[] = [
   { src: "/images/gallery-1.jpg?v=2", span: "col-span-2 row-span-2", label: "Campaign — SS26" },
   { src: "/images/hoodie-lifestyle.jpg?v=2", span: "col-span-1", label: "Lookbook" },
   { src: "/images/gallery-2.jpg?v=2", span: "col-span-1", label: "Flat Lay" },
