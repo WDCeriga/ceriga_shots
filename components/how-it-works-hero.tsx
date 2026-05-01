@@ -165,7 +165,7 @@ function GeneratedMockVisual() {
         alt="AI generated polished product output"
         fill
         sizes="(max-width: 1024px) 100vw, 900px"
-        className="object-contain object-center scale-150 -translate-y-[-8%]"
+        className="object-contain object-center scale-130 -translate-y-[-3%]"
       />
     </div>
   )

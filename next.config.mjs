@@ -10,6 +10,7 @@ const nextConfig = {
     root: projectRoot,
   },
   images: {
+    unoptimized: process.env.NODE_ENV === 'development',
     localPatterns: [
       {
         pathname: '/images/**',
