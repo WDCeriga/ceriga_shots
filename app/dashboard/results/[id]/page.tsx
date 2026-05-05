@@ -51,6 +51,7 @@ export default function ResultsPage() {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [deletingAssetId, setDeletingAssetId] = useState<string | null>(null)
   const [isEditingAsset, setIsEditingAsset] = useState(false)
+  const [pendingOpenEditAssetId, setPendingOpenEditAssetId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState('')
   const [isSubmittingEdit, setIsSubmittingEdit] = useState(false)
   const [pendingEditedFromId, setPendingEditedFromId] = useState<string | null>(null)
@@ -131,6 +132,14 @@ export default function ResultsPage() {
   /** All generated assets in gallery order (includes placeholder rows with empty `url` when API key is missing). */
   const lightboxImages = project?.generatedImages ?? []
   const activeLightboxImage = lightboxIndex == null ? null : lightboxImages[lightboxIndex] ?? null
+
+  useEffect(() => {
+    if (!pendingOpenEditAssetId) return
+    if (!activeLightboxImage) return
+    if (activeLightboxImage.id !== pendingOpenEditAssetId) return
+    setIsEditingAsset(true)
+    setPendingOpenEditAssetId(null)
+  }, [pendingOpenEditAssetId, activeLightboxImage])
   const generationTypeLabel =
     project?.generation?.renderStyleLevel === 'photoreal_flatlay'
       ? 'Mockups to ProtoReal'
@@ -348,15 +357,19 @@ export default function ResultsPage() {
       const idx = project.generatedImages.findIndex((img) => img.id === assetId)
       if (idx < 0) return
       setLightboxIndex(idx)
+      setPendingOpenEditAssetId(targetAsset.id)
+      setIsEditingAsset(false)
+    } else {
+      setIsEditingAsset(true)
     }
 
     setPendingEditedFromId(null)
     setEditDraft(targetAsset.editRequest ?? '')
-    setIsEditingAsset(true)
   }
 
   const cancelEdit = () => {
     setIsEditingAsset(false)
+    setPendingOpenEditAssetId(null)
     setEditDraft('')
   }
 
@@ -959,18 +972,26 @@ export default function ResultsPage() {
         </section>
       </div>
 
-      <Dialog open={lightboxIndex != null} onOpenChange={(open) => !open && setLightboxIndex(null)}>
+      <Dialog
+        open={lightboxIndex != null}
+        onOpenChange={(open) => {
+          if (open) return
+          setLightboxIndex(null)
+          setIsEditingAsset(false)
+          setPendingOpenEditAssetId(null)
+        }}
+      >
         <DialogContent className="[&>button]:right-3 [&>button]:top-3 [&>button]:z-50 [&>button]:rounded-md [&>button]:bg-background/90 [&>button]:p-1 [&>button]:text-red-500 [&>button:hover]:text-red-400 flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[min(1100px,calc(100vw-1rem))] flex-col overflow-hidden p-0 sm:max-h-[calc(100dvh-2rem)] sm:w-full sm:max-w-[min(1100px,calc(100vw-2rem))]">
           <DialogTitle className="sr-only">
             {activeLightboxImage ? formatViewTitle(activeLightboxImage.type) : 'Image preview'}
           </DialogTitle>
           {activeLightboxImage ? (
-            <div className="relative min-h-0 flex-1 bg-[#0a0a0a]/40">
+            <div className="relative h-[clamp(220px,45dvh,620px)] shrink-0 flex items-center justify-center bg-[#0a0a0a]/40 p-2 sm:h-[clamp(280px,56dvh,700px)] sm:p-3">
               {activeLightboxImage.url ? (
                 <img
                   src={activeLightboxImage.url}
                   alt={activeLightboxImage.type}
-                  className="block w-full h-auto max-h-[calc(100dvh-8rem)] object-contain sm:max-h-[80vh]"
+                  className="block h-full w-full object-contain"
                 />
               ) : (
                 <div className="bg-background text-foreground">

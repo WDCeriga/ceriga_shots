@@ -69,11 +69,11 @@ export function LightboxImage({
 
       <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[min(1100px,calc(100vw-1rem))] flex-col overflow-hidden p-0 sm:max-h-[calc(100dvh-2rem)] sm:w-full sm:max-w-[min(1100px,calc(100vw-2rem))]">
         <DialogTitle className="sr-only">{title ?? alt}</DialogTitle>
-        <div className="min-h-0 flex-1 bg-black/40">
+        <div className="h-[clamp(220px,50dvh,640px)] shrink-0 flex items-center justify-center bg-black/40 p-2 sm:h-[clamp(280px,62dvh,760px)] sm:p-3">
           <img
             src={src}
             alt={alt}
-            className="block h-auto max-h-[calc(100dvh-8rem)] w-full object-contain sm:max-h-[80vh]"
+            className="block h-full w-full object-contain"
           />
         </div>
         {title ? (
