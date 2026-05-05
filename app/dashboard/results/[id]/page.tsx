@@ -960,17 +960,17 @@ export default function ResultsPage() {
       </div>
 
       <Dialog open={lightboxIndex != null} onOpenChange={(open) => !open && setLightboxIndex(null)}>
-        <DialogContent className="[&>button]:right-3 [&>button]:top-3 [&>button]:z-50 [&>button]:rounded-md [&>button]:bg-background/90 [&>button]:p-1 [&>button]:text-red-500 [&>button:hover]:text-red-400 max-w-[min(1100px,calc(100vw-2rem))] p-0 overflow-hidden">
+        <DialogContent className="[&>button]:right-3 [&>button]:top-3 [&>button]:z-50 [&>button]:rounded-md [&>button]:bg-background/90 [&>button]:p-1 [&>button]:text-red-500 [&>button:hover]:text-red-400 flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[min(1100px,calc(100vw-1rem))] flex-col overflow-hidden p-0 sm:max-h-[calc(100dvh-2rem)] sm:w-full sm:max-w-[min(1100px,calc(100vw-2rem))]">
           <DialogTitle className="sr-only">
             {activeLightboxImage ? formatViewTitle(activeLightboxImage.type) : 'Image preview'}
           </DialogTitle>
           {activeLightboxImage ? (
-            <div className="relative bg-[#0a0a0a]/40">
+            <div className="relative min-h-0 flex-1 bg-[#0a0a0a]/40">
               {activeLightboxImage.url ? (
                 <img
                   src={activeLightboxImage.url}
                   alt={activeLightboxImage.type}
-                  className="block w-full h-auto max-h-[80vh] object-contain"
+                  className="block w-full h-auto max-h-[calc(100dvh-8rem)] object-contain sm:max-h-[80vh]"
                 />
               ) : (
                 <div className="bg-background text-foreground">

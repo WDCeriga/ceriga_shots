@@ -19,7 +19,7 @@ const galleryItems: GalleryItem[] = [
 
 export function GallerySection() {
   return (
-    <section id="gallery" className="py-32 bg-secondary/30">
+    <section id="gallery" className="py-16 sm:py-24 lg:py-32 bg-secondary/30">
       <div className="max-w-7xl mx-auto px-6 lg:px-12">
         <div className="mb-16 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
           <div>
@@ -39,17 +39,17 @@ export function GallerySection() {
         </div>
 
         {/* Masonry-like grid */}
-        <div className="grid grid-cols-4 gap-1 auto-rows-[270px]">
+        <div className="grid grid-cols-4 gap-1 auto-rows-[270px] max-[639px]:grid-cols-1 max-[639px]:gap-3 max-[639px]:auto-rows-auto">
           {galleryItems.map((item, i) => (
             <div
               key={i}
-              className={`relative overflow-hidden group cursor-pointer ${item.span} ${item.tileClassName ?? ""}`}
+              className={`relative overflow-hidden group cursor-pointer ${item.span} ${i >= 4 ? "max-[639px]:hidden" : ""} max-[639px]:aspect-[4/5] max-[639px]:col-span-1 max-[639px]:row-span-1 ${item.tileClassName ?? ""}`}
             >
               <Image
                 src={item.src}
                 alt={item.label}
                 fill
-                className={`object-cover object-center ${item.imageClassName ?? ""}`}
+                className={`object-cover object-center max-[639px]:object-contain ${item.imageClassName ?? ""}`}
                 sizes={
                   item.span.includes("col-span-2")
                     ? "(min-width: 1024px) 50vw, (min-width: 640px) 100vw, 100vw"

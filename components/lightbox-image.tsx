@@ -20,12 +20,12 @@ export function LightboxAsset({
         </button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-[min(1100px,calc(100vw-2rem))] p-0 overflow-hidden">
+      <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[min(1100px,calc(100vw-1rem))] flex-col overflow-hidden p-0 sm:max-h-[calc(100dvh-2rem)] sm:w-full sm:max-w-[min(1100px,calc(100vw-2rem))]">
         <DialogTitle className="sr-only">{title}</DialogTitle>
         <div className="px-4 py-3 border-b border-border text-sm text-muted-foreground">
           {title}
         </div>
-        <div className="p-4">
+        <div className="overflow-y-auto p-4">
           {prompt ? (
             <pre className="whitespace-pre-wrap break-words rounded-md border border-border bg-secondary/30 p-3 text-xs leading-relaxed">
               {prompt}
@@ -67,13 +67,13 @@ export function LightboxImage({
         </button>
       </DialogTrigger>
 
-      <DialogContent className="max-w-[min(1100px,calc(100vw-2rem))] p-0 overflow-hidden">
+      <DialogContent className="flex max-h-[calc(100dvh-1rem)] w-[calc(100vw-1rem)] max-w-[min(1100px,calc(100vw-1rem))] flex-col overflow-hidden p-0 sm:max-h-[calc(100dvh-2rem)] sm:w-full sm:max-w-[min(1100px,calc(100vw-2rem))]">
         <DialogTitle className="sr-only">{title ?? alt}</DialogTitle>
-        <div className="bg-black/40">
+        <div className="min-h-0 flex-1 bg-black/40">
           <img
             src={src}
             alt={alt}
-            className="block w-full h-auto max-h-[80vh] object-contain"
+            className="block h-auto max-h-[calc(100dvh-8rem)] w-full object-contain sm:max-h-[80vh]"
           />
         </div>
         {title ? (
