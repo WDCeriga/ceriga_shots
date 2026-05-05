@@ -10,6 +10,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Loader2 } from 'lucide-react'
 import { StudioTrialUpgradeDialog } from '@/components/studio-trial-upgrade-dialog'
+import { Slider } from '@/components/ui/slider'
+import {
+  LABEL_BASE_CREDITS,
+  LABEL_CREDITS_STEP,
+  LABEL_MAX_CREDITS,
+  LABEL_MIN_CREDITS,
+  getLabelMonthlyPrice,
+} from '@/lib/label-pricing'
 
 
 type MeResponse = {
@@ -41,6 +49,7 @@ export function DashboardSubscriptionManagementClient() {
   } | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [studioTrialModalOpen, setStudioTrialModalOpen] = useState(false)
+  const [labelCredits, setLabelCredits] = useState<number>(LABEL_BASE_CREDITS)
 
   const isFree = billing?.role === 'free'
 
@@ -88,13 +97,17 @@ export function DashboardSubscriptionManagementClient() {
     }
   }
 
-  const startCheckout = async (targetRole: 'starter' | 'studio' | 'label') => {
+  const startCheckout = async (targetRole: 'starter' | 'studio' | 'label', nextLabelCredits?: number) => {
     setActionLoading(true)
     try {
       const res = await fetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: targetRole, billingCycle: 'monthly' }),
+        body: JSON.stringify({
+          plan: targetRole,
+          billingCycle: 'monthly',
+          ...(targetRole === 'label' ? { labelCredits: nextLabelCredits ?? labelCredits } : {}),
+        }),
       })
       const data = (await res.json()) as { url?: string; error?: string }
       if (!res.ok || !data.url) throw new Error(data.error ?? `Checkout failed (${res.status})`)
@@ -125,7 +138,7 @@ export function DashboardSubscriptionManagementClient() {
         {pricingPlans.map((plan) => {
           const planRole = plan.name.toLowerCase()
           const isCurrent = billing?.role === planRole
-          const price = plan.monthlyPrice
+          const price = planRole === 'label' ? getLabelMonthlyPrice(labelCredits) : plan.monthlyPrice
           const recommended = plan.highlighted
           const buttonVariant = isCurrent ? 'secondary' : recommended ? 'secondary' : 'outline'
 
@@ -159,6 +172,29 @@ export function DashboardSubscriptionManagementClient() {
                     </div>
                   ) : null}
                 </div>
+                {planRole === 'label' ? (
+                  <div className="w-full max-w-[250px] shrink-0 rounded-lg border border-border/70 bg-background/50 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.02)]">
+                    <div className="mb-2.5 flex items-center justify-between text-xs text-muted-foreground">
+                      <span>Label credits / month</span>
+                      <span className="rounded-full border border-border/70 bg-secondary/30 px-2 py-0.5 font-semibold text-foreground">
+                        {labelCredits}
+                      </span>
+                    </div>
+                    <Slider
+                      value={[labelCredits]}
+                      min={LABEL_MIN_CREDITS}
+                      max={LABEL_MAX_CREDITS}
+                      step={LABEL_CREDITS_STEP}
+                      onValueChange={(values) => {
+                        const next = values[0]
+                        if (typeof next === 'number') setLabelCredits(next)
+                      }}
+                    />
+                    <p className="mt-2.5 text-[11px] leading-relaxed text-muted-foreground">
+                      {LABEL_MIN_CREDITS} to {LABEL_MAX_CREDITS} credits. Price scales with selected credits.
+                    </p>
+                  </div>
+                ) : null}
               </div>
 
               <p className="mt-4 text-sm text-muted-foreground leading-relaxed">{plan.description}</p>
@@ -196,7 +232,10 @@ export function DashboardSubscriptionManagementClient() {
                         openStudioTrialModal()
                         return
                       }
-                      void startCheckout(planRole as 'starter' | 'studio' | 'label')
+                      void startCheckout(
+                        planRole as 'starter' | 'studio' | 'label',
+                        planRole === 'label' ? labelCredits : undefined
+                      )
                     }}
                     className="w-full"
                     variant={buttonVariant}
