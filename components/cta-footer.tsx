@@ -52,10 +52,7 @@ export function Footer() {
         </Link>
 
         <div className="w-full sm:w-auto flex flex-col items-center sm:items-end gap-2">
-         
-          <Link href="#" aria-label="Instagram" className="text-muted-foreground hover:text-foreground transition-colors">
-            <Instagram className="w-4 h-4" />
-           </Link>
+        
           <span className="text-xs text-muted-foreground">© 2025 Ceriga</span>
           <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-3 gap-y-1">
             {legalLinks.map((item) => (
