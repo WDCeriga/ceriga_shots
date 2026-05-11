@@ -63,7 +63,7 @@ export function AppSidebar({
   const content = (
     <>
       <div className="p-6 border-b border-border">
-        <Link href="/" className="font-bold text-lg">
+        <Link href="/dashboard" className="font-bold text-lg">
           <span>Ceriga Shots</span>
         </Link>
       </div>
@@ -188,12 +188,6 @@ export function AppSidebar({
       </nav>
 
       <div className="mt-auto p-4 border-t border-border space-y-3">
-        <MaybeSheetClose>
-          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-            ← Back to website
-          </Link>
-        </MaybeSheetClose>
-
         <div className="rounded-lg bg-card/40 p-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
