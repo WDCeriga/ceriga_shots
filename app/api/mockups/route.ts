@@ -1005,24 +1005,58 @@ function buildGarmentTypeAnchor(garmentType: GarmentType): string {
 }
 
 const EDIT_MODE_BASE_GARMENT = [
-  'TASK: Image edit from the provided reference.',
-  '- The input image is the starting frame. Apply the user request on top of it.',
-  '- User instructions override all stylistic defaults, background locks, and prior generation rules.',
-  '- Change color, background, lighting, crop, pose, fabric, prints, logos, or garment type when the user asks.',
-  '- Keep untouched areas as close to the input as possible unless the request requires a broader change.',
-  '- Output must read as a photoreal product photograph unless the user requests a different style.',
+  'TASK: Surgical edit of the provided photograph.',
+  '- The input image is the ground truth. Apply ONLY the user’s requested change.',
+  '- This is NOT a new photoshoot, re-render, or full restyle.',
+  '- Output must remain a photoreal product photograph unless the user requests otherwise.',
 ].join('\n')
 
 const EDIT_MODE_BASE_DESIGN = [
-  'TASK: Refine the provided product render from the reference image.',
-  '- The input image is the starting frame. Apply the user request on top of it.',
-  '- User instructions override render-style defaults and prior generation rules.',
-  '- Change color, background, lighting, view angle, material, artwork, or silhouette when the user asks.',
-  '- Keep untouched areas as close to the input as possible unless the request requires a broader change.',
+  'TASK: Surgical edit of the provided product render.',
+  '- The input image is the ground truth. Apply ONLY the user’s requested change.',
+  '- This is NOT a new render pass or full redesign.',
+].join('\n')
+
+const EDIT_MODE_PRESERVATION_GARMENT = [
+  'MINIMAL CHANGE SCOPE (mandatory):',
+  '- Change ONLY the specific attribute(s) named in the user request.',
+  '- Everything the user did NOT mention must stay the same as the input image.',
+  '',
+  'DEFAULT — PRESERVE UNLESS THE USER EXPLICITLY ASKS TO CHANGE IT:',
+  '- Composition, crop, camera angle, scale, and framing',
+  '- Background surface (material, color, texture, and tone)',
+  '- Lighting direction, softness, contrast, and shadows (except on the edited attribute)',
+  '- Garment pose, drape, fold layout, and silhouette',
+  '- Print/graphic artwork, placement, and letterforms (unless the request targets them)',
+  '- Logos, hardware, seams, and construction details (unless the request targets them)',
+  '',
+  'RULES:',
+  '- Do NOT relight, recolor, recompose, or “improve” regions outside the user request.',
+  '- Do NOT add creative extras the user did not ask for.',
+  '- If unsure whether a change is requested, leave that detail unchanged.',
+  '- The result should look like the same photo with one intentional adjustment.',
+].join('\n')
+
+const EDIT_MODE_PRESERVATION_DESIGN = [
+  'MINIMAL CHANGE SCOPE (mandatory):',
+  '- Change ONLY the specific attribute(s) named in the user request.',
+  '- Everything the user did NOT mention must stay the same as the input image.',
+  '',
+  'DEFAULT — PRESERVE UNLESS THE USER EXPLICITLY ASKS TO CHANGE IT:',
+  '- Composition, crop, camera/view angle, and framing',
+  '- Backdrop color, gradient, and studio setup',
+  '- Lighting and shadow character (except on the edited attribute)',
+  '- Product pose, proportions, and silhouette',
+  '- Artwork, logos, and color blocks (unless the request targets them)',
+  '',
+  'RULES:',
+  '- Do NOT redesign or restyle untouched areas.',
+  '- If unsure whether a change is requested, leave that detail unchanged.',
 ].join('\n')
 
 const EDIT_MODE_NEGATIVE_GARMENT = [
   'NEGATIVE (edit mode):',
+  '- No global restyle, relight, or re-framing unless explicitly requested.',
   '- No watermarks, borders, letterboxing, or text overlays unless the user requests them.',
   '- No phone/browser UI, device bezels, or app chrome.',
   '- No illustration/CGI look unless the user requests stylization.',
@@ -1030,6 +1064,7 @@ const EDIT_MODE_NEGATIVE_GARMENT = [
 
 const EDIT_MODE_NEGATIVE_DESIGN = [
   'NEGATIVE (edit mode):',
+  '- No global restyle, relight, or re-framing unless explicitly requested.',
   '- No watermarks, borders, or text overlays unless the user requests them.',
   '- No accidental multi-product collages unless the user requests multiple items.',
 ].join('\n')
@@ -1048,19 +1083,38 @@ function buildEditInstructionsBlockDesign(editInstructions: string): string {
 
 function buildUserEditPrimaryBlock(editInstructions: string): string {
   return [
-    'USER EDIT REQUEST (highest priority — follow exactly):',
+    'USER EDIT REQUEST (the ONLY change to make):',
     `- ${editInstructions}`,
     '',
     'APPLICATION RULES:',
-    '- Treat the line above as the primary creative direction.',
-    '- Implement the request literally; do not substitute a “safer” interpretation.',
-    '- If the request is ambiguous, choose the interpretation that best matches the user’s words.',
-    '- Do not refuse color, background, composition, or design changes the user asked for.',
+    '- Apply the request to the minimum area needed (e.g. garment only, background only, one logo).',
+    '- Implement what the user asked for fully within that scope — do not half-apply or skip it.',
+    '- Do not change anything else: no bonus fixes, no stylistic upgrades, no alternate interpretations.',
+    '- If the request is ambiguous, change only the smallest plausible interpretation of their words.',
+  ].join('\n')
+}
+
+function buildEditPreserveLookBlock(preset: Preset): string {
+  return [
+    'MATCH INPUT IMAGE (unless the user request overrides):',
+    `- Preserve the same overall look as the input (project preset: ${preset}).`,
+    '- Untouched background, surface, and lighting must match the input pixels as closely as possible.',
+    '- Keep the same garment/product position in frame as the input.',
+  ].join('\n')
+}
+
+function buildAspectRatioBlockForEdit(aspectRatio: GenerationAspectRatio): string {
+  return [
+    'FRAMING (edit mode):',
+    `- Target aspect ratio: ${aspectRatio} (same as the input generation).`,
+    '- Do NOT re-crop, zoom, or reframe unless the user explicitly asks for crop, zoom, or reframing.',
+    '- Keep the subject at the same scale and position as the input image.',
   ].join('\n')
 }
 
 function buildEditModePrompt(args: {
   shotType: ShotType
+  preset: Preset
   editInstructions: string
   pipeline: GenerationPipeline
   aspectRatio: GenerationAspectRatio
@@ -1071,10 +1125,10 @@ function buildEditModePrompt(args: {
   const shotHint = SHOT_PROMPTS[args.shotType].split('\n')[0] ?? ''
 
   const contextHint = [
-    'REFERENCE CONTEXT (soft — defer to user request when they conflict):',
-    shotHint ? `- Original shot family: ${shotHint.replace(/^SHOT TYPE:\s*/i, '')}` : undefined,
+    'REFERENCE CONTEXT (do not change unless the user request requires it):',
+    shotHint ? `- Shot family from source asset: ${shotHint.replace(/^SHOT TYPE:\s*/i, '')}` : undefined,
     garmentTypeAnchor || undefined,
-    '- Preserve view/orientation only if the user did not ask to change it.',
+    '- Same visible garment face / view orientation as the input unless the user asks to change it.',
   ]
     .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
     .join('\n')
@@ -1083,8 +1137,10 @@ function buildEditModePrompt(args: {
     return [
       buildUserEditPrimaryBlock(args.editInstructions),
       EDIT_MODE_BASE_DESIGN,
+      EDIT_MODE_PRESERVATION_DESIGN,
+      buildEditPreserveLookBlock(args.preset),
       contextHint,
-      buildAspectRatioBlock(args.aspectRatio),
+      buildAspectRatioBlockForEdit(args.aspectRatio),
       EDIT_MODE_NEGATIVE_DESIGN,
     ]
       .filter((x) => x.trim().length > 0)
@@ -1094,8 +1150,10 @@ function buildEditModePrompt(args: {
   return [
     buildUserEditPrimaryBlock(args.editInstructions),
     EDIT_MODE_BASE_GARMENT,
+    EDIT_MODE_PRESERVATION_GARMENT,
+    buildEditPreserveLookBlock(args.preset),
     contextHint,
-    buildAspectRatioBlock(args.aspectRatio),
+    buildAspectRatioBlockForEdit(args.aspectRatio),
     EDIT_MODE_NEGATIVE_GARMENT,
   ]
     .filter((x) => x.trim().length > 0)
@@ -1176,6 +1234,7 @@ function buildPrompt(args: {
   if (isAssetEdit && args.editInstructions) {
     return buildEditModePrompt({
       shotType: args.shotType,
+      preset: args.preset,
       editInstructions: args.editInstructions,
       pipeline: args.pipeline,
       aspectRatio: args.aspectRatio,
