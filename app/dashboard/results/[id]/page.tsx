@@ -1068,14 +1068,14 @@ export default function ResultsPage() {
                 <div className="px-4 py-3 border-t border-border bg-background/60">
                   <div className="text-sm font-medium">Edit instructions</div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    Only safe refinements will be applied; prints/logos/silhouette are preserved.
+                    Describe what to change — color, background, lighting, crop, prints, and more. The model follows your text.
                   </div>
                   <Textarea
                     value={editDraft}
                     onChange={(e) => setEditDraft(e.target.value)}
                     className="mt-3"
                     rows={4}
-                    placeholder="e.g. Reduce dust and improve lighting; keep the print placement unchanged."
+                    placeholder="e.g. Make the hoodie black, brighten the background, crop tighter on the chest logo."
                     disabled={isSubmittingEdit}
                     aria-label="Edit instructions"
                   />

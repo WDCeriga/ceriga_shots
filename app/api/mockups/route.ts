@@ -1004,43 +1004,102 @@ function buildGarmentTypeAnchor(garmentType: GarmentType): string {
   ].join('\n')
 }
 
-function buildEditInstructionsBlock(editInstructions: string): string {
+const EDIT_MODE_BASE_GARMENT = [
+  'TASK: Image edit from the provided reference.',
+  '- The input image is the starting frame. Apply the user request on top of it.',
+  '- User instructions override all stylistic defaults, background locks, and prior generation rules.',
+  '- Change color, background, lighting, crop, pose, fabric, prints, logos, or garment type when the user asks.',
+  '- Keep untouched areas as close to the input as possible unless the request requires a broader change.',
+  '- Output must read as a photoreal product photograph unless the user requests a different style.',
+].join('\n')
+
+const EDIT_MODE_BASE_DESIGN = [
+  'TASK: Refine the provided product render from the reference image.',
+  '- The input image is the starting frame. Apply the user request on top of it.',
+  '- User instructions override render-style defaults and prior generation rules.',
+  '- Change color, background, lighting, view angle, material, artwork, or silhouette when the user asks.',
+  '- Keep untouched areas as close to the input as possible unless the request requires a broader change.',
+].join('\n')
+
+const EDIT_MODE_NEGATIVE_GARMENT = [
+  'NEGATIVE (edit mode):',
+  '- No watermarks, borders, letterboxing, or text overlays unless the user requests them.',
+  '- No phone/browser UI, device bezels, or app chrome.',
+  '- No illustration/CGI look unless the user requests stylization.',
+].join('\n')
+
+const EDIT_MODE_NEGATIVE_DESIGN = [
+  'NEGATIVE (edit mode):',
+  '- No watermarks, borders, or text overlays unless the user requests them.',
+  '- No accidental multi-product collages unless the user requests multiple items.',
+].join('\n')
+
+function buildGenerationRefinementsBlock(editInstructions: string): string {
   return [
-    'USER EDIT INSTRUCTIONS (apply only safe refinements):',
+    'GENERATION REFINEMENTS (from project setup):',
     `- ${editInstructions}`,
-    '',
-    'LOCAL EDIT SCOPE (strict):',
-    '- Apply ONLY the explicit changes requested above.',
-    '- Preserve all other regions exactly (composition, framing, garment position, and untouched details).',
-    '- Keep background/environment unchanged unless the instruction explicitly asks to modify background.',
-    '- Do NOT perform global restyling, recoloring, relighting, or scene-wide transformations unless explicitly requested.',
-    '',
-    'IMPORTANT RULES:',
-    '- Do NOT redesign, reinterpret, or alter the garment design, prints, logos, typography, colors, or print placement.',
-    '- Do NOT change the garment silhouette or structure.',
-    '- Only apply allowed refinements that preserve exact product fidelity (e.g., remove dust/lint, improve lighting, clarify fabric texture, match composition/centering requirements for the shot type).',
-    '- If the instructions conflict with the fidelity rules, ignore the conflicting parts.',
+    '- Apply where compatible with the shot type and fidelity rules above.',
   ].join('\n')
 }
 
 function buildEditInstructionsBlockDesign(editInstructions: string): string {
+  return buildGenerationRefinementsBlock(editInstructions)
+}
+
+function buildUserEditPrimaryBlock(editInstructions: string): string {
   return [
-    'USER EDIT INSTRUCTIONS (refinements only):',
+    'USER EDIT REQUEST (highest priority — follow exactly):',
     `- ${editInstructions}`,
     '',
-    'LOCAL EDIT SCOPE (strict):',
-    '- Apply ONLY the explicit changes requested above.',
-    '- Preserve all other regions exactly (composition, framing, product position, and untouched details).',
-    '- Keep background/environment unchanged unless the instruction explicitly asks to modify background.',
-    '- Do NOT perform global restyling, recoloring, relighting, or scene-wide transformations unless explicitly requested.',
-    '',
-    'IMPORTANT RULES:',
-    '- Do NOT replace the product concept or swap in new artwork, logos, or a different color story.',
-    '- Do NOT change overall garment category or silhouette unless the user explicitly requests it.',
-    '- Allowed: lighting/exposure, contrast, crop/composition on the neutral render backdrop, subtle material clarity, removing obvious output noise — without inventing new print content.',
-    '- Consistency latch (regenerate): keep the same view family as the current render unless explicitly changed (front stays front, three-quarter stays three-quarter, flat stays flat).',
-    '- If instructions conflict with preserving design identity, ignore the conflicting parts.',
+    'APPLICATION RULES:',
+    '- Treat the line above as the primary creative direction.',
+    '- Implement the request literally; do not substitute a “safer” interpretation.',
+    '- If the request is ambiguous, choose the interpretation that best matches the user’s words.',
+    '- Do not refuse color, background, composition, or design changes the user asked for.',
   ].join('\n')
+}
+
+function buildEditModePrompt(args: {
+  shotType: ShotType
+  editInstructions: string
+  pipeline: GenerationPipeline
+  aspectRatio: GenerationAspectRatio
+  garmentType?: GarmentType
+}): string {
+  const isDesign = args.pipeline === 'design_realize'
+  const garmentTypeAnchor = buildGarmentTypeAnchor(args.garmentType ?? '')
+  const shotHint = SHOT_PROMPTS[args.shotType].split('\n')[0] ?? ''
+
+  const contextHint = [
+    'REFERENCE CONTEXT (soft — defer to user request when they conflict):',
+    shotHint ? `- Original shot family: ${shotHint.replace(/^SHOT TYPE:\s*/i, '')}` : undefined,
+    garmentTypeAnchor || undefined,
+    '- Preserve view/orientation only if the user did not ask to change it.',
+  ]
+    .filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
+    .join('\n')
+
+  if (isDesign) {
+    return [
+      buildUserEditPrimaryBlock(args.editInstructions),
+      EDIT_MODE_BASE_DESIGN,
+      contextHint,
+      buildAspectRatioBlock(args.aspectRatio),
+      EDIT_MODE_NEGATIVE_DESIGN,
+    ]
+      .filter((x) => x.trim().length > 0)
+      .join('\n---\n')
+  }
+
+  return [
+    buildUserEditPrimaryBlock(args.editInstructions),
+    EDIT_MODE_BASE_GARMENT,
+    contextHint,
+    buildAspectRatioBlock(args.aspectRatio),
+    EDIT_MODE_NEGATIVE_GARMENT,
+  ]
+    .filter((x) => x.trim().length > 0)
+    .join('\n---\n')
 }
 
 function buildAspectRatioBlock(aspectRatio: GenerationAspectRatio): string {
@@ -1108,10 +1167,22 @@ function buildPrompt(args: {
   projectId: string
   garmentType?: GarmentType
   editInstructions?: string
+  editedFromId?: string
   pipeline: GenerationPipeline
   renderStyleLevel?: RenderStyleLevel
   aspectRatio: GenerationAspectRatio
 }) {
+  const isAssetEdit = Boolean(args.editInstructions && args.editedFromId)
+  if (isAssetEdit && args.editInstructions) {
+    return buildEditModePrompt({
+      shotType: args.shotType,
+      editInstructions: args.editInstructions,
+      pipeline: args.pipeline,
+      aspectRatio: args.aspectRatio,
+      garmentType: args.garmentType,
+    })
+  }
+
   const category = categoryForShotType(args.shotType)
   const isDesign = args.pipeline === 'design_realize'
   const projectBackgroundLock = buildProjectBackgroundLockBlock(args.projectId)
@@ -1133,7 +1204,7 @@ function buildPrompt(args: {
     const negative = [NEGATIVE_GLOBAL_DESIGN, NEGATIVE_DESIGN_WHITE_BG, styleNegative].filter(
       (x): x is string => typeof x === 'string' && x.trim().length > 0
     ).join('\n')
-    const userEditBlock = args.editInstructions
+    const refinementBlock = args.editInstructions
       ? buildEditInstructionsBlockDesign(args.editInstructions)
       : ''
     // Constraint order (design_realize):
@@ -1144,7 +1215,7 @@ function buildPrompt(args: {
       framingBlock,
       DESIGN_OUTPUT_QUALITY_GUARDRAILS,
       buildAspectRatioBlock(args.aspectRatio),
-      userEditBlock || undefined,
+      refinementBlock || undefined,
       negative,
       FIDELITY_REMINDER_DESIGN,
     ]
@@ -1158,7 +1229,7 @@ function buildPrompt(args: {
   const negative = [NEGATIVE_GLOBAL, NEGATIVE_BY_PRESET[args.preset], NEGATIVE_BY_CATEGORY[category]].join('\n')
   const preset = [PRESET_BASE[args.preset], PRESET_BY_CATEGORY[args.preset][category]].join('\n')
 
-  const userEditBlock = args.editInstructions ? buildEditInstructionsBlock(args.editInstructions) : ''
+  const refinementBlock = args.editInstructions ? buildGenerationRefinementsBlock(args.editInstructions) : ''
 
   const shotPromptBody =
     category === 'flatlay'
@@ -1176,7 +1247,7 @@ function buildPrompt(args: {
     preset,
     buildVariationSeed(args.preset, args.shotType, args.generationIndex, args.variationSeed),
     buildAspectRatioBlock(args.aspectRatio),
-    userEditBlock || undefined,
+    refinementBlock || undefined,
     negative,
     FIDELITY_REMINDER,
   ]
@@ -1411,6 +1482,7 @@ export async function POST(req: Request) {
         projectId,
         garmentType,
         editInstructions,
+        editedFromId,
         pipeline,
         renderStyleLevel,
         aspectRatio,
@@ -1574,6 +1646,7 @@ export async function POST(req: Request) {
         projectId,
         garmentType,
         editInstructions,
+        editedFromId,
         pipeline,
         renderStyleLevel,
         aspectRatio,
