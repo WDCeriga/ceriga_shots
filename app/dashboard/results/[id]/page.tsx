@@ -184,7 +184,7 @@ export default function ResultsPage() {
     const interval = window.setInterval(() => {
       if (stopped) return
       void tick()
-    }, 6000)
+    }, 5000)
 
     return () => {
       stopped = true

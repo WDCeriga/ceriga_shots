@@ -85,13 +85,10 @@ function toJobs(rows: GenerationJobRow[]): GenerationJob[] {
 const STALE_PROCESSING_MINUTES = 5
 const DEFAULT_MAX_JOB_ATTEMPTS = 5
 const MAX_RETRY_DELAY_SECONDS = 180
-const DEFAULT_MAX_CONCURRENT_PROCESSING = 1
-
-function parseMaxConcurrentProcessing(): number {
-  const configured = Number.parseInt(process.env.GENERATION_MAX_CONCURRENT ?? '', 10)
-  if (!Number.isFinite(configured)) return DEFAULT_MAX_CONCURRENT_PROCESSING
-  return Math.min(Math.max(configured, 1), 4)
-}
+/** Max Replicate calls in flight across the whole deployment. */
+const GLOBAL_MAX_CONCURRENT_PROCESSING = 4
+/** Max parallel generations per customer account (fairness for shared logins). */
+const PER_OWNER_MAX_CONCURRENT_PROCESSING = 2
 
 function isRateLimitError(message: string): boolean {
   const lower = message.toLowerCase()
@@ -241,20 +238,30 @@ export async function enqueueGenerationJobs(args: {
 export async function claimNextGenerationJob(workerId: string): Promise<GenerationJob | null> {
   await ensureSchema()
   await requeueStaleProcessingJobs()
-  const maxConcurrent = parseMaxConcurrentProcessing()
   const rows = (await db`
-    with processing_count as (
+    with processing_global as (
       select count(*)::int as n
       from generation_jobs
       where status = 'processing'
     ),
-    next_job as (
-      select id
+    owner_processing as (
+      select owner_id, count(*)::int as n
       from generation_jobs
-      where status = 'queued' and run_after <= now()
-      order by created_at asc
+      where status = 'processing'
+      group by owner_id
+    ),
+    next_job as (
+      select j.id
+      from generation_jobs j
+      left join owner_processing op on op.owner_id = j.owner_id
+      cross join processing_global pg
+      where j.status = 'queued'
+        and j.run_after <= now()
+        and pg.n < ${GLOBAL_MAX_CONCURRENT_PROCESSING}
+        and coalesce(op.n, 0) < ${PER_OWNER_MAX_CONCURRENT_PROCESSING}
+      order by j.created_at asc
       limit 1
-      for update skip locked
+      for update of j skip locked
     )
     update generation_jobs as j
     set
@@ -263,9 +270,8 @@ export async function claimNextGenerationJob(workerId: string): Promise<Generati
       locked_at = now(),
       locked_by = ${workerId},
       updated_at = now()
-    from next_job, processing_count
+    from next_job
     where j.id = next_job.id
-      and processing_count.n < ${maxConcurrent}
     returning j.*
   `) as GenerationJobRow[]
   const jobs = toJobs(rows)

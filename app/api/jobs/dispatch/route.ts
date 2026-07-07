@@ -14,10 +14,13 @@ import { getInternalQueueSecret } from '@/lib/internal-queue-secret'
 import type { GeneratedImage } from '@/types/projects'
 
 export const runtime = 'nodejs'
-const DEFAULT_DISPATCH_MAX_JOBS = 1
-const DEFAULT_CRON_DISPATCH_MAX_JOBS_PER_REQUEST = 8
-const DEFAULT_USER_DISPATCH_MAX_JOBS_PER_REQUEST = 1
-const INTER_JOB_DELAY_MS = 1500
+/** Jobs claimed back-to-back inside one dispatch invocation. */
+const DISPATCH_MAX_JOBS_PER_BATCH = 2
+/** Jobs drained per browser poll while results page is open. */
+const USER_DISPATCH_MAX_JOBS_PER_REQUEST = 3
+/** Jobs drained per cron / secret-backed dispatch call. */
+const CRON_DISPATCH_MAX_JOBS_PER_REQUEST = 10
+const INTER_JOB_DELAY_MS = 1000
 
 function canRunWithSecret(req: Request) {
   const explicit = process.env.QUEUE_DISPATCH_SECRET
@@ -164,17 +167,10 @@ export async function POST(req: Request) {
       ? crypto.randomUUID()
       : `${Date.now()}`
 
-  const configuredMaxJobs = Number.parseInt(process.env.GENERATION_DISPATCH_MAX_JOBS ?? '', 10)
-  const maxJobsPerBatch = Number.isFinite(configuredMaxJobs)
-    ? Math.min(Math.max(configuredMaxJobs, 1), 4)
-    : DEFAULT_DISPATCH_MAX_JOBS
-  const configuredMaxJobsPerRequest = Number.parseInt(process.env.GENERATION_DISPATCH_MAX_JOBS_PER_REQUEST ?? '', 10)
-  const defaultMaxJobsPerRequest = hasSecret
-    ? DEFAULT_CRON_DISPATCH_MAX_JOBS_PER_REQUEST
-    : DEFAULT_USER_DISPATCH_MAX_JOBS_PER_REQUEST
-  const maxJobsPerRequest = Number.isFinite(configuredMaxJobsPerRequest)
-    ? Math.min(Math.max(configuredMaxJobsPerRequest, 1), hasSecret ? 20 : 3)
-    : defaultMaxJobsPerRequest
+  const maxJobsPerBatch = DISPATCH_MAX_JOBS_PER_BATCH
+  const maxJobsPerRequest = hasSecret
+    ? CRON_DISPATCH_MAX_JOBS_PER_REQUEST
+    : USER_DISPATCH_MAX_JOBS_PER_REQUEST
 
   let processed = 0
   while (processed < maxJobsPerRequest) {
