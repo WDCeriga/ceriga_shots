@@ -1806,7 +1806,7 @@ export async function POST(req: Request) {
         console.warn(`[mockups:${requestId}] attempt ${attempt} no image output`)
       } catch (e) {
         lastErrorMessage = asErrorMessage(e)
-        console.warn(`[mockups:${requestId}] attempt ${attempt} error: ${lastErrorMessage}`)
+        console.info?.(`[mockups:${requestId}] attempt ${attempt} error: ${lastErrorMessage}`)
       }
 
       // Small backoff between attempts (helps with transient model issues / 429 rate limits).

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import { useProjects } from '@/hooks/use-projects'
 import { Button } from '@/components/ui/button'
@@ -45,6 +45,7 @@ export default function ResultsPage() {
   const [isHydrating, setIsHydrating] = useState(false)
   const [hydrateFailed, setHydrateFailed] = useState<string | null>(null)
   const [queueNudgeStatus, setQueueNudgeStatus] = useState<'idle' | 'ok' | 'retrying'>('idle')
+  const dispatchInFlightRef = useRef(false)
   const [isRenaming, setIsRenaming] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [shareDialogOpen, setShareDialogOpen] = useState(false)
@@ -160,8 +161,11 @@ export default function ResultsPage() {
     let stopped = false
 
     const tick = async () => {
+      if (dispatchInFlightRef.current) return
+      dispatchInFlightRef.current = true
       try {
-        // Nudge the queue on each poll so long-running generations resume after navigation.
+        // Nudge the queue so long-running generations resume after navigation.
+        // Single-flight: never stack overlapping dispatch calls (they caused Replicate 429s).
         try {
           const dispatchRes = await fetch('/api/jobs/dispatch', { method: 'POST' })
           setQueueNudgeStatus(dispatchRes.ok ? 'ok' : 'retrying')
@@ -171,6 +175,8 @@ export default function ResultsPage() {
         await fetchProject(projectId)
       } catch {
         // Polling errors are non-fatal; the next tick retries.
+      } finally {
+        dispatchInFlightRef.current = false
       }
     }
 
@@ -178,7 +184,7 @@ export default function ResultsPage() {
     const interval = window.setInterval(() => {
       if (stopped) return
       void tick()
-    }, 2500)
+    }, 6000)
 
     return () => {
       stopped = true

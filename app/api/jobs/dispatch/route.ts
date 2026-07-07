@@ -14,8 +14,10 @@ import { getInternalQueueSecret } from '@/lib/internal-queue-secret'
 import type { GeneratedImage } from '@/types/projects'
 
 export const runtime = 'nodejs'
-const DEFAULT_DISPATCH_MAX_JOBS = 12
-const DEFAULT_DISPATCH_MAX_JOBS_PER_REQUEST = 50
+const DEFAULT_DISPATCH_MAX_JOBS = 1
+const DEFAULT_CRON_DISPATCH_MAX_JOBS_PER_REQUEST = 8
+const DEFAULT_USER_DISPATCH_MAX_JOBS_PER_REQUEST = 1
+const INTER_JOB_DELAY_MS = 1500
 
 function canRunWithSecret(req: Request) {
   const explicit = process.env.QUEUE_DISPATCH_SECRET
@@ -82,7 +84,7 @@ async function processSingle(baseUrl: string, workerId: string) {
         shotType: job.shot_type,
         preset: job.preset,
         generationIndex: job.generation_index,
-        attempts: 1,
+        attempts: 3,
         variationSeed: job.variation_seed,
         editInstructions: job.edit_instructions ?? null,
         editedFromId: job.edited_from_id ?? null,
@@ -164,12 +166,15 @@ export async function POST(req: Request) {
 
   const configuredMaxJobs = Number.parseInt(process.env.GENERATION_DISPATCH_MAX_JOBS ?? '', 10)
   const maxJobsPerBatch = Number.isFinite(configuredMaxJobs)
-    ? Math.min(Math.max(configuredMaxJobs, 1), 12)
+    ? Math.min(Math.max(configuredMaxJobs, 1), 4)
     : DEFAULT_DISPATCH_MAX_JOBS
   const configuredMaxJobsPerRequest = Number.parseInt(process.env.GENERATION_DISPATCH_MAX_JOBS_PER_REQUEST ?? '', 10)
+  const defaultMaxJobsPerRequest = hasSecret
+    ? DEFAULT_CRON_DISPATCH_MAX_JOBS_PER_REQUEST
+    : DEFAULT_USER_DISPATCH_MAX_JOBS_PER_REQUEST
   const maxJobsPerRequest = Number.isFinite(configuredMaxJobsPerRequest)
-    ? Math.min(Math.max(configuredMaxJobsPerRequest, 1), 100)
-    : DEFAULT_DISPATCH_MAX_JOBS_PER_REQUEST
+    ? Math.min(Math.max(configuredMaxJobsPerRequest, 1), hasSecret ? 20 : 3)
+    : defaultMaxJobsPerRequest
 
   let processed = 0
   while (processed < maxJobsPerRequest) {
@@ -180,6 +185,9 @@ export async function POST(req: Request) {
       batchProcessed += 1
       processed += 1
       if (processed >= maxJobsPerRequest) break
+      if (processed < maxJobsPerRequest) {
+        await new Promise((resolve) => setTimeout(resolve, INTER_JOB_DELAY_MS))
+      }
     }
     if (batchProcessed === 0) break
   }

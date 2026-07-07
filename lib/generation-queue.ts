@@ -85,6 +85,34 @@ function toJobs(rows: GenerationJobRow[]): GenerationJob[] {
 const STALE_PROCESSING_MINUTES = 5
 const DEFAULT_MAX_JOB_ATTEMPTS = 5
 const MAX_RETRY_DELAY_SECONDS = 180
+const DEFAULT_MAX_CONCURRENT_PROCESSING = 1
+
+function parseMaxConcurrentProcessing(): number {
+  const configured = Number.parseInt(process.env.GENERATION_MAX_CONCURRENT ?? '', 10)
+  if (!Number.isFinite(configured)) return DEFAULT_MAX_CONCURRENT_PROCESSING
+  return Math.min(Math.max(configured, 1), 4)
+}
+
+function isRateLimitError(message: string): boolean {
+  const lower = message.toLowerCase()
+  return (
+    lower.includes('429') ||
+    lower.includes('rate limit') ||
+    lower.includes('too many requests') ||
+    lower.includes('throttl')
+  )
+}
+
+function retryDelaySeconds(attempts: number, errorMessage: string): number {
+  if (isRateLimitError(errorMessage)) {
+    const rateLimitBase = Math.min(MAX_RETRY_DELAY_SECONDS, 20 * 2 ** Math.max(0, attempts - 1))
+    const jitter = Math.floor(Math.random() * 6)
+    return Math.min(MAX_RETRY_DELAY_SECONDS, rateLimitBase + jitter)
+  }
+  const baseDelaySeconds = Math.min(MAX_RETRY_DELAY_SECONDS, 5 * 2 ** (attempts - 1))
+  const jitterSeconds = Math.floor(Math.random() * 4)
+  return Math.min(MAX_RETRY_DELAY_SECONDS, baseDelaySeconds + jitterSeconds)
+}
 
 async function requeueStaleProcessingJobs() {
   await db`
@@ -213,8 +241,14 @@ export async function enqueueGenerationJobs(args: {
 export async function claimNextGenerationJob(workerId: string): Promise<GenerationJob | null> {
   await ensureSchema()
   await requeueStaleProcessingJobs()
+  const maxConcurrent = parseMaxConcurrentProcessing()
   const rows = (await db`
-    with next_job as (
+    with processing_count as (
+      select count(*)::int as n
+      from generation_jobs
+      where status = 'processing'
+    ),
+    next_job as (
       select id
       from generation_jobs
       where status = 'queued' and run_after <= now()
@@ -229,8 +263,9 @@ export async function claimNextGenerationJob(workerId: string): Promise<Generati
       locked_at = now(),
       locked_by = ${workerId},
       updated_at = now()
-    from next_job
+    from next_job, processing_count
     where j.id = next_job.id
+      and processing_count.n < ${maxConcurrent}
     returning j.*
   `) as GenerationJobRow[]
   const jobs = toJobs(rows)
@@ -319,9 +354,7 @@ export async function failGenerationJob(args: {
 }) {
   await ensureSchema()
   const shouldRetry = args.attempts < args.maxAttempts
-  const baseDelaySeconds = shouldRetry ? Math.min(MAX_RETRY_DELAY_SECONDS, 5 * 2 ** (args.attempts - 1)) : 0
-  const jitterSeconds = shouldRetry ? Math.floor(Math.random() * 4) : 0
-  const delaySeconds = shouldRetry ? Math.min(MAX_RETRY_DELAY_SECONDS, baseDelaySeconds + jitterSeconds) : 0
+  const delaySeconds = shouldRetry ? retryDelaySeconds(args.attempts, args.errorMessage) : 0
 
   if (shouldRetry) {
     await db`
