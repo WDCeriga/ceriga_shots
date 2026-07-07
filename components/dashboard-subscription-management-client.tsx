@@ -85,7 +85,7 @@ export function DashboardSubscriptionManagementClient() {
       const res = await fetch('/api/billing/portal', { method: 'POST' })
       const data = (await res.json()) as { url?: string; error?: string }
       if (!res.ok || !data.url) throw new Error(data.error ?? `Portal failed (${res.status})`)
-      window.location.href = data.url
+      window.location.assign(data.url)
     } catch (e) {
       toast({
         title: 'Unable to open billing portal',
@@ -111,7 +111,7 @@ export function DashboardSubscriptionManagementClient() {
       })
       const data = (await res.json()) as { url?: string; error?: string }
       if (!res.ok || !data.url) throw new Error(data.error ?? `Checkout failed (${res.status})`)
-      window.location.href = data.url
+      window.location.assign(data.url)
     } catch (e) {
       toast({
         title: 'Unable to start checkout',

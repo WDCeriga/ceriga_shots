@@ -1068,7 +1068,7 @@ export default function ResultsPage() {
                 <div className="px-4 py-3 border-t border-border bg-background/60">
                   <div className="text-sm font-medium">Edit instructions</div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    Name only what should change — everything else stays as in this image. Be specific (e.g. "make the hoodie black").
+                    Name only what should change — everything else stays as in this image. Be specific (e.g. &quot;make the hoodie black&quot;).
                   </div>
                   <Textarea
                     value={editDraft}

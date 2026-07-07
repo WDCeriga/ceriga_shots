@@ -186,7 +186,7 @@ export function DashboardPricingClient() {
       const res = await fetch('/api/billing/portal', { method: 'POST' })
       const data = (await res.json()) as { url?: string; error?: string }
       if (!res.ok || !data.url) throw new Error(data.error ?? `Portal failed (${res.status})`)
-      window.location.href = data.url
+      window.location.assign(data.url)
     } catch (error) {
       toast({
         title: 'Unable to open billing portal',
@@ -212,7 +212,7 @@ export function DashboardPricingClient() {
       })
       const data = (await res.json()) as { url?: string; error?: string }
       if (!res.ok || !data.url) throw new Error(data.error ?? `Checkout failed (${res.status})`)
-      window.location.href = data.url
+      window.location.assign(data.url)
     } catch (error) {
       toast({
         title: 'Unable to start checkout',
@@ -230,7 +230,7 @@ export function DashboardPricingClient() {
   const continueStudioUpgrade = async () => {
     setStudioTrialModalOpen(false)
     if (authStatus !== 'authenticated') {
-      window.location.href = `/signup?plan=studio&billing=${billing}`
+      window.location.assign(`/signup?plan=studio&billing=${billing}`)
       return
     }
     await startCheckout('studio')
@@ -418,7 +418,7 @@ export function DashboardPricingClient() {
                   onClick={() => {
                     if (authStatus !== 'authenticated') {
                       const labelCreditsQuery = roleName === 'label' ? `&labelCredits=${labelCredits}` : ''
-                      window.location.href = `/signup?plan=${roleName}&billing=${billing}${labelCreditsQuery}`
+                      window.location.assign(`/signup?plan=${roleName}&billing=${billing}${labelCreditsQuery}`)
                       return
                     }
                     if (isCurrentPlan && hasActiveSubscription) {
