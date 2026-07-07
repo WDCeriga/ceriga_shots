@@ -35,7 +35,7 @@ type StatsResponse = {
         estimatedBilledTotalCost: number
       }
     }
-    aiSourceCredits: {
+    replicateCredits: {
       configured: boolean
       total: number | null
       used: number
@@ -400,44 +400,44 @@ export default function AdminStatisticsPage() {
 
       <Card
         className={
-          stats?.finance.aiSourceCredits.configured
-            ? stats.finance.aiSourceCredits.isLow
+          stats?.finance.replicateCredits.configured
+            ? stats.finance.replicateCredits.isLow
               ? 'border-rose-500/40 bg-rose-500/10'
               : 'border-lime-500/30 bg-lime-500/10'
             : 'border-border/60 bg-[#0a0a0a]'
         }
       >
         <CardHeader>
-          <CardTitle className="text-sm">AI Source Credits</CardTitle>
+          <CardTitle className="text-sm">Replicate Credits</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
           {isLoading ? (
             <Skeleton className="h-8 w-40" />
-          ) : stats?.finance.aiSourceCredits.configured ? (
+          ) : stats?.finance.replicateCredits.configured ? (
             <>
               <div className="flex items-center justify-between">
                 <span>Available</span>
-                <span className="text-2xl font-black">{stats.finance.aiSourceCredits.remaining ?? '—'}</span>
+                <span className="text-2xl font-black">{stats.finance.replicateCredits.remaining ?? '—'}</span>
               </div>
               <div className="flex items-center justify-between text-muted-foreground">
                 <span>Used (all-time)</span>
-                <span>{stats.finance.aiSourceCredits.used}</span>
+                <span>{stats.finance.replicateCredits.used}</span>
               </div>
               <div className="flex items-center justify-between text-muted-foreground">
                 <span>Total provisioned</span>
-                <span>{stats.finance.aiSourceCredits.total ?? '—'}</span>
+                <span>{stats.finance.replicateCredits.total ?? '—'}</span>
               </div>
               <div className="flex items-center justify-between text-muted-foreground">
                 <span>Low alert threshold</span>
-                <span>{stats.finance.aiSourceCredits.lowThreshold}</span>
+                <span>{stats.finance.replicateCredits.lowThreshold}</span>
               </div>
-              {stats.finance.aiSourceCredits.isLow ? (
-                <p className="text-xs text-rose-300">Low credits warning: refill your AI source credits soon.</p>
+              {stats.finance.replicateCredits.isLow ? (
+                <p className="text-xs text-rose-300">Low credits warning: refill your Replicate credits soon.</p>
               ) : null}
             </>
           ) : (
             <p className="text-muted-foreground">
-              Set <code>FINANCE_AI_SOURCE_CREDITS_TOTAL</code> to enable remaining-credit tracking.
+              Set <code>FINANCE_REPLICATE_CREDITS_TOTAL</code> to enable remaining-credit tracking.
             </p>
           )}
         </CardContent>

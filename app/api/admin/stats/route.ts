@@ -463,13 +463,17 @@ export async function GET(req: Request) {
   const successfulGenerations = Number(successfulGenerationsRow?.count ?? 0)
   const successfulGenerationModelCalls = Number(successfulGenerationModelCallsRow?.total ?? 0)
   const allTimeSuccessfulModelCalls = Number(allTimeSuccessfulModelCallsRow?.total ?? 0)
-  const aiSourceCreditsTotal = parseOptionalNumber(process.env.FINANCE_AI_SOURCE_CREDITS_TOTAL)
-  const aiSourceCreditsLowThreshold =
-    parseOptionalNumber(process.env.FINANCE_AI_SOURCE_CREDITS_LOW_THRESHOLD) ?? 100
-  const aiSourceCreditsRemaining =
-    aiSourceCreditsTotal != null ? Math.max(0, aiSourceCreditsTotal - allTimeSuccessfulModelCalls) : null
-  const aiSourceCreditsIsLow =
-    aiSourceCreditsRemaining != null ? aiSourceCreditsRemaining <= aiSourceCreditsLowThreshold : false
+  const replicateCreditsTotal =
+    parseOptionalNumber(process.env.FINANCE_REPLICATE_CREDITS_TOTAL) ??
+    parseOptionalNumber(process.env.FINANCE_AI_SOURCE_CREDITS_TOTAL)
+  const replicateCreditsLowThreshold =
+    parseOptionalNumber(process.env.FINANCE_REPLICATE_CREDITS_LOW_THRESHOLD) ??
+    parseOptionalNumber(process.env.FINANCE_AI_SOURCE_CREDITS_LOW_THRESHOLD) ??
+    100
+  const replicateCreditsRemaining =
+    replicateCreditsTotal != null ? Math.max(0, replicateCreditsTotal - allTimeSuccessfulModelCalls) : null
+  const replicateCreditsIsLow =
+    replicateCreditsRemaining != null ? replicateCreditsRemaining <= replicateCreditsLowThreshold : false
   // Replicate billing for this model is output-image based.
   // Failed/retry attempts should not be counted as billed calls.
   const allBilledModelCalls = successfulGenerations
@@ -522,13 +526,13 @@ export async function GET(req: Request) {
           estimatedBilledTotalCost: money(estimatedBilledGenerationCostTotal),
         },
       },
-      aiSourceCredits: {
-        configured: aiSourceCreditsTotal != null,
-        total: aiSourceCreditsTotal,
+      replicateCredits: {
+        configured: replicateCreditsTotal != null,
+        total: replicateCreditsTotal,
         used: allTimeSuccessfulModelCalls,
-        remaining: aiSourceCreditsRemaining,
-        lowThreshold: aiSourceCreditsLowThreshold,
-        isLow: aiSourceCreditsIsLow,
+        remaining: replicateCreditsRemaining,
+        lowThreshold: replicateCreditsLowThreshold,
+        isLow: replicateCreditsIsLow,
       },
       profitability: {
         grossProfitMonthly: money(grossProfitMonthly),
