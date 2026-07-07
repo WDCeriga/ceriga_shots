@@ -57,6 +57,12 @@ function pctChange(current: number, previous: number): number | null {
   return Number((((current - previous) / previous) * 100).toFixed(1))
 }
 
+function parseOptionalNumber(value: string | undefined): number | null {
+  if (value == null || value.trim() === '') return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   const userId = session?.user?.id
@@ -271,6 +277,12 @@ export async function GET(req: Request) {
         where status = 'done'
           and model_calls > 0
       `
+  const allTimeSuccessfulModelCallsQuery = db`
+    select coalesce(sum(model_calls), 0)::int as total
+    from generation_jobs
+    where status = 'done'
+      and model_calls > 0
+  `
 
   const [
     usersRows,
@@ -280,6 +292,7 @@ export async function GET(req: Request) {
     paidRows,
     successfulGenerationsRows,
     successfulGenerationModelCallsRows,
+    allTimeSuccessfulModelCallsRows,
   ] = await Promise.all([
     usersQuery,
     projectsQuery,
@@ -288,6 +301,7 @@ export async function GET(req: Request) {
     paidRowsQuery,
     successfulGenerationsQuery,
     successfulGenerationModelCallsQuery,
+    allTimeSuccessfulModelCallsQuery,
   ])
 
   const usersRow = (usersRows as Array<{ count: number }>)[0]
@@ -297,6 +311,7 @@ export async function GET(req: Request) {
   const paidRowsTyped = paidRows as Array<{ role: 'starter' | 'studio' | 'label'; count: number }>
   const successfulGenerationsRow = (successfulGenerationsRows as Array<{ count: number }>)[0]
   const successfulGenerationModelCallsRow = (successfulGenerationModelCallsRows as Array<{ total: number }>)[0]
+  const allTimeSuccessfulModelCallsRow = (allTimeSuccessfulModelCallsRows as Array<{ total: number }>)[0]
 
   const nowDate = new Date()
   const currentToDate = toDate ?? nowDate
@@ -447,6 +462,14 @@ export async function GET(req: Request) {
   const costPerModelCall = Number(process.env.FINANCE_COST_PER_MODEL_CALL ?? 0.039)
   const successfulGenerations = Number(successfulGenerationsRow?.count ?? 0)
   const successfulGenerationModelCalls = Number(successfulGenerationModelCallsRow?.total ?? 0)
+  const allTimeSuccessfulModelCalls = Number(allTimeSuccessfulModelCallsRow?.total ?? 0)
+  const aiSourceCreditsTotal = parseOptionalNumber(process.env.FINANCE_AI_SOURCE_CREDITS_TOTAL)
+  const aiSourceCreditsLowThreshold =
+    parseOptionalNumber(process.env.FINANCE_AI_SOURCE_CREDITS_LOW_THRESHOLD) ?? 100
+  const aiSourceCreditsRemaining =
+    aiSourceCreditsTotal != null ? Math.max(0, aiSourceCreditsTotal - allTimeSuccessfulModelCalls) : null
+  const aiSourceCreditsIsLow =
+    aiSourceCreditsRemaining != null ? aiSourceCreditsRemaining <= aiSourceCreditsLowThreshold : false
   // Replicate billing for this model is output-image based.
   // Failed/retry attempts should not be counted as billed calls.
   const allBilledModelCalls = successfulGenerations
@@ -498,6 +521,14 @@ export async function GET(req: Request) {
           estimatedTotalCost: money(estimatedGenerationCostTotal),
           estimatedBilledTotalCost: money(estimatedBilledGenerationCostTotal),
         },
+      },
+      aiSourceCredits: {
+        configured: aiSourceCreditsTotal != null,
+        total: aiSourceCreditsTotal,
+        used: allTimeSuccessfulModelCalls,
+        remaining: aiSourceCreditsRemaining,
+        lowThreshold: aiSourceCreditsLowThreshold,
+        isLow: aiSourceCreditsIsLow,
       },
       profitability: {
         grossProfitMonthly: money(grossProfitMonthly),

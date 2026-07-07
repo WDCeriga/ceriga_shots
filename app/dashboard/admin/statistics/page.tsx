@@ -35,6 +35,14 @@ type StatsResponse = {
         estimatedBilledTotalCost: number
       }
     }
+    aiSourceCredits: {
+      configured: boolean
+      total: number | null
+      used: number
+      remaining: number | null
+      lowThreshold: number
+      isLow: boolean
+    }
     profitability: { grossProfitMonthly: number; grossMarginPercent: number }
   }
   comparisons: {
@@ -389,6 +397,51 @@ export default function AdminStatisticsPage() {
           </Card>
         ))}
       </div>
+
+      <Card
+        className={
+          stats?.finance.aiSourceCredits.configured
+            ? stats.finance.aiSourceCredits.isLow
+              ? 'border-rose-500/40 bg-rose-500/10'
+              : 'border-lime-500/30 bg-lime-500/10'
+            : 'border-border/60 bg-[#0a0a0a]'
+        }
+      >
+        <CardHeader>
+          <CardTitle className="text-sm">AI Source Credits</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          {isLoading ? (
+            <Skeleton className="h-8 w-40" />
+          ) : stats?.finance.aiSourceCredits.configured ? (
+            <>
+              <div className="flex items-center justify-between">
+                <span>Available</span>
+                <span className="text-2xl font-black">{stats.finance.aiSourceCredits.remaining ?? '—'}</span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>Used (all-time)</span>
+                <span>{stats.finance.aiSourceCredits.used}</span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>Total provisioned</span>
+                <span>{stats.finance.aiSourceCredits.total ?? '—'}</span>
+              </div>
+              <div className="flex items-center justify-between text-muted-foreground">
+                <span>Low alert threshold</span>
+                <span>{stats.finance.aiSourceCredits.lowThreshold}</span>
+              </div>
+              {stats.finance.aiSourceCredits.isLow ? (
+                <p className="text-xs text-rose-300">Low credits warning: refill your AI source credits soon.</p>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-muted-foreground">
+              Set <code>FINANCE_AI_SOURCE_CREDITS_TOTAL</code> to enable remaining-credit tracking.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="border-violet-500/30 bg-violet-500/10">
         <CardHeader>
