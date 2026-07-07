@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { isDatabaseConfigured } from '@/lib/db'
-import { getProjectForUser, updateProjectForUser } from '@/lib/projects'
+import { getProjectForUser } from '@/lib/projects'
 import { bufferFromImageRef, safeFilename } from '@/lib/zip'
 import { findUserById } from '@/lib/users'
 import type { UserRole } from '@/lib/roles'
@@ -46,11 +46,7 @@ export async function GET(req: Request) {
   const user = await findUserById(session.user.id)
   const role = (user?.role ?? 'free') as UserRole
   const retained = applyAssetRetentionToProject(rawProject, role)
-  const project = retained.changed
-    ? (await updateProjectForUser(session.user.id, id, {
-        generatedImages: retained.project.generatedImages,
-      })) ?? retained.project
-    : rawProject
+  const project = retained.project
 
   const zip = new JSZip()
   let filesAdded = 0

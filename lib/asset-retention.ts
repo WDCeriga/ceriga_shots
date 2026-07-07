@@ -3,6 +3,12 @@ import { getRoleLimits, type UserRole } from '@/lib/roles'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+export function getAssetRetentionCutoffMs(role: UserRole, nowMs = Date.now()): number | null {
+  const retentionDays = getAssetRetentionDays(role)
+  if (retentionDays == null) return null
+  return nowMs - retentionDays * DAY_MS
+}
+
 function toFiniteTimestamp(value: unknown): number | null {
   if (typeof value !== 'number') return null
   if (!Number.isFinite(value)) return null

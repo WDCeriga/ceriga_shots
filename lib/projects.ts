@@ -272,6 +272,61 @@ export async function appendGeneratedImageForUser(
   return rows[0] ? mapRow(rows[0]) : null
 }
 
+export async function removeGeneratedImageForUser(
+  ownerId: string,
+  id: string,
+  assetId: string
+): Promise<Project | null> {
+  await ensureSchema()
+  const nowIso = new Date().toISOString()
+  const rows = (await db`
+    update projects
+    set
+      generated_images = (
+        select coalesce(jsonb_agg(elem order by ordinality), '[]'::jsonb)
+        from jsonb_array_elements(coalesce(generated_images, '[]'::jsonb)) with ordinality as t(elem, ordinality)
+        where coalesce(elem->>'id', '') <> ${assetId}
+      ),
+      updated_at = ${nowIso}
+    where owner_id = ${ownerId}
+      and id = ${id}
+      and exists (
+        select 1
+        from jsonb_array_elements(coalesce(generated_images, '[]'::jsonb)) as img
+        where img->>'id' = ${assetId}
+      )
+    returning *
+  `) as DbProjectRow[]
+  return rows[0] ? mapRow(rows[0]) : null
+}
+
+export async function pruneExpiredGeneratedImagesForUser(
+  ownerId: string,
+  id: string,
+  cutoffMs: number
+): Promise<Project | null> {
+  await ensureSchema()
+  const nowIso = new Date().toISOString()
+  const rows = (await db`
+    update projects
+    set
+      generated_images = (
+        select coalesce(jsonb_agg(elem order by ordinality), '[]'::jsonb)
+        from jsonb_array_elements(coalesce(generated_images, '[]'::jsonb)) with ordinality as t(elem, ordinality)
+        where
+          elem->>'timestamp' is null
+          or elem->>'timestamp' = ''
+          or not (elem->>'timestamp' ~ '^[0-9]+$')
+          or (elem->>'timestamp')::bigint >= ${cutoffMs}
+      ),
+      updated_at = ${nowIso}
+    where owner_id = ${ownerId}
+      and id = ${id}
+    returning *
+  `) as DbProjectRow[]
+  return rows[0] ? mapRow(rows[0]) : null
+}
+
 export async function deleteProjectForUser(ownerId: string, id: string): Promise<void> {
   await ensureSchema()
   await db`

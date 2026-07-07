@@ -2,14 +2,14 @@ import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { deleteProjectForUser, getProjectForUser, updateProjectForUser } from '@/lib/projects'
+import { deleteProjectForUser, getProjectForUser, pruneExpiredGeneratedImagesForUser, updateProjectForUser } from '@/lib/projects'
 import { mergeGeneration } from '@/lib/merge-generation'
 import type { Project } from '@/hooks/use-projects'
 import { isDatabaseConfigured } from '@/lib/db'
 import { z } from 'zod'
 import { findUserById } from '@/lib/users'
 import type { UserRole } from '@/lib/roles'
-import { applyAssetRetentionToProject } from '@/lib/asset-retention'
+import { applyAssetRetentionToProject, getAssetRetentionCutoffMs } from '@/lib/asset-retention'
 
 const GeneratedImageSchema = z
   .object({
@@ -158,17 +158,14 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
     const user = await findUserById(session.user.id)
     const role = (user?.role ?? 'free') as UserRole
     const retained = applyAssetRetentionToProject(project, role)
-    if (!retained.changed) {
-      return NextResponse.json(
-        { project },
-        { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0' } }
-      )
+    const cutoffMs = getAssetRetentionCutoffMs(role)
+    if (retained.changed && cutoffMs != null) {
+      void pruneExpiredGeneratedImagesForUser(session.user.id, id, cutoffMs).catch((error) => {
+        console.warn('Background asset retention prune failed', error)
+      })
     }
-    const persisted = await updateProjectForUser(session.user.id, id, {
-      generatedImages: retained.project.generatedImages,
-    })
     return NextResponse.json(
-      { project: persisted ?? retained.project },
+      { project: retained.project },
       { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0' } }
     )
   } catch (error) {
@@ -206,6 +203,16 @@ export async function PATCH(req: NextRequest): Promise<NextResponse> {
   }
 
   const updates: Partial<Project> = parsed.data
+
+  if (updates.generatedImages !== undefined) {
+    return NextResponse.json(
+      {
+        error: 'Direct generatedImages updates are not allowed. Use DELETE /api/projects/:id/assets/:assetId.',
+        code: 'use_asset_delete_api',
+      },
+      { status: 400 }
+    )
+  }
 
   try {
     const existing = await getProjectForUser(session.user.id, id)

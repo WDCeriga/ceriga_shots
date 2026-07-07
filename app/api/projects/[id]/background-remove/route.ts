@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { isDatabaseConfigured } from '@/lib/db'
-import { getProjectForUser, updateProjectForUser } from '@/lib/projects'
+import { appendGeneratedImageForUser, getProjectForUser, updateProjectForUser } from '@/lib/projects'
 import { mergeGeneration } from '@/lib/merge-generation'
 import type { GeneratedImage } from '@/types/projects'
 import { findUserById } from '@/lib/users'
@@ -178,17 +178,22 @@ export async function POST(req: NextRequest) {
       errorMessage: undefined,
     })
 
-    const updated = await updateProjectForUser(ownerId, id, {
-      generatedImages: [...(project.generatedImages ?? []), newImage],
-      generation: nextGen,
-    })
-
+    const updated = await appendGeneratedImageForUser(ownerId, id, newImage)
     if (!updated) {
       await incrementCredits(ownerId, 1)
       return NextResponse.json({ error: 'Failed to update project' }, { status: 500 })
     }
 
-    return NextResponse.json({ project: updated })
+    const withGeneration = await updateProjectForUser(ownerId, id, {
+      generation: nextGen,
+    })
+
+    if (!withGeneration) {
+      await incrementCredits(ownerId, 1)
+      return NextResponse.json({ error: 'Failed to update project' }, { status: 500 })
+    }
+
+    return NextResponse.json({ project: withGeneration })
   } catch (e) {
     await incrementCredits(ownerId, 1)
     console.error('POST /api/projects/[id]/background-remove error', e)

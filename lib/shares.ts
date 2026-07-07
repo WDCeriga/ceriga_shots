@@ -2,7 +2,6 @@ import { db, ensureSchema } from '@/lib/db'
 import type { Project } from '@/hooks/use-projects'
 import type { UserRole } from '@/lib/roles'
 import { applyAssetRetentionToProject } from '@/lib/asset-retention'
-import { updateProjectForUser } from '@/lib/projects'
 
 type SharedProjectRow = {
   token: string
@@ -126,12 +125,7 @@ export async function getProjectForShareToken(token: string): Promise<Project | 
   const role = (row.role ?? 'free') as UserRole
   const project = mapProject(row)
   const retained = applyAssetRetentionToProject(project, role)
-  if (!retained.changed) return project
-
-  const persisted = await updateProjectForUser(row.owner_id, row.id, {
-    generatedImages: retained.project.generatedImages,
-  })
-  return persisted ?? retained.project
+  return retained.project
 }
 
 export async function revokeShare(token: string, ownerId: string): Promise<boolean> {

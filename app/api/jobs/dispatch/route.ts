@@ -14,7 +14,8 @@ import { getInternalQueueSecret } from '@/lib/internal-queue-secret'
 import type { GeneratedImage } from '@/types/projects'
 
 export const runtime = 'nodejs'
-const DEFAULT_DISPATCH_MAX_JOBS = 4
+const DEFAULT_DISPATCH_MAX_JOBS = 12
+const DEFAULT_DISPATCH_MAX_JOBS_PER_REQUEST = 50
 
 function canRunWithSecret(req: Request) {
   const explicit = process.env.QUEUE_DISPATCH_SECRET
@@ -162,14 +163,25 @@ export async function POST(req: Request) {
       : `${Date.now()}`
 
   const configuredMaxJobs = Number.parseInt(process.env.GENERATION_DISPATCH_MAX_JOBS ?? '', 10)
-  const maxJobs = Number.isFinite(configuredMaxJobs)
+  const maxJobsPerBatch = Number.isFinite(configuredMaxJobs)
     ? Math.min(Math.max(configuredMaxJobs, 1), 12)
     : DEFAULT_DISPATCH_MAX_JOBS
+  const configuredMaxJobsPerRequest = Number.parseInt(process.env.GENERATION_DISPATCH_MAX_JOBS_PER_REQUEST ?? '', 10)
+  const maxJobsPerRequest = Number.isFinite(configuredMaxJobsPerRequest)
+    ? Math.min(Math.max(configuredMaxJobsPerRequest, 1), 100)
+    : DEFAULT_DISPATCH_MAX_JOBS_PER_REQUEST
+
   let processed = 0
-  for (let i = 0; i < maxJobs; i++) {
-    const result = await processSingle(baseUrl, workerId)
-    if (!result.processed) break
-    processed += 1
+  while (processed < maxJobsPerRequest) {
+    let batchProcessed = 0
+    for (let i = 0; i < maxJobsPerBatch; i++) {
+      const result = await processSingle(baseUrl, workerId)
+      if (!result.processed) break
+      batchProcessed += 1
+      processed += 1
+      if (processed >= maxJobsPerRequest) break
+    }
+    if (batchProcessed === 0) break
   }
 
   return NextResponse.json({ ok: true, processed })

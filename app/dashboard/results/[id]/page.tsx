@@ -301,9 +301,15 @@ export default function ResultsPage() {
 
     setDeletingAssetId(assetId)
     try {
-      const nextImages = project.generatedImages.filter((img) => img.id !== assetId)
-      await updateProject(projectId, { generatedImages: nextImages })
+      const res = await fetch(`/api/projects/${projectId}/assets/${assetId}`, { method: 'DELETE' })
+      const data = (await res.json().catch(() => ({}))) as { project?: typeof project; error?: string }
+      if (!res.ok || !data.project) {
+        throw new Error(data.error || 'Failed to delete asset')
+      }
 
+      await fetchProject(projectId)
+
+      const nextImages = data.project.generatedImages ?? []
       if (lightboxIndex != null) {
         if (nextImages.length === 0) {
           setLightboxIndex(null)
