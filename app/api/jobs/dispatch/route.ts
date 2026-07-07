@@ -8,7 +8,7 @@ import {
   completeGenerationJob,
   failGenerationJob,
 } from '@/lib/generation-queue'
-import { getProjectForUser, updateProjectForUser } from '@/lib/projects'
+import { appendGeneratedImageForUser, getProjectForUser } from '@/lib/projects'
 import { incrementCredits } from '@/lib/credits'
 import { getInternalQueueSecret } from '@/lib/internal-queue-secret'
 import type { GeneratedImage } from '@/types/projects'
@@ -106,14 +106,14 @@ async function processSingle(baseUrl: string, workerId: string) {
       throw new Error(payload.error || `Generator returned ${res.status}`)
     }
 
-    const latest = await getProjectForUser(job.owner_id, job.project_id)
-    if (!latest) {
+    const updatedProject = await appendGeneratedImageForUser(
+      job.owner_id,
+      job.project_id,
+      payload.generatedImage
+    )
+    if (!updatedProject) {
       throw new Error('Project disappeared during generation')
     }
-
-    await updateProjectForUser(job.owner_id, job.project_id, {
-      generatedImages: [...latest.generatedImages, payload.generatedImage],
-    })
 
     await completeGenerationJob({
       jobId: job.id,

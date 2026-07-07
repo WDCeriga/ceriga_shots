@@ -252,6 +252,26 @@ export async function updateProjectForUser(
   return rows[0] ? mapRow(rows[0]) : null
 }
 
+export async function appendGeneratedImageForUser(
+  ownerId: string,
+  id: string,
+  generatedImage: GeneratedImage
+): Promise<Project | null> {
+  await ensureSchema()
+  const nowIso = new Date().toISOString()
+  const imageJson = JSON.stringify([generatedImage])
+  const rows = (await db`
+    update projects
+    set
+      generated_images = coalesce(generated_images, '[]'::jsonb) || ${imageJson}::jsonb,
+      updated_at = ${nowIso}
+    where owner_id = ${ownerId}
+      and id = ${id}
+    returning *
+  `) as DbProjectRow[]
+  return rows[0] ? mapRow(rows[0]) : null
+}
+
 export async function deleteProjectForUser(ownerId: string, id: string): Promise<void> {
   await ensureSchema()
   await db`
